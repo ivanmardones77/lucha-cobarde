@@ -46,10 +46,18 @@ export class TouchControls {
   }
 
   public toggle(): boolean {
-    this.enabled = !this.enabled;
+    return this.setEnabled(!this.enabled);
+  }
+
+  public setEnabled(val: boolean): boolean {
+    this.enabled = val;
     if (!this.enabled) this.clearAll();
     this.applyVisibility();
     return this.enabled;
+  }
+
+  public setOverlayVisible(visible: boolean): void {
+    this.layer.classList.toggle('hidden', !visible || !this.enabled);
   }
 
   private applyVisibility(): void {

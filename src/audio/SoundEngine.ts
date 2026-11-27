@@ -14,13 +14,31 @@ export type SfxName =
   | 'armorHit'
   | 'teleport'
   | 'commandGrab'
+  | 'slam'
   | 'diveKick'
   | 'dodgeRoll'
   | 'ko'
-  | 'roundStart';
+  | 'roundStart'
+  | 'trialClear';
+
+const BASS_NOTES = [
+  73.42, 73.42, 87.31, 73.42, 98.0, 73.42, 110.0, 98.0,
+  65.41, 65.41, 87.31, 65.41, 98.0, 87.31, 82.41, 73.42,
+];
+
+const LEAD_NOTES = [
+  293.66, 0, 349.23, 440.0, 0, 392.0, 349.23, 329.63,
+  261.63, 0, 349.23, 392.0, 523.25, 440.0, 392.0, 329.63,
+];
 
 export class SoundEngine {
   private ctx: AudioContext | null = null;
+  private musicBus: GainNode | null = null;
+  private musicTimer: number | null = null;
+  private musicRunning = false;
+  private musicIntense = false;
+  private stepIdx = 0;
+
   public muted = false;
 
   public unlock(): void {
@@ -30,7 +48,15 @@ export class SoundEngine {
           window.AudioContext ||
           (window as unknown as { webkitAudioContext?: typeof AudioContext })
             .webkitAudioContext;
-        if (AudioCtx) this.ctx = new AudioCtx();
+        if (AudioCtx) {
+          this.ctx = new AudioCtx();
+          this.musicBus = this.ctx.createGain();
+          this.musicBus.gain.setValueAtTime(
+            this.muted ? 0 : 0.18,
+            this.ctx.currentTime
+          );
+          this.musicBus.connect(this.ctx.destination);
+        }
       }
       if (this.ctx && this.ctx.state === 'suspended') {
         void this.ctx.resume();
@@ -42,7 +68,151 @@ export class SoundEngine {
 
   public toggleMute(): boolean {
     this.muted = !this.muted;
+    if (this.musicBus && this.ctx) {
+      this.musicBus.gain.setTargetAtTime(
+        this.muted ? 0 : 0.18,
+        this.ctx.currentTime,
+        0.04
+      );
+    }
     return this.muted;
+  }
+
+  public setMusicIntensity(intense: boolean): void {
+    this.musicIntense = intense;
+  }
+
+  public startMusic(): void {
+    this.unlock();
+    if (this.musicRunning) return;
+    this.musicRunning = true;
+    this.stepIdx = 0;
+    this.musicTimer = window.setInterval(() => {
+      if (!this.musicRunning || this.muted || !this.ctx || !this.musicBus) {
+        return;
+      }
+      if (this.ctx.state === 'suspended') return;
+      this.scheduleMusicStep(this.stepIdx);
+      this.stepIdx = (this.stepIdx + 1) % 16;
+    }, 117); // ~128 BPM sixteenth-note grid
+  }
+
+  public stopMusic(): void {
+    this.musicRunning = false;
+    if (this.musicTimer !== null) {
+      window.clearInterval(this.musicTimer);
+      this.musicTimer = null;
+    }
+  }
+
+  private scheduleMusicStep(step: number): void {
+    if (!this.ctx || !this.musicBus) return;
+    const t = this.ctx.currentTime;
+
+    // 1) Driving Synthwave Saw Bass
+    const bassFreq = BASS_NOTES[step];
+    if (bassFreq > 0) {
+      const osc = this.ctx.createOscillator();
+      const filter = this.ctx.createBiquadFilter();
+      const g = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(
+        this.musicIntense && step % 2 === 1 ? bassFreq * 2 : bassFreq,
+        t
+      );
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(
+        this.musicIntense ? 1150 : 540,
+        t
+      );
+      filter.frequency.exponentialRampToValueAtTime(180, t + 0.1);
+
+      g.gain.setValueAtTime(0.24, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+
+      osc.connect(filter);
+      filter.connect(g);
+      g.connect(this.musicBus);
+      osc.start(t);
+      osc.stop(t + 0.115);
+    }
+
+    // 2) Punchy Kick on quarter beats (0, 4, 8, 12) + double kick when intense
+    if (step % 4 === 0 || (this.musicIntense && step === 14)) {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(135, t);
+      osc.frequency.exponentialRampToValueAtTime(38, t + 0.09);
+      g.gain.setValueAtTime(0.45, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+      osc.connect(g);
+      g.connect(this.musicBus);
+      osc.start(t);
+      osc.stop(t + 0.105);
+    }
+
+    // 3) Gated Synth Snare on 4 & 12
+    if (step === 4 || step === 12) {
+      const bufLen = Math.floor(this.ctx.sampleRate * 0.09);
+      const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
+      const ch = buf.getChannelData(0);
+      for (let i = 0; i < bufLen; i++) {
+        ch[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufLen * 0.4));
+      }
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(1100, t);
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.22, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+      src.connect(filter);
+      filter.connect(g);
+      g.connect(this.musicBus);
+      src.start(t);
+    }
+
+    // 4) Crisp Hi-Hat (8th notes normal, 16th notes intense)
+    if (step % 2 === 1 || this.musicIntense) {
+      const bufLen = Math.floor(this.ctx.sampleRate * 0.03);
+      const buf = this.ctx.createBuffer(1, bufLen, this.ctx.sampleRate);
+      const ch = buf.getChannelData(0);
+      for (let i = 0; i < bufLen; i++) {
+        ch[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufLen * 0.25));
+      }
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(5200, t);
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(this.musicIntense ? 0.1 : 0.055, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
+      src.connect(filter);
+      filter.connect(g);
+      g.connect(this.musicBus);
+      src.start(t);
+    }
+
+    // 5) Cyber Lead Melody (intensifies one octave higher during final tension)
+    const leadFreq = LEAD_NOTES[step];
+    if (leadFreq > 0 && (step % 2 === 0 || this.musicIntense)) {
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = this.musicIntense ? 'square' : 'triangle';
+      osc.frequency.setValueAtTime(
+        this.musicIntense ? leadFreq * 2 : leadFreq,
+        t
+      );
+      g.gain.setValueAtTime(this.musicIntense ? 0.11 : 0.08, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      osc.connect(g);
+      g.connect(this.musicBus);
+      osc.start(t);
+      osc.stop(t + 0.19);
+    }
   }
 
   private playNoise(
@@ -163,6 +333,9 @@ export class SoundEngine {
       case 'commandGrab':
         this.commandGrab();
         break;
+      case 'slam':
+        this.slam();
+        break;
       case 'diveKick':
         this.diveKick();
         break;
@@ -174,6 +347,9 @@ export class SoundEngine {
         break;
       case 'roundStart':
         this.roundStart();
+        break;
+      case 'trialClear':
+        this.trialClear();
         break;
     }
   }
@@ -253,6 +429,11 @@ export class SoundEngine {
     this.playNoise(0.24, 520, 0.32, 'lowpass');
   }
 
+  public slam(): void {
+    this.playNoise(0.34, 240, 0.44, 'lowpass');
+    this.playTone(125, 28, 0.36, 'sawtooth', 0.34);
+  }
+
   public diveKick(): void {
     this.playTone(620, 190, 0.18, 'sawtooth', 0.18);
     this.playNoise(0.16, 2000, 0.18, 'bandpass');
@@ -270,6 +451,11 @@ export class SoundEngine {
 
   public roundStart(): void {
     this.playTone(440, 660, 0.18, 'triangle', 0.18);
+  }
+
+  public trialClear(): void {
+    this.playTone(523.25, 1046.5, 0.16, 'triangle', 0.2);
+    this.playTone(783.99, 1567.98, 0.24, 'sine', 0.18);
   }
 }
 

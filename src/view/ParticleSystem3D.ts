@@ -686,6 +686,46 @@ export class ParticleSystem3D {
     }
   }
 
+  public spawnStageImpactParticles(
+    x: number,
+    isWaterStage: boolean,
+    intensity: number,
+    ground = false
+  ): void {
+    const count = Math.round(10 + intensity * 14);
+    const startCol = isWaterStage ? 0xe0f2fe : 0xfef3c7;
+    const endCol = isWaterStage ? 0x38bdf8 : 0xf59e0b;
+
+    if (ground) {
+      this.spawnShockwave(
+        x,
+        0.06,
+        isWaterStage ? 0x7dd3fc : 0xf59e0b,
+        0.22 + intensity * 0.16,
+        16,
+        true
+      );
+    }
+
+    for (let i = 0; i < count; i++) {
+      const side = Math.random() < 0.5 ? -1 : 1;
+      this.allocParticle({
+        x: x + (Math.random() - 0.5) * 0.7,
+        y: 0.08 + Math.random() * 0.15,
+        z: (Math.random() - 0.5) * 0.5,
+        vx: side * (0.04 + Math.random() * 0.16 * intensity),
+        vy: 0.08 + Math.random() * 0.18 * intensity,
+        vz: (Math.random() - 0.5) * 0.12,
+        life: 14 + Math.floor(Math.random() * 10),
+        size: isWaterStage ? 0.9 : 1.1,
+        stretch: isWaterStage ? 2.4 : 1.8,
+        gravity: -0.012,
+        colorStart: startCol,
+        colorEnd: endCol,
+      });
+    }
+  }
+
   public update(): void {
     // 1) Actualizar InstancedMesh de partículas
     let hasMatrixUpdates = false;

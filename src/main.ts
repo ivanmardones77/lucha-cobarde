@@ -1,6 +1,7 @@
 import './index.css';
 import { sfx } from './audio/SoundEngine';
 import { FightingAI } from './core/ai';
+import { ComboTrialTracker } from './core/comboTrials';
 import { InputBuffer } from './core/inputBuffer';
 import {
   createMatchState,
@@ -8,26 +9,60 @@ import {
   resetTrainingPosition,
   stepSimulation,
 } from './core/simulation';
-import { DummyMode, FIXED_DT, GameMode, TrainingPosition } from './core/types';
+import {
+  CHARACTERS,
+  CharacterId,
+  DummyMode,
+  FIXED_DT,
+  GameMode,
+  TrainingPosition,
+} from './core/types';
 import { InputManager } from './input/InputManager';
 import { TouchControls } from './input/TouchControls';
 import { HudOverlay } from './view/HudOverlay';
+import { LandingScreen, LaunchConfig } from './view/LandingScreen';
 import { SceneView3D } from './view/SceneView3D';
 
 const MAX_STEPS = 4;
+const CHAR_ORDER: CharacterId[] = ['RYUJIN', 'KAZE', 'TITAN'];
 
-const matchState = createMatchState('AI');
+const matchState = createMatchState('AI', 'RYUJIN', 'KAZE', 'ALLEY');
 const buffers: [InputBuffer, InputBuffer] = [
   new InputBuffer(),
   new InputBuffer(),
 ];
 const aiController = new FightingAI();
+const trialTracker = new ComboTrialTracker();
 const sceneView = new SceneView3D(
   document.getElementById('canvas-container')!
 );
 const touchControls = new TouchControls();
 const inputManager = new InputManager(touchControls, aiController);
 const hud = new HudOverlay();
+const landing = new LandingScreen(touchControls.enabled);
+
+const uiLayer = document.getElementById('ui-layer')!;
+const controlsModal = document.getElementById('controls-modal')!;
+let inMatch = false;
+let slowMoSubTick = 0;
+
+// Ocultar controles táctiles mientras el jugador está en la pantalla de inicio
+touchControls.setOverlayVisible(false);
+
+function syncSwapCharButton(): void {
+  const btn = document.getElementById('btn-swap-chars');
+  if (!btn) return;
+  btn.textContent = `⇄ P1: ${matchState.p1Character}`;
+  btn.style.color = CHARACTERS[matchState.p1Character].hudColor;
+}
+
+function syncMuteButtons(): void {
+  const btn = document.getElementById('btn-mute');
+  if (btn) {
+    btn.textContent = sfx.muted ? '🔇 Silencio' : '🔊 Audio';
+  }
+  landing.syncMuteLabel(sfx.muted);
+}
 
 function setGameMode(mode: GameMode): void {
   matchState.mode = mode;
@@ -48,44 +83,143 @@ function setGameMode(mode: GameMode): void {
   document
     .getElementById('training-controls')
     ?.classList.toggle('hidden', mode !== 'TRAINING');
+
+  hud.updateComboTrials(trialTracker, mode);
+}
+
+function applyShowBoxes(show: boolean): void {
+  sceneView.showDebugBoxes = show;
+  document
+    .getElementById('btn-debug-boxes')
+    ?.classList.toggle('active', show);
+}
+
+function applyShowFrames(show: boolean): void {
+  hud.framePanel.classList.toggle('hidden', !show);
+  document
+    .getElementById('btn-debug-frames')
+    ?.classList.toggle('active', show);
 }
 
 function toggleDebugBoxes(): void {
-  sceneView.showDebugBoxes = !sceneView.showDebugBoxes;
-  document
-    .getElementById('btn-debug-boxes')
-    ?.classList.toggle('active', sceneView.showDebugBoxes);
+  applyShowBoxes(!sceneView.showDebugBoxes);
 }
 
 function toggleDebugFrames(): void {
-  const hidden = hud.framePanel.classList.toggle('hidden');
-  document
-    .getElementById('btn-debug-frames')
-    ?.classList.toggle('active', !hidden);
+  applyShowFrames(hud.framePanel.classList.contains('hidden'));
 }
 
-inputManager.onToggleDebug = toggleDebugBoxes;
-inputManager.onToggleFrameData = toggleDebugFrames;
-inputManager.onResetMatch = () => resetRoundState(matchState, true);
+function startMatch(cfg: LaunchConfig): void {
+  sfx.unlock();
+  aiController.setDifficulty(cfg.aiDifficulty);
+  matchState.p1Character = cfg.p1Character;
+  matchState.p2Character = cfg.p2Character;
+  matchState.stageId = cfg.stageId;
+  sceneView.setStage(cfg.stageId);
+  syncSwapCharButton();
+
+  applyShowBoxes(cfg.showBoxes);
+  applyShowFrames(cfg.showFrames);
+  touchControls.setEnabled(cfg.touchEnabled);
+
+  setGameMode(cfg.mode);
+
+  landing.hide();
+  uiLayer.classList.remove('hidden');
+  touchControls.setOverlayVisible(true);
+  inMatch = true;
+  slowMoSubTick = 0;
+  sfx.startMusic();
+}
+
+function returnToMenu(): void {
+  inMatch = false;
+  sfx.stopMusic();
+  touchControls.clearAll();
+  touchControls.setOverlayVisible(false);
+  uiLayer.classList.add('hidden');
+  document.getElementById('match-end-modal')?.classList.add('hidden');
+  document.getElementById('intro-bar-top')?.classList.add('-translate-y-full');
+  document.getElementById('intro-bar-bottom')?.classList.add('translate-y-full');
+  document.getElementById('speedlines-overlay')?.classList.remove('opacity-100');
+  document.getElementById('speedlines-overlay')?.classList.add('opacity-0');
+
+  landing.show(
+    {
+      mode: matchState.mode,
+      stageId: matchState.stageId,
+      aiDifficulty: aiController.difficulty,
+      p1Character: matchState.p1Character,
+      p2Character: matchState.p2Character,
+      showBoxes: sceneView.showDebugBoxes,
+      showFrames: !hud.framePanel.classList.contains('hidden'),
+      touchEnabled: touchControls.enabled,
+    },
+    sfx.muted
+  );
+}
+
+landing.onStart = startMatch;
+landing.onOpenControls = () => {
+  sfx.unlock();
+  controlsModal.classList.remove('hidden');
+};
+landing.onToggleMute = () => {
+  sfx.unlock();
+  const muted = sfx.toggleMute();
+  syncMuteButtons();
+  return muted;
+};
+
+inputManager.onToggleDebug = () => {
+  if (inMatch) toggleDebugBoxes();
+};
+inputManager.onToggleFrameData = () => {
+  if (inMatch) toggleDebugFrames();
+};
+inputManager.onResetMatch = () => {
+  if (inMatch) resetRoundState(matchState, true);
+};
+
+window.addEventListener('keydown', (e) => {
+  if (
+    !inMatch &&
+    landing.isVisible() &&
+    controlsModal.classList.contains('hidden') &&
+    e.code === 'Enter'
+  ) {
+    e.preventDefault();
+    startMatch({ ...landing.config });
+  }
+});
 
 function swapCharacters(): void {
-  const nextP1 = matchState.p1Character === 'RYUJIN' ? 'KAZE' : 'RYUJIN';
+  const idx = CHAR_ORDER.indexOf(matchState.p1Character);
+  const nextP1 = CHAR_ORDER[(idx + 1) % CHAR_ORDER.length];
   matchState.p1Character = nextP1;
-  matchState.p2Character = nextP1 === 'RYUJIN' ? 'KAZE' : 'RYUJIN';
   aiController.reset();
   buffers[0].reset();
   buffers[1].reset();
   resetRoundState(matchState, true);
-  const btn = document.getElementById('btn-swap-chars');
-  if (btn) {
-    btn.textContent = `⇄ P1: ${nextP1}`;
-    btn.style.color = nextP1 === 'RYUJIN' ? '#67e8f9' : '#fda4af';
-  }
+  syncSwapCharButton();
+  hud.updateComboTrials(trialTracker, matchState.mode);
 }
 
 document.getElementById('btn-swap-chars')?.addEventListener('click', () => {
   sfx.unlock();
   swapCharacters();
+});
+
+document.getElementById('btn-trial-prev')?.addEventListener('click', () => {
+  sfx.unlock();
+  trialTracker.prevTrial();
+  hud.updateComboTrials(trialTracker, matchState.mode);
+});
+
+document.getElementById('btn-trial-next')?.addEventListener('click', () => {
+  sfx.unlock();
+  trialTracker.nextTrial();
+  hud.updateComboTrials(trialTracker, matchState.mode);
 });
 
 document.getElementById('btn-touch-toggle')?.addEventListener('click', () => {
@@ -145,6 +279,14 @@ document.getElementById('btn-end-train')?.addEventListener('click', () => {
   sfx.unlock();
   setGameMode('TRAINING');
 });
+document.getElementById('btn-end-menu')?.addEventListener('click', () => {
+  sfx.unlock();
+  returnToMenu();
+});
+document.getElementById('btn-return-menu')?.addEventListener('click', () => {
+  sfx.unlock();
+  returnToMenu();
+});
 
 document
   .getElementById('btn-debug-boxes')
@@ -156,16 +298,16 @@ document.getElementById('btn-reset')?.addEventListener('click', () => {
   sfx.unlock();
   resetRoundState(matchState, true);
 });
-document.getElementById('btn-mute')?.addEventListener('click', (e) => {
+document.getElementById('btn-mute')?.addEventListener('click', () => {
   sfx.unlock();
-  const muted = sfx.toggleMute();
-  (e.target as HTMLElement).textContent = muted ? '🔇 Silencio' : '🔊 Audio';
+  sfx.toggleMute();
+  syncMuteButtons();
 });
 document.getElementById('btn-controls')?.addEventListener('click', () => {
-  document.getElementById('controls-modal')?.classList.remove('hidden');
+  controlsModal.classList.remove('hidden');
 });
 document.getElementById('btn-close-controls')?.addEventListener('click', () => {
-  document.getElementById('controls-modal')?.classList.add('hidden');
+  controlsModal.classList.add('hidden');
 });
 
 resetRoundState(matchState, true);
@@ -180,17 +322,43 @@ function gameLoop(nowMs: number): void {
   accumulator += Math.min(now - lastTime, 0.1);
   lastTime = now;
 
-  let steps = 0;
-  while (accumulator >= FIXED_DT && steps < MAX_STEPS) {
-    const inputs = inputManager.poll(matchState);
-    stepSimulation(matchState, inputs, buffers);
-    hud.processEvents(matchState, sceneView);
-    accumulator -= FIXED_DT;
-    steps++;
-  }
+  if (inMatch) {
+    let steps = 0;
+    while (accumulator >= FIXED_DT && steps < MAX_STEPS) {
+      let shouldStep = true;
+      if (matchState.slowMoFrames > 0) {
+        slowMoSubTick++;
+        shouldStep = slowMoSubTick % 3 === 0;
+      } else {
+        slowMoSubTick = 0;
+      }
 
-  sceneView.render(matchState);
-  hud.update(matchState, buffers, inputManager, touchControls);
+      if (shouldStep) {
+        const inputs = inputManager.poll(matchState);
+        stepSimulation(matchState, inputs, buffers);
+        hud.processEvents(matchState, sceneView);
+        if (trialTracker.updateFromState(matchState)) {
+          sfx.play('trialClear');
+        }
+      }
+      accumulator -= FIXED_DT;
+      steps++;
+    }
+
+    const [p1, p2] = matchState.fighters;
+    const lowHp = p1.hp / p1.maxHp < 0.28 || p2.hp / p2.maxHp < 0.28;
+    const lowTime =
+      matchState.mode !== 'TRAINING' &&
+      matchState.phase === 'FIGHT' &&
+      matchState.timerFrames <= 20 * 60;
+    sfx.setMusicIntensity(lowHp || lowTime);
+
+    sceneView.render(matchState);
+    hud.update(matchState, buffers, inputManager, touchControls);
+    hud.updateComboTrials(trialTracker, matchState.mode);
+  } else {
+    accumulator = 0;
+  }
 }
 
 requestAnimationFrame(gameLoop);

@@ -10,10 +10,12 @@ import {
   getFighterMove,
   GRAVITY,
   HitLevel,
+  INTRO_DURATION_FRAMES,
   MatchState,
   MoveData,
   PlayableMoveId,
   STAGE_HALF_WIDTH,
+  StageId,
   THROW_TECH_WINDOW,
   TrainingPosition,
 } from './types';
@@ -63,22 +65,25 @@ function createFighter(
 export function createMatchState(
   mode: GameMode = 'AI',
   p1Character: CharacterId = 'RYUJIN',
-  p2Character: CharacterId = 'KAZE'
+  p2Character: CharacterId = 'KAZE',
+  stageId: StageId = 'ALLEY'
 ): MatchState {
   return {
     mode,
+    stageId,
     dummyMode: 'NEUTRAL',
     p1Character,
     p2Character,
     frame: 0,
     hitstop: 0,
+    slowMoFrames: 0,
     superFlashFrames: 0,
     superFlashOwner: -1,
     screenShake: 0,
     round: 1,
     timerFrames: 99 * 60,
     phase: 'INTRO',
-    phaseTimer: 90,
+    phaseTimer: INTRO_DURATION_FRAMES,
     winnerId: -1,
     fighters: [
       createFighter(0, p1Character, -2.2, 1),
@@ -114,6 +119,7 @@ export function resetRoundState(
   state.fighters[1].superMeter = m1;
   state.projectiles = [];
   state.hitstop = 0;
+  state.slowMoFrames = 0;
   state.superFlashFrames = 0;
   state.superFlashOwner = -1;
   state.screenShake = 0;
@@ -131,12 +137,25 @@ export function resetRoundState(
     state.fighters[1].superMeter = 100;
   } else {
     state.phase = 'INTRO';
-    state.phaseTimer = 85;
-    state.events.push({
-      type: 'BANNER',
-      text: `ROUND ${state.round}`,
-      color: '#38bdf8',
-    });
+    state.phaseTimer = INTRO_DURATION_FRAMES;
+    for (const f of state.fighters) {
+      const homeX = f.id === 0 ? -2.2 : 2.2;
+      if (f.character === 'RYUJIN') {
+        f.x = homeX - f.facing * 1.9;
+        f.y = 0;
+        f.state = 'WALK_F';
+      } else if (f.character === 'TITAN') {
+        f.x = homeX - f.facing * 1.75;
+        f.y = 0;
+        f.state = 'WALK_F';
+      } else {
+        f.x = homeX - f.facing * 1.1;
+        f.y = 3.2;
+        f.state = 'JUMP';
+      }
+      f.stateFrame = 0;
+    }
+    syncAllBoxes(state);
   }
 }
 
@@ -296,6 +315,8 @@ function startMove(
         text: 'KI CHARGE +18%',
         color: '#38bdf8',
       });
+    } else if (f.character === 'TITAN') {
+      state.events.push({ type: 'SFX', name: 'dash' });
     } else {
       state.events.push({ type: 'SFX', name: 'projectile' });
     }
@@ -306,6 +327,9 @@ function startMove(
     if (f.character === 'RYUJIN') {
       f.vy = 0.16;
       f.vx = f.facing * 0.13;
+      state.events.push({ type: 'SFX', name: 'dash' });
+    } else if (f.character === 'TITAN') {
+      f.vx = f.facing * 0.24;
       state.events.push({ type: 'SFX', name: 'dash' });
     } else {
       state.events.push({ type: 'SFX', name: 'teleport' });
@@ -398,11 +422,168 @@ export function stepSimulation(
 
   if (state.phase === 'INTRO') {
     state.phaseTimer--;
-    if (state.phaseTimer === 25) {
+    const elapsed = INTRO_DURATION_FRAMES - state.phaseTimer;
+
+    for (const f of state.fighters) {
+      const homeX = f.id === 0 ? -2.2 : 2.2;
+      if (f.character === 'RYUJIN') {
+        if (elapsed <= 42) {
+          const p = elapsed / 42;
+          f.x = homeX - f.facing * 1.9 * (1 - p);
+          f.y = 0;
+          f.vx = f.facing * 0.045;
+          f.vy = 0;
+          f.state = 'WALK_F';
+          f.stateFrame = elapsed;
+        } else if (elapsed <= 90) {
+          f.x = homeX;
+          f.y = 0;
+          f.vx = 0;
+          f.vy = 0;
+          f.state = 'INTRO_POSE';
+          f.stateFrame = elapsed - 42;
+          if (elapsed === 48) {
+            state.events.push({ type: 'SFX', name: 'exFlash' });
+            state.events.push({
+              type: 'VFX_BURST',
+              x: f.x,
+              y: 1.05,
+              effect: 'KI_CHARGE',
+              facing: f.facing,
+              color: CHARACTERS.RYUJIN.accentColor,
+            });
+          }
+        } else {
+          f.x = homeX;
+          f.y = 0;
+          f.vx = 0;
+          f.vy = 0;
+          f.state = 'IDLE';
+          f.stateFrame = elapsed - 90;
+        }
+      } else if (f.character === 'TITAN') {
+        if (elapsed <= 44) {
+          const p = elapsed / 44;
+          f.x = homeX - f.facing * 1.75 * (1 - p);
+          f.y = 0;
+          f.vx = f.facing * 0.04;
+          f.vy = 0;
+          f.state = 'WALK_F';
+          f.stateFrame = elapsed;
+          if (elapsed === 16 || elapsed === 38) {
+            state.screenShake = Math.max(state.screenShake, 0.16);
+            state.events.push({ type: 'SFX', name: 'armorHit' });
+            state.events.push({
+              type: 'STAGE_IMPACT',
+              x: f.x,
+              intensity: 0.45,
+              ground: true,
+            });
+          }
+        } else if (elapsed <= 94) {
+          f.x = homeX;
+          f.y = 0;
+          f.vx = 0;
+          f.vy = 0;
+          f.state = 'INTRO_POSE';
+          f.stateFrame = elapsed - 44;
+          if (elapsed === 64) {
+            state.screenShake = 0.36;
+            state.events.push({ type: 'SFX', name: 'slam' });
+            state.events.push({
+              type: 'VFX_BURST',
+              x: f.x + f.facing * 0.4,
+              y: 0.25,
+              effect: 'HEAVY_IMPACT',
+              facing: f.facing,
+              color: CHARACTERS.TITAN.accentColor,
+            });
+            state.events.push({
+              type: 'STAGE_IMPACT',
+              x: f.x + f.facing * 0.4,
+              intensity: 0.85,
+              ground: true,
+            });
+          }
+        } else {
+          f.x = homeX;
+          f.y = 0;
+          f.vx = 0;
+          f.vy = 0;
+          f.state = 'IDLE';
+          f.stateFrame = elapsed - 94;
+        }
+      } else {
+        // KAZE: Drop down from the shadows above the alley + blade draw pose
+        if (elapsed <= 28) {
+          const p = elapsed / 28;
+          f.x = homeX - f.facing * 1.1 * (1 - p);
+          f.y = 3.2 * (1 - p * p);
+          f.vx = f.facing * 0.04;
+          f.vy = -0.14;
+          f.state = 'JUMP';
+          f.stateFrame = elapsed;
+        } else if (elapsed <= 92) {
+          if (elapsed === 29) {
+            state.events.push({ type: 'SFX', name: 'backdash' });
+            state.events.push({
+              type: 'SPARK',
+              x: homeX,
+              y: 0.2,
+              kind: 'DASH',
+            });
+          }
+          f.x = homeX;
+          f.y = 0;
+          f.vx = 0;
+          f.vy = 0;
+          f.state = 'INTRO_POSE';
+          f.stateFrame = elapsed - 29;
+          if (elapsed === 70) {
+            state.events.push({ type: 'SFX', name: 'dash' });
+            state.events.push({
+              type: 'VFX_SLASH',
+              x: f.x + f.facing * 0.35,
+              y: 1.18,
+              facing: f.facing,
+              color: CHARACTERS.KAZE.accentColor,
+              angle: 0.48,
+              scale: 1.15,
+            });
+          }
+        } else {
+          f.x = homeX;
+          f.y = 0;
+          f.vx = 0;
+          f.vy = 0;
+          f.state = 'IDLE';
+          f.stateFrame = elapsed - 92;
+        }
+      }
+    }
+
+    if (elapsed === 4) {
+      state.events.push({
+        type: 'BANNER',
+        text: `ROUND ${state.round}`,
+        color: '#38bdf8',
+      });
+    }
+    if (elapsed === 96) {
       state.events.push({ type: 'BANNER', text: '¡FIGHT!', color: '#facc15' });
       state.events.push({ type: 'SFX', name: 'roundStart' });
     }
+
     if (state.phaseTimer <= 0) {
+      state.fighters[0].x = -2.2;
+      state.fighters[1].x = 2.2;
+      for (const f of state.fighters) {
+        f.y = 0;
+        f.vx = 0;
+        f.vy = 0;
+        f.state = 'IDLE';
+        f.stateFrame = 0;
+      }
       state.phase = 'FIGHT';
     }
     syncAllBoxes(state);
@@ -410,6 +591,23 @@ export function stepSimulation(
   }
 
   if (state.phase === 'ROUND_END') {
+    if (state.slowMoFrames > 0) state.slowMoFrames--;
+    for (const f of state.fighters) {
+      if (f.y > 0 || f.vy !== 0) {
+        applyPhysics(f);
+        if (f.y === 0) {
+          state.events.push({
+            type: 'STAGE_IMPACT',
+            x: f.x,
+            intensity: 0.65,
+            ground: true,
+          });
+        }
+      } else {
+        f.vx *= 0.85;
+        f.x = clamp(f.x + f.vx, -STAGE_HALF_WIDTH, STAGE_HALF_WIDTH);
+      }
+    }
     state.phaseTimer--;
     if (state.phaseTimer <= 0) {
       state.round++;
@@ -419,6 +617,23 @@ export function stepSimulation(
   }
 
   if (state.phase === 'MATCH_END') {
+    if (state.slowMoFrames > 0) state.slowMoFrames--;
+    for (const f of state.fighters) {
+      if (f.y > 0 || f.vy !== 0) {
+        applyPhysics(f);
+        if (f.y === 0) {
+          state.events.push({
+            type: 'STAGE_IMPACT',
+            x: f.x,
+            intensity: 0.65,
+            ground: true,
+          });
+        }
+      } else {
+        f.vx *= 0.85;
+        f.x = clamp(f.x + f.vx, -STAGE_HALF_WIDTH, STAGE_HALF_WIDTH);
+      }
+    }
     if (state.phaseTimer > 0) {
       state.phaseTimer--;
       if (state.phaseTimer === 107 && state.winnerId !== -1) {
@@ -511,6 +726,63 @@ function updateFighter(
 
   const cur = buf.getCurrent();
 
+  if (f.state === 'THROWN' && f.throwTechTimer === -1) {
+    // Cinematic Command Grab (63214T) 2-stage lift & slam
+    const sf = f.stateFrame;
+    if (sf <= 11) {
+      const p = sf / 11;
+      f.x = clamp(opp.x + opp.facing * (0.78 - p * 0.22), -STAGE_HALF_WIDTH, STAGE_HALF_WIDTH);
+      f.y = p * 2.15;
+    } else if (sf <= 14) {
+      f.x = clamp(opp.x + opp.facing * 0.54, -STAGE_HALF_WIDTH, STAGE_HALF_WIDTH);
+      f.y = 2.15;
+    } else if (sf < 20) {
+      const p = (sf - 14) / 6;
+      f.x = clamp(opp.x + opp.facing * (0.54 + p * 0.42), -STAGE_HALF_WIDTH, STAGE_HALF_WIDTH);
+      f.y = 2.15 * (1 - p);
+    } else {
+      const grabMove = CHARACTERS[opp.character].moves['63214T'];
+      const dmg = grabMove.damage;
+      f.hp = Math.max(state.mode === 'TRAINING' ? 1 : 0, f.hp - dmg);
+      f.comboCount++;
+      f.comboDamage += dmg;
+      f.lastHitDamage = dmg;
+      opp.superMeter = Math.min(100, opp.superMeter + 15);
+      f.superMeter = Math.min(100, f.superMeter + 10);
+      f.y = 0;
+      f.vy = 0.25;
+      f.vx = opp.facing * 0.14;
+      f.state = 'KNOCKDOWN';
+      f.stateFrame = 0;
+      f.throwTechTimer = 0;
+      state.hitstop = 11;
+      state.screenShake = 0.62;
+      state.events.push({ type: 'SPARK', x: f.x, y: 0.35, kind: 'GOLD' });
+      state.events.push({
+        type: 'VFX_BURST',
+        x: f.x,
+        y: 0.25,
+        effect: 'COMMAND_GRAB',
+        facing: opp.facing,
+        color: CHARACTERS[opp.character].accentColor,
+      });
+      state.events.push({
+        type: 'STAGE_IMPACT',
+        x: f.x,
+        intensity: 1.0,
+        ground: true,
+      });
+      state.events.push({ type: 'SFX', name: 'slam' });
+      state.events.push({
+        type: 'HIT_CONFIRMED',
+        attacker: opp.id,
+        moveId: '63214T',
+        comboCount: f.comboCount,
+      });
+    }
+    return;
+  }
+
   if (f.state === 'THROWN' && f.throwTechTimer > 0) {
     f.throwTechTimer--;
     if (buf.wasPressed('tPressed', 3) !== -1) {
@@ -559,12 +831,19 @@ function updateFighter(
       state.screenShake = 0.4;
       state.events.push({ type: 'SPARK', x: f.x, y: 1.0, kind: 'HIT' });
       state.events.push({ type: 'SFX', name: 'hitHeavy' });
+      state.events.push({
+        type: 'HIT_CONFIRMED',
+        attacker: opp.id,
+        moveId: 'THROW',
+        comboCount: f.comboCount,
+      });
     }
     return;
   }
 
   if (f.state === 'THROW_HOLD') {
-    if (f.stateFrame >= 16) {
+    const holdLimit = f.moveId === '63214T' ? 25 : 16;
+    if (f.stateFrame >= holdLimit) {
       f.state = 'IDLE';
       f.stateFrame = 0;
       f.moveId = null;
@@ -595,18 +874,36 @@ function updateFighter(
 
   if (f.state === 'JUGGLE') {
     if (f.stunFrames > 0) f.stunFrames--;
+    const wasAir = f.y > 0;
     applyPhysics(f);
     if (f.y === 0) {
       f.state = 'KNOCKDOWN';
       f.stateFrame = 18;
       f.vx *= 0.45;
+      if (wasAir) {
+        state.events.push({
+          type: 'STAGE_IMPACT',
+          x: f.x,
+          intensity: 0.55,
+          ground: true,
+        });
+      }
     }
     return;
   }
 
   if (f.state === 'KNOCKDOWN') {
+    const wasAir = f.y > 0;
     applyPhysics(f);
     if (f.y === 0) {
+      if (wasAir) {
+        state.events.push({
+          type: 'STAGE_IMPACT',
+          x: f.x,
+          intensity: 0.65,
+          ground: true,
+        });
+      }
       f.vx *= 0.8;
       if (f.stateFrame >= 36) {
         f.state = 'WAKEUP';
@@ -692,6 +989,14 @@ function updateFighter(
           Boolean(m.cancelToSpecial)
         )
       ) {
+        return;
+      }
+      if (
+        (m.id === '5P' || m.id === '2P') &&
+        buf.wasPressed('kPressed', 4) !== -1
+      ) {
+        const isCrouching = cur.dir === 1 || cur.dir === 2 || cur.dir === 3;
+        startMove(state, f, isCrouching ? '2K' : '5K');
         return;
       }
     }
@@ -791,6 +1096,25 @@ function updateFighter(
       });
     }
 
+    if (f.stateFrame === m.startup && m.id === '22P' && f.character === 'TITAN') {
+      state.screenShake = Math.max(state.screenShake, 0.44);
+      state.events.push({ type: 'SFX', name: 'slam' });
+      state.events.push({
+        type: 'VFX_BURST',
+        x: f.x + f.facing * 0.75,
+        y: 0.2,
+        effect: 'HEAVY_IMPACT',
+        facing: f.facing,
+        color: CHARACTERS.TITAN.accentColor,
+      });
+      state.events.push({
+        type: 'STAGE_IMPACT',
+        x: f.x + f.facing * 0.75,
+        intensity: 0.92,
+        ground: true,
+      });
+    }
+
     if (
       m.spawnsProjectile &&
       (f.stateFrame === m.startup ||
@@ -799,11 +1123,12 @@ function updateFighter(
           f.stateFrame === m.startup + 3))
     ) {
       const isSecondBurst = f.stateFrame === m.startup + 3;
-      const isRyujinEx = f.character === 'RYUJIN' && m.id === 'EX_236P';
+      const isMultiOrb = f.character !== 'KAZE' && m.id === 'EX_236P';
       const speedMult = m.isEx ? 1.32 : m.id === '22P' ? 1.18 : 1;
       state.projectiles.push({
         id: `${state.frame}_${f.id}_${isSecondBurst ? 2 : 1}`,
         owner: f.id,
+        sourceMoveId: m.id,
         kind: spec.projectileKind,
         x: f.x + f.facing * 1.05,
         y: f.y + (isSecondBurst ? 1.32 : 1.15),
@@ -815,7 +1140,7 @@ function updateFighter(
         chip: m.chip,
         hitstun: m.hitstun,
         blockstun: m.blockstun,
-        hitsRemaining: isRyujinEx ? m.projectileHits ?? 2 : 1,
+        hitsRemaining: isMultiOrb ? m.projectileHits ?? 2 : 1,
         hitCooldown: 0,
         knockdown: m.knockdown,
         isEx: m.isEx,
@@ -839,6 +1164,12 @@ function updateFighter(
         }
       } else {
         f.vx *= 0.78;
+      }
+    } else if (m.id === '214K' && f.character === 'TITAN') {
+      if (f.stateFrame >= 3 && f.stateFrame <= m.startup + m.active) {
+        f.vx = f.facing * 0.24;
+      } else {
+        f.vx *= 0.72;
       }
     } else if (m.id === '41236K') {
       if (f.stateFrame >= m.startup && f.stateFrame <= m.startup + m.active) {
@@ -1214,7 +1545,7 @@ function updateProjectiles(
         attacker,
         defender,
         {
-          id: 'PROJ',
+          id: p.sourceMoveId,
           startup: 0,
           active: 1,
           recovery: 0,
@@ -1288,34 +1619,23 @@ function checkMeleeHit(
     attacker.moveConnected = true;
 
     if (m.id === '63214T') {
-      const dmg = m.damage;
-      defender.hp = Math.max(state.mode === 'TRAINING' ? 1 : 0, defender.hp - dmg);
-      defender.comboCount++;
-      defender.comboDamage += dmg;
-      defender.lastHitDamage = dmg;
-      attacker.superMeter = Math.min(100, attacker.superMeter + 14);
-      defender.superMeter = Math.min(100, defender.superMeter + 10);
-      defender.state = 'KNOCKDOWN';
+      attacker.state = 'THROW_HOLD';
+      attacker.stateFrame = 0;
+      attacker.moveId = '63214T';
+      defender.state = 'THROWN';
       defender.stateFrame = 0;
-      defender.vy = 0.27;
-      defender.vx = attacker.facing * 0.16;
-      state.hitstop = 10;
-      state.screenShake = 0.45;
-      state.events.push({ type: 'SPARK', x: defender.x, y: 1.1, kind: 'GOLD' });
-      state.events.push({
-        type: 'VFX_BURST',
-        x: defender.x,
-        y: 1.0,
-        effect: 'COMMAND_GRAB',
-        facing: attacker.facing,
-        color: CHARACTERS[attacker.character].accentColor,
-      });
+      defender.throwTechTimer = -1; // untechable cinematic lift & slam
+      defender.x = clamp(
+        attacker.x + attacker.facing * 0.78,
+        -STAGE_HALF_WIDTH,
+        STAGE_HALF_WIDTH
+      );
       state.events.push({ type: 'SFX', name: 'commandGrab' });
       state.events.push({
         type: 'CALLOUT',
         side: attacker.id,
-        text: 'COMMAND GRAB!',
-        color: '#f43f5e',
+        text: attacker.character === 'TITAN' ? 'GIGA POWERBOMB!' : 'COMMAND GRAB!',
+        color: '#f59e0b',
       });
       return;
     }
@@ -1606,6 +1926,27 @@ function applyHit(
     name: move.damage >= 80 || move.isSuper ? 'hitHeavy' : 'hitLight',
   });
 
+  state.events.push({
+    type: 'HIT_CONFIRMED',
+    attacker: attacker.id,
+    moveId: move.id,
+    comboCount: defender.comboCount,
+  });
+
+  if (
+    move.damage >= 80 ||
+    move.isSuper ||
+    isCounter ||
+    Math.abs(defender.x) >= STAGE_HALF_WIDTH - 0.15
+  ) {
+    state.events.push({
+      type: 'STAGE_IMPACT',
+      x: defender.x,
+      intensity: move.isSuper ? 1.0 : 0.62,
+      ground: move.id === '22P' || move.id === '2K',
+    });
+  }
+
   if (isCounter) {
     state.events.push({
       type: 'CALLOUT',
@@ -1635,10 +1976,31 @@ function resolveRoundEnd(state: MatchState, timeOver: boolean): void {
     p1.roundsWon++;
     p1.state = 'VICTORY';
     p2.state = 'DEFEAT';
+    p2.vy = 0.2;
+    p2.vx = -p2.facing * 0.12;
   } else if (roundWinner === 1) {
     p2.roundsWon++;
     p2.state = 'VICTORY';
     p1.state = 'DEFEAT';
+    p1.vy = 0.2;
+    p1.vx = -p1.facing * 0.12;
+  }
+
+  if (!timeOver) {
+    const loser = roundWinner === 0 ? p2 : p1;
+    state.slowMoFrames = 22;
+    state.screenShake = 0.55;
+    state.events.push({
+      type: 'KO_SLOWMO',
+      loserX: loser.x,
+      loserY: loser.y + 1.0,
+    });
+    state.events.push({
+      type: 'STAGE_IMPACT',
+      x: loser.x,
+      intensity: 1.0,
+      ground: true,
+    });
   }
 
   state.events.push({ type: 'SFX', name: 'ko' });
@@ -1650,11 +2012,11 @@ function resolveRoundEnd(state: MatchState, timeOver: boolean): void {
 
   if (p1.roundsWon >= 2 || p2.roundsWon >= 2) {
     state.phase = 'MATCH_END';
-    state.phaseTimer = 170;
+    state.phaseTimer = 175;
     state.winnerId = p1.roundsWon >= 2 ? 0 : 1;
   } else {
     state.phase = 'ROUND_END';
-    state.phaseTimer = 115;
+    state.phaseTimer = 120;
   }
 }
 

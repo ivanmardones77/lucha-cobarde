@@ -14,15 +14,25 @@ interface QueuedStep {
   dir: NumpadDir;
   p?: boolean;
   k?: boolean;
+  t?: boolean;
 }
+
+export type AiDifficulty = 'NORMAL' | 'HARD' | 'MASTER';
 
 export class FightingAI {
   private snapshotQueue: DelayedSnapshot[] = [];
-  private reactionDelay = 15; // ~250ms de reacción humana
+  private reactionDelay = 14;
   private decisionCooldown = 0;
   private currentPlan = 'NEUTRAL';
   private planTimer = 0;
   private motionQueue: QueuedStep[] = [];
+  public difficulty: AiDifficulty = 'HARD';
+
+  public setDifficulty(diff: AiDifficulty): void {
+    this.difficulty = diff;
+    this.reactionDelay = diff === 'NORMAL' ? 21 : diff === 'HARD' ? 14 : 7;
+    this.reset();
+  }
 
   public reset(): void {
     this.snapshotQueue = [];
@@ -121,8 +131,31 @@ export class FightingAI {
       return this.dirToRaw(step.dir, ai.facing, step);
     }
 
-    // Reacción defensiva a agarre (Throw Tech humano 35%)
-    if (ai.throwTechTimer > 0 && ai.throwTechTimer <= 4 && Math.random() < 0.35) {
+    const techProb =
+      this.difficulty === 'NORMAL'
+        ? 0.16
+        : this.difficulty === 'HARD'
+          ? 0.35
+          : 0.62;
+    const blockProb =
+      this.difficulty === 'NORMAL'
+        ? 0.42
+        : this.difficulty === 'HARD'
+          ? 0.65
+          : 0.86;
+    const cancelProb =
+      this.difficulty === 'NORMAL'
+        ? 0.45
+        : this.difficulty === 'HARD'
+          ? 0.78
+          : 0.96;
+
+    // Reacción defensiva a agarre (Throw Tech humano)
+    if (
+      ai.throwTechTimer > 0 &&
+      ai.throwTechTimer <= 4 &&
+      Math.random() < techProb
+    ) {
       out.t = true;
       return out;
     }
@@ -130,10 +163,10 @@ export class FightingAI {
     // Bloqueo reactivo o Backdash defensivo
     if ((delayed.p1State === 'ATTACK' && delayed.dist < 2.7) || delayed.projNear) {
       const rDef = Math.random();
-      if (rDef < 0.65) {
+      if (rDef < blockProb) {
         const holdLow = delayed.p1Move === '2K';
         return this.dirToRaw(holdLow ? 1 : 4, ai.facing);
-      } else if (rDef < 0.78 && ai.y === 0 && !delayed.projNear) {
+      } else if (rDef < blockProb + 0.12 && ai.y === 0 && !delayed.projNear) {
         return this.dirToRaw(4, ai.facing, { dash: true });
       }
     }
@@ -144,20 +177,21 @@ export class FightingAI {
       ai.state === 'ATTACK' &&
       ai.moveConnected &&
       aiMove &&
-      aiMove.cancelToSpecial
+      aiMove.cancelToSpecial &&
+      Math.random() < cancelProb
     ) {
-      if (ai.superMeter >= 100 && Math.random() < 0.35) {
+      if (ai.superMeter >= 100 && Math.random() < 0.38) {
         out.s = true;
         return out;
       }
       const rCancel = Math.random();
-      if (ai.superMeter >= 25 && rCancel < 0.22) {
+      if (ai.superMeter >= 25 && rCancel < 0.25) {
         this.queueMotion([2, 3, 6], 'pk');
         return this.dirToRaw(2, ai.facing);
-      } else if (rCancel < 0.44) {
+      } else if (rCancel < 0.48) {
         this.queueMotion([2, 3, 6], 'p');
         return this.dirToRaw(2, ai.facing);
-      } else if (rCancel < 0.68) {
+      } else if (rCancel < 0.72) {
         this.queueMotion([2, 1, 4], 'p');
         return this.dirToRaw(2, ai.facing);
       } else {
@@ -184,8 +218,23 @@ export class FightingAI {
     if (this.planTimer <= 0) {
       const r = Math.random();
       const isKaze = ai.character === 'KAZE';
+      const isTitan = ai.character === 'TITAN';
       if (delayed.dist > 4.2) {
-        if (r < (isKaze ? 0.34 : 0.3)) {
+        if (isTitan) {
+          if (r < 0.25) {
+            this.queueMotion([2, 3, 6], 'p');
+            this.planTimer = 32;
+          } else if (r < 0.56) {
+            this.queueMotion([2, 1, 4], 'k');
+            this.planTimer = 26;
+          } else if (r < 0.85) {
+            this.currentPlan = 'APPROACH';
+            this.planTimer = 24;
+          } else {
+            this.currentPlan = 'DASH_IN';
+            this.planTimer = 16;
+          }
+        } else if (r < (isKaze ? 0.34 : 0.3)) {
           this.queueMotion([2, 3, 6], 'p');
           this.planTimer = isKaze ? 24 : 30;
         } else if (r < 0.5 && isKaze) {
@@ -202,7 +251,13 @@ export class FightingAI {
           this.planTimer = 18;
         }
       } else if (delayed.dist > 1.85) {
-        if (r < 0.18) {
+        if (isTitan && r < 0.28) {
+          this.queueMotion([2, 5, 2], 'p');
+          this.planTimer = 26;
+        } else if (isTitan && r < 0.52) {
+          this.queueMotion([2, 3, 6], 'k');
+          this.planTimer = 26;
+        } else if (r < 0.18) {
           this.currentPlan = 'APPROACH';
           this.planTimer = 14;
         } else if (r < 0.3) {
@@ -228,6 +283,9 @@ export class FightingAI {
         if (ai.superMeter >= 100 && r < 0.2) {
           this.currentPlan = 'SUPER';
           this.planTimer = 10;
+        } else if (isTitan && r < 0.42) {
+          this.queueMotion([6, 3, 2, 1, 4], 't');
+          this.planTimer = 22;
         } else if (r < 0.34) {
           this.currentPlan = 'JAB';
           this.planTimer = 10;
@@ -292,11 +350,12 @@ export class FightingAI {
     }
   }
 
-  private queueMotion(seq: NumpadDir[], btn: 'p' | 'k' | 'pk'): void {
+  private queueMotion(seq: NumpadDir[], btn: 'p' | 'k' | 'pk' | 't'): void {
     this.motionQueue = seq.map((d, idx) => ({
       dir: d,
       p: idx === seq.length - 1 && (btn === 'p' || btn === 'pk'),
       k: idx === seq.length - 1 && (btn === 'k' || btn === 'pk'),
+      t: idx === seq.length - 1 && btn === 't',
     }));
   }
 

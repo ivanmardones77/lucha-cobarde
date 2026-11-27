@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,600;0,700;1,700&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,600;0,700;1,700&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
   </head>
@@ -20,8 +20,421 @@
     <!-- Escena Three.js 2.5D -->
     <div id="canvas-container"></div>
 
-    <!-- Capa HUD Principal -->
-    <div id="ui-layer" class="fixed inset-0 pointer-events-none flex flex-col justify-between z-10 p-2 sm:p-3">
+    <!-- Bandas cinemáticas durante la secuencia de entrada (Intro) -->
+    <div
+      id="intro-bar-top"
+      class="fixed top-0 inset-x-0 h-10 sm:h-14 bg-slate-950/95 border-b border-cyan-500/20 z-[5] pointer-events-none transition-transform duration-300 -translate-y-full"
+    ></div>
+    <div
+      id="intro-bar-bottom"
+      class="fixed bottom-0 inset-x-0 h-10 sm:h-14 bg-slate-950/95 border-t border-rose-500/20 z-[5] pointer-events-none transition-transform duration-300 translate-y-full"
+    ></div>
+    <div
+      id="speedlines-overlay"
+      class="fixed inset-0 pointer-events-none z-[6] opacity-0 transition-opacity duration-150 anime-speedlines"
+    ></div>
+
+    <!-- PANTALLA INICIAL (LANDING CON ARTE, OPCIONES Y START) -->
+    <section
+      id="landing-screen"
+      aria-label="Pantalla de inicio"
+      class="fixed inset-0 z-40 overflow-y-auto bg-slate-950 text-slate-100"
+    >
+      <!-- Fondo ilustrado + retícula y líneas SVG -->
+      <div class="fixed inset-0 pointer-events-none overflow-hidden">
+        <img
+          id="landing-bg-img"
+          src=""
+          alt="Interior nocturno del dojo ciberpunk con iluminación neón azul y carmesí"
+          referrerpolicy="no-referrer"
+          class="w-full h-full object-cover object-center opacity-55 scale-[1.02]"
+        />
+        <div
+          class="absolute inset-0 bg-gradient-to-b from-slate-950/88 via-slate-950/68 to-slate-950/96"
+        ></div>
+        <div
+          class="absolute inset-0 bg-gradient-to-r from-slate-950/92 via-slate-950/55 to-slate-950/82"
+        ></div>
+        <div
+          class="landing-perspective-grid absolute inset-x-0 bottom-0 h-56 opacity-60"
+        ></div>
+        <svg
+          class="absolute inset-0 w-full h-full opacity-20"
+          viewBox="0 0 1440 900"
+          fill="none"
+          preserveAspectRatio="xMidYMid slice"
+          aria-hidden="true"
+        >
+          <path
+            d="M-60 760L520 180M1500 140L920 720"
+            stroke="#38bdf8"
+            stroke-width="1"
+          />
+          <path
+            d="M120 820L660 280M1360 260L840 780"
+            stroke="#fb7185"
+            stroke-width="1"
+          />
+          <circle cx="720" cy="450" r="240" stroke="#facc15" stroke-opacity="0.28" stroke-width="1" stroke-dasharray="6 10" />
+        </svg>
+      </div>
+
+      <div class="relative z-10 min-h-full flex flex-col justify-between max-w-6xl mx-auto px-4 sm:px-8 py-5 sm:py-6">
+        <!-- Barra superior (Contrato de 3 zonas) -->
+        <header class="flex items-center justify-between gap-8 pb-4 border-b border-slate-800/80">
+          <span class="font-fight font-bold text-lg sm:text-xl tracking-wider text-cyan-300 whitespace-nowrap shrink-0">
+            CYBER DOJO 2.5D
+          </span>
+
+          <nav class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-300">
+            <a
+              href="#landing-options-card"
+              class="hover:text-white transition-colors whitespace-nowrap shrink-0"
+              >Opciones</a
+            >
+            <a
+              href="#landing-roster-panel"
+              class="hover:text-white transition-colors whitespace-nowrap shrink-0"
+              >Luchadores</a
+            >
+            <button
+              id="landing-nav-controls"
+              type="button"
+              class="hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            >
+              Controles
+            </button>
+            <button
+              id="landing-nav-audio"
+              type="button"
+              class="hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            >
+              Audio (On)
+            </button>
+          </nav>
+
+          <button
+            id="landing-header-start"
+            type="button"
+            class="px-5 py-2 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-fight font-bold text-xs sm:text-sm tracking-wider transition-colors cursor-pointer whitespace-nowrap shrink-0"
+          >
+            START
+          </button>
+        </header>
+
+        <!-- Contenido Principal Hero + Opciones + Selección -->
+        <main class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center my-6 sm:my-8">
+          <!-- Columna Izquierda: Propuesta + Opciones de Juego + Start -->
+          <div class="lg:col-span-6 flex flex-col gap-5">
+            <div class="space-y-3">
+              <p class="text-xs sm:text-sm text-cyan-300/90 font-medium tracking-wide">
+                Combate 2.5D · Simulación determinista 60 FPS · WebGL Three.js
+              </p>
+              <h1
+                class="font-fight font-bold text-white leading-[1.06] tracking-tight"
+                style="font-size: clamp(2.25rem, 4.2vw, 3.6rem); text-wrap: balance;"
+              >
+                Duelo Táctico en el Dojo Nocturno
+              </h1>
+              <p class="text-sm sm:text-base text-slate-300 max-w-xl leading-relaxed">
+                Domina comandos de movimiento clásicos, golpes con Super Armor, versiones EX doradas y artes finales con partículas 3D en tiempo real.
+              </p>
+            </div>
+
+            <!-- Panel único de opciones de partida -->
+            <div
+              id="landing-options-card"
+              class="bg-slate-950/82 border border-slate-700/70 rounded-2xl p-5 shadow-2xl space-y-4"
+            >
+              <div>
+                <div class="text-xs font-semibold text-slate-300 mb-2">
+                  Modo de juego
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    data-landing-mode="AI"
+                    class="game-btn active py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer whitespace-nowrap truncate"
+                  >
+                    VS IA
+                  </button>
+                  <button
+                    type="button"
+                    data-landing-mode="2P"
+                    class="game-btn py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer whitespace-nowrap truncate"
+                  >
+                    2P Local
+                  </button>
+                  <button
+                    type="button"
+                    data-landing-mode="TRAINING"
+                    class="game-btn py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer whitespace-nowrap truncate"
+                  >
+                    Entrenamiento
+                  </button>
+                </div>
+              </div>
+
+              <div class="pt-3 border-t border-slate-800/80">
+                <div class="text-xs font-semibold text-slate-300 mb-2">
+                  Escenario de combate
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    data-landing-stage="ALLEY"
+                    class="game-btn active py-2 px-3 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap truncate"
+                  >
+                    Callejón Lluvioso
+                  </button>
+                  <button
+                    type="button"
+                    data-landing-stage="ROOFTOP"
+                    class="game-btn py-2 px-3 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap truncate"
+                  >
+                    Azotea Helipuerto
+                  </button>
+                </div>
+              </div>
+
+              <div id="landing-diff-row" class="pt-3 border-t border-slate-800/80 transition-opacity">
+                <div class="flex items-center justify-between text-xs mb-2">
+                  <span class="font-semibold text-slate-300">Nivel de IA rival</span>
+                  <span class="text-slate-400">Reacción · Guardia · Combos</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    data-landing-diff="NORMAL"
+                    class="game-btn py-2 px-3 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap truncate"
+                  >
+                    Normal
+                  </button>
+                  <button
+                    type="button"
+                    data-landing-diff="HARD"
+                    class="game-btn active py-2 px-3 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap truncate"
+                  >
+                    Competitivo
+                  </button>
+                  <button
+                    type="button"
+                    data-landing-diff="MASTER"
+                    class="game-btn py-2 px-3 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap truncate"
+                  >
+                    Maestro
+                  </button>
+                </div>
+              </div>
+
+              <div class="pt-3 border-t border-slate-800/80">
+                <div class="text-xs font-semibold text-slate-300 mb-2">
+                  Preferencias de combate y visor
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <button
+                    id="landing-opt-boxes"
+                    type="button"
+                    class="game-btn active py-2 px-3 rounded-lg text-xs font-medium cursor-pointer whitespace-nowrap truncate"
+                  >
+                    Cajas 2D: Activas
+                  </button>
+                  <button
+                    id="landing-opt-frames"
+                    type="button"
+                    class="game-btn active py-2 px-3 rounded-lg text-xs font-medium cursor-pointer whitespace-nowrap truncate"
+                  >
+                    Frame Meter: Activo
+                  </button>
+                  <button
+                    id="landing-opt-touch"
+                    type="button"
+                    class="game-btn py-2 px-3 rounded-lg text-xs font-medium cursor-pointer whitespace-nowrap truncate"
+                  >
+                    Controles Táctiles: Ocultos
+                  </button>
+                  <button
+                    id="landing-opt-mute"
+                    type="button"
+                    class="game-btn active py-2 px-3 rounded-lg text-xs font-medium cursor-pointer whitespace-nowrap truncate"
+                  >
+                    Audio: Activo
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botón principal START -->
+            <div class="flex flex-wrap items-center gap-3 pt-1">
+              <button
+                id="landing-btn-start"
+                type="button"
+                class="start-cta-btn flex-1 sm:flex-none min-w-[210px] px-8 py-3.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-orange-400 text-slate-950 font-fight font-bold text-lg tracking-wider shadow-[0_8px_28px_rgba(245,158,11,0.3)] cursor-pointer whitespace-nowrap"
+              >
+                START COMBATE
+              </button>
+              <button
+                id="landing-btn-controls"
+                type="button"
+                class="game-btn px-5 py-3.5 rounded-xl text-sm font-semibold text-slate-200 cursor-pointer whitespace-nowrap"
+              >
+                Lista de Movimientos
+              </button>
+            </div>
+          </div>
+
+          <!-- Columna Derecha: Arte y Selección P1 vs P2 -->
+          <div id="landing-roster-panel" class="lg:col-span-6 relative">
+            <div class="grid grid-cols-2 gap-4 sm:gap-5 items-stretch">
+              <!-- Tarjeta Jugador 1 -->
+              <div class="flex flex-col gap-2.5">
+                <div class="relative aspect-[3/4] rounded-2xl overflow-hidden border border-cyan-500/50 bg-gradient-to-b from-slate-900 to-slate-950 shadow-2xl">
+                  <img
+                    id="landing-p1-img"
+                    src=""
+                    alt="Retrato de combate del Jugador 1"
+                    referrerpolicy="no-referrer"
+                    class="w-full h-full object-cover object-top"
+                  />
+                  <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-transparent"></div>
+                  <div class="absolute inset-x-0 bottom-0 p-3.5 sm:p-4">
+                    <div class="text-[11px] font-semibold text-cyan-300 mb-0.5">
+                      Jugador 1
+                    </div>
+                    <div
+                      id="landing-p1-name"
+                      class="font-fight font-bold text-xl sm:text-2xl tracking-wide text-cyan-300 leading-tight"
+                    >
+                      RYUJIN
+                    </div>
+                    <div
+                      id="landing-p1-meta"
+                      class="text-xs text-slate-300 mt-0.5"
+                    >
+                      Shoto Equilibrado · 1000 HP
+                    </div>
+                  </div>
+                </div>
+                <div class="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    data-landing-p1="RYUJIN"
+                    class="game-btn active py-1.5 px-1.5 rounded-lg text-[11px] sm:text-xs font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap"
+                  >
+                    RYUJIN
+                  </button>
+                  <button
+                    type="button"
+                    data-landing-p1="KAZE"
+                    class="game-btn py-1.5 px-1.5 rounded-lg text-[11px] sm:text-xs font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap"
+                  >
+                    KAZE
+                  </button>
+                  <button
+                    type="button"
+                    data-landing-p1="TITAN"
+                    class="game-btn py-1.5 px-1.5 rounded-lg text-[11px] sm:text-xs font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap"
+                  >
+                    TITAN
+                  </button>
+                </div>
+              </div>
+
+              <!-- Tarjeta Jugador 2 / Rival -->
+              <div class="flex flex-col gap-2.5">
+                <div class="relative aspect-[3/4] rounded-2xl overflow-hidden border border-rose-500/50 bg-gradient-to-b from-slate-900 to-slate-950 shadow-2xl">
+                  <img
+                    id="landing-p2-img"
+                    src=""
+                    alt="Retrato de combate del Jugador 2"
+                    referrerpolicy="no-referrer"
+                    class="w-full h-full object-cover object-top"
+                  />
+                  <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-transparent"></div>
+                  <div class="absolute inset-x-0 bottom-0 p-3.5 sm:p-4 text-right">
+                    <div class="text-[11px] font-semibold text-rose-300 mb-0.5">
+                      Rival / P2
+                    </div>
+                    <div
+                      id="landing-p2-name"
+                      class="font-fight font-bold text-xl sm:text-2xl tracking-wide text-rose-400 leading-tight"
+                    >
+                      KAZE
+                    </div>
+                    <div
+                      id="landing-p2-meta"
+                      class="text-xs text-slate-300 mt-0.5"
+                    >
+                      Ninja Rushdown · 920 HP
+                    </div>
+                  </div>
+                </div>
+                <div class="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    data-landing-p2="RYUJIN"
+                    class="game-btn py-1.5 px-1.5 rounded-lg text-[11px] sm:text-xs font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap"
+                  >
+                    RYUJIN
+                  </button>
+                  <button
+                    type="button"
+                    data-landing-p2="KAZE"
+                    class="game-btn active py-1.5 px-1.5 rounded-lg text-[11px] sm:text-xs font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap"
+                  >
+                    KAZE
+                  </button>
+                  <button
+                    type="button"
+                    data-landing-p2="TITAN"
+                    class="game-btn py-1.5 px-1.5 rounded-lg text-[11px] sm:text-xs font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap"
+                  >
+                    TITAN
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Emblema SVG central VS -->
+            <div
+              class="hidden sm:flex items-center justify-center pointer-events-none absolute left-1/2 top-[43%] -translate-x-1/2 -translate-y-1/2 w-16 h-16"
+              aria-hidden="true"
+            >
+              <svg viewBox="0 0 80 80" class="w-full h-full drop-shadow-[0_6px_18px_rgba(0,0,0,0.85)]">
+                <polygon
+                  points="40,4 76,40 40,76 4,40"
+                  fill="#090d16"
+                  stroke="#facc15"
+                  stroke-width="2"
+                />
+                <path d="M16 64L64 16M16 16L64 64" stroke="#38bdf8" stroke-opacity="0.45" stroke-width="1.5" />
+                <text
+                  x="40"
+                  y="46"
+                  text-anchor="middle"
+                  fill="#facc15"
+                  font-family="Chakra Petch, sans-serif"
+                  font-weight="700"
+                  font-size="22"
+                  font-style="italic"
+                >
+                  VS
+                </text>
+              </svg>
+            </div>
+          </div>
+        </main>
+
+        <!-- Pie de página limpio -->
+        <footer class="pt-3 border-t border-slate-800/70 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+          <span>Teclado, Dos Jugadores Locales, Táctil Multitouch y Mandos USB/Bluetooth</span>
+          <span>Pulsa Enter o Start para entrar en la arena</span>
+        </footer>
+      </div>
+    </section>
+
+    <!-- Capa HUD Principal (oculta hasta pulsar START) -->
+    <div id="ui-layer" class="hidden fixed inset-0 pointer-events-none flex flex-col justify-between z-10 p-2 sm:p-3">
       <!-- BARRA SUPERIOR DE MODOS Y UTILIDADES -->
       <div class="pointer-events-auto flex flex-wrap items-center justify-between gap-2 bg-slate-950/85 border border-slate-700/60 rounded-xl px-3 py-1.5 shadow-xl">
         <div class="flex items-center gap-2 flex-wrap">
@@ -53,13 +466,14 @@
 
         <div class="flex items-center gap-1.5 flex-wrap">
           <div id="topbar-actions" class="flex items-center gap-1.5 flex-wrap">
-            <button id="btn-swap-chars" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer text-cyan-300" title="Cambiar personaje de P1 (RYUJIN / KAZE)">⇄ P1: RYUJIN</button>
+            <button id="btn-swap-chars" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer text-cyan-300" title="Cambiar personaje de P1 (RYUJIN / KAZE / TITAN)">⇄ P1: RYUJIN</button>
             <button id="btn-touch-toggle" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Activar/Desactivar Controles Táctiles">📱 TOUCH</button>
             <button id="btn-debug-boxes" class="game-btn active text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Mostrar/Ocultar Cajas 2D (F1)">Cajas (F1)</button>
             <button id="btn-debug-frames" class="game-btn active text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Mostrar/Ocultar Frame Meter y Datos (F2)">Frames (F2)</button>
             <button id="btn-mute" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Silenciar / Activar Audio">🔊 Audio</button>
             <button id="btn-controls" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer">Controles</button>
             <button id="btn-reset" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer text-amber-300" title="Reiniciar Combate (R)">↻ Reiniciar</button>
+            <button id="btn-return-menu" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer text-slate-200" title="Volver a la pantalla de inicio">Menú</button>
           </div>
           <button id="btn-toggle-topbar" class="game-btn text-xs font-semibold px-2 py-1.5 rounded-lg cursor-pointer text-slate-300" title="Contraer / Expandir utilidades">▴</button>
         </div>
@@ -140,8 +554,28 @@
         </div>
       </div>
 
-      <!-- ANUNCIO CENTRAL -->
-      <div id="center-banner-container" class="flex-1 flex items-center justify-center pointer-events-none">
+      <!-- ANUNCIO CENTRAL Y PANEL DE COMBO TRIALS (MODO ENTRENAMIENTO) -->
+      <div id="center-banner-container" class="relative flex-1 flex items-center justify-center pointer-events-none">
+        <div
+          id="combo-trials-panel"
+          class="hidden pointer-events-auto absolute left-1 sm:left-3 top-1 bg-slate-950/88 border border-amber-400/50 rounded-xl p-2.5 sm:p-3 w-64 sm:w-72 shadow-xl"
+        >
+          <div class="flex items-center justify-between gap-2 mb-1.5">
+            <div>
+              <div class="text-[10px] font-mono-code uppercase tracking-wider text-amber-300">Combo Trials</div>
+              <div id="trial-title" class="font-fight font-bold text-xs sm:text-sm text-white leading-tight">1. Fundamentos</div>
+            </div>
+            <div class="flex items-center gap-1">
+              <button id="btn-trial-prev" type="button" class="game-btn px-2 py-0.5 rounded text-xs font-bold cursor-pointer">◀</button>
+              <button id="btn-trial-next" type="button" class="game-btn px-2 py-0.5 rounded text-xs font-bold cursor-pointer">▶</button>
+            </div>
+          </div>
+          <div id="trial-steps" class="flex flex-wrap items-center gap-1 mb-1.5"></div>
+          <div class="flex items-center justify-between text-[10px] font-mono-code">
+            <span id="trial-diff" class="text-slate-400">Básico</span>
+            <span id="trial-status" class="text-amber-300 font-bold">Conecta la cadena</span>
+          </div>
+        </div>
         <div id="center-banner" class="hidden font-fight font-bold italic text-4xl sm:text-7xl tracking-wider text-center px-6 py-2 drop-shadow-[0_6px_25px_rgba(0,0,0,0.9)]"></div>
       </div>
 
@@ -254,7 +688,7 @@
     </div>
 
     <!-- MODAL DE CONTROLES Y LISTA DE MOVIMIENTOS -->
-    <div id="controls-modal" class="hidden fixed inset-0 z-30 bg-slate-950/85 flex items-center justify-center p-4">
+    <div id="controls-modal" class="hidden fixed inset-0 z-50 bg-slate-950/85 flex items-center justify-center p-4">
       <div class="bg-slate-900 border border-cyan-500/40 rounded-2xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between border-b border-slate-700 pb-3 mb-4">
           <h2 class="font-fight font-bold text-xl sm:text-2xl text-cyan-300 tracking-wide">LISTA DE MOVIMIENTOS Y CONTROLES</h2>
@@ -294,16 +728,16 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-slate-200">
             <div>• <strong class="text-amber-300">P + K (Acorde):</strong> <em>Cyber Impact</em> — Golpe pesado con <strong>Super Armor</strong> (1 hit, inspirado en SF4/SF6).</div>
             <div>• <strong class="text-emerald-300">P + T (Acorde):</strong> <em>Dodge Roll</em> — Voltereta invulnerable que atraviesa al rival (estilo KOF).</div>
-            <div>• <strong class="text-cyan-300">6 + P / 6 + K:</strong> Normales de comando (Ryujin: Overhead / Step Kick · Kaze: Anti-Aéreo / Slide Bajo).</div>
-            <div>• <strong class="text-cyan-300">236 + P / 623 + P / 236 + K:</strong> Proyectil, Uppercut antiaéreo (invuln) y Patada/Blitz Rush.</div>
-            <div>• <strong class="text-rose-300">214 + P / 214 + K:</strong> Ryujin: <em>Denjin Palm</em> (+2 en bloqueo) y <em>Axe Overhead</em> · Kaze: <em>Crescent</em> y <em>Mirage Teleport</em>.</div>
-            <div>• <strong class="text-indigo-300">2-5-2 + P (Down-Down):</strong> Ryujin: <em>Ki Charge</em> (+18% barra) · Kaze: <em>Doble Kunai</em>.</div>
-            <div>• <strong class="text-rose-300">41236 + K (Media Luna):</strong> <em>Breaker Rush / Phantom Flurry</em> multi-hit de alta presión (SNK).</div>
-            <div>• <strong class="text-emerald-300">63214 + T o P (Media Luna Atrás):</strong> <em>Command Grab</em> — Agarre especial imbloqueable e in-techeable.</div>
+            <div>• <strong class="text-cyan-300">6 + P / 6 + K:</strong> Normales de comando (Ryujin: Overhead / Step Kick · Kaze: Anti-Aéreo / Slide · Titan: Hammer / Knee).</div>
+            <div>• <strong class="text-cyan-300">236 + P / 623 + P / 236 + K:</strong> Proyectil, Uppercut antiaéreo y Blitz Rush (Titan: Armored Lariat con Super Armor).</div>
+            <div>• <strong class="text-rose-300">214 + P / 214 + K:</strong> Ryujin: <em>Denjin / Axe</em> · Kaze: <em>Crescent / Mirage</em> · Titan: <em>Shoulder Charge</em> con Armor.</div>
+            <div>• <strong class="text-indigo-300">2-5-2 + P (Down-Down):</strong> Ryujin: <em>Ki Charge</em> · Kaze: <em>Doble Kunai</em> · Titan: <em>Seismic Stomp</em> (Onda de choque).</div>
+            <div>• <strong class="text-rose-300">41236 + K (Media Luna):</strong> <em>Breaker Rush / Phantom Flurry / Colossus Beatdown</em> multi-hit.</div>
+            <div>• <strong class="text-emerald-300">63214 + T o P (Media Luna Atrás):</strong> <em>Command Grab</em> cinemático (Titan: <em>Giga Powerbomb</em>) imbloqueable.</div>
             <div>• <strong class="text-amber-300">EX Overdrive (25% barra):</strong> <code class="text-amber-200">236 / 623 / 214 + P+K</code> o <code class="text-amber-200">236 + K+T</code> (versión dorada mejorada).</div>
-            <div>• <strong class="text-sky-300">Especiales Aéreos:</strong> <code class="text-sky-200">j.236 + P</code> (Proyectil aéreo) · <code class="text-sky-200">j.214 + K</code> (<em>Meteor Dive Kick</em>).</div>
+            <div>• <strong class="text-sky-300">Especiales Aéreos:</strong> <code class="text-sky-200">j.236 + P</code> (Proyectil aéreo) · <code class="text-sky-200">j.214 + K</code> (<em>Meteor Dive Kick / Meteor Press</em>).</div>
             <div>• <strong class="text-amber-300">Super Art (100% barra):</strong> <code class="text-amber-200">U</code>, <code class="text-amber-200">236 + U</code> o clásico <code class="text-amber-200">236236 + P/K</code>.</div>
-            <div>• <strong class="text-slate-300">Cancelaciones:</strong> Cancela 5P, 2P, 6P, 5K y 6K al conectar hacia cualquier Especial, EX o Super.</div>
+            <div>• <strong class="text-slate-300">Cancelaciones:</strong> Cadena <code class="text-cyan-200">5P/2P → 5K</code> y cancela Normales hacia Especiales, EX o Super.</div>
           </div>
         </div>
       </div>
@@ -319,6 +753,7 @@
           <button id="btn-rematch" class="game-btn active w-full py-2.5 rounded-xl font-fight font-bold text-base tracking-wide cursor-pointer">↻ REVANCHA INMEDIATA</button>
           <button id="btn-end-swap" class="game-btn w-full py-2.5 rounded-xl font-fight font-bold text-sm tracking-wide text-cyan-300 cursor-pointer">⇄ CAMBIAR LUCHADOR Y REVANCHA</button>
           <button id="btn-end-train" class="game-btn w-full py-2.5 rounded-xl font-fight font-bold text-sm tracking-wide text-amber-300 cursor-pointer">⚙ IR A MODO ENTRENAMIENTO</button>
+          <button id="btn-end-menu" class="game-btn w-full py-2.5 rounded-xl font-fight font-bold text-sm tracking-wide text-slate-200 cursor-pointer">VOLVER AL MENÚ PRINCIPAL</button>
         </div>
       </div>
     </div>

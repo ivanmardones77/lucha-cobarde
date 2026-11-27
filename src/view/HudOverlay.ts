@@ -1,9 +1,12 @@
 import { sfx } from '../audio/SoundEngine';
+import { ComboTrialTracker } from '../core/comboTrials';
 import { InputBuffer } from '../core/inputBuffer';
 import {
   CHARACTERS,
+  CharacterId,
   COMBO_SCALING,
   FrameMeterCode,
+  GameMode,
   MatchState,
 } from '../core/types';
 import { InputManager } from '../input/InputManager';
@@ -20,6 +23,17 @@ const FM_COLORS: Record<FrameMeterCode, string> = {
   I: '#f8fafc',
   D: '#6366f1',
 };
+
+function getHpBarGradient(charId: CharacterId, isLeftSide: boolean): string {
+  const dir = isLeftSide ? '270deg' : '90deg';
+  if (charId === 'RYUJIN') {
+    return `linear-gradient(${dir}, #22d3ee, #38bdf8, #34d399)`;
+  }
+  if (charId === 'TITAN') {
+    return `linear-gradient(${dir}, #f59e0b, #fbbf24, #ea580c)`;
+  }
+  return `linear-gradient(${dir}, #f43f5e, #ec4899, #fb923c)`;
+}
 
 export class HudOverlay {
   private p1CharName = document.getElementById('p1-char-name')!;
@@ -67,6 +81,16 @@ export class HudOverlay {
   private dbgP2Frame = document.getElementById('dbg-p2-frame')!;
   private fmP1 = document.getElementById('frame-meter-p1')!;
   private fmP2 = document.getElementById('frame-meter-p2')!;
+  private introBarTop = document.getElementById('intro-bar-top');
+  private introBarBottom = document.getElementById('intro-bar-bottom');
+  private speedlinesOverlay = document.getElementById('speedlines-overlay');
+
+  private trialsPanel = document.getElementById('combo-trials-panel');
+  private trialTitle = document.getElementById('trial-title');
+  private trialDiff = document.getElementById('trial-diff');
+  private trialSteps = document.getElementById('trial-steps');
+  private trialStatus = document.getElementById('trial-status');
+  private lastTrialKey = '';
 
   private fmCells: [HTMLDivElement[], HTMLDivElement[]] = [[], []];
 
@@ -115,6 +139,8 @@ export class HudOverlay {
         );
       } else if (ev.type === 'VFX_BURST') {
         view.spawnSpecialBurst(ev.x, ev.y, ev.effect, ev.facing, ev.color);
+      } else if (ev.type === 'STAGE_IMPACT') {
+        view.triggerStageImpact(ev.x, ev.intensity, ev.ground);
       } else if (ev.type === 'SFX') {
         sfx.play(ev.name);
       } else if (ev.type === 'BANNER') {
@@ -125,6 +151,55 @@ export class HudOverlay {
         sfx.superFlash();
         this.showCenterBanner('¡SUPER ART!', '#facc15');
         this.showCallout(ev.owner, ev.superName, '#facc15');
+      }
+    }
+  }
+
+  public updateComboTrials(tracker: ComboTrialTracker, mode: GameMode): void {
+    if (!this.trialsPanel) return;
+    if (mode !== 'TRAINING') {
+      this.trialsPanel.classList.add('hidden');
+      return;
+    }
+    this.trialsPanel.classList.remove('hidden');
+
+    const trial = tracker.getCurrentTrial();
+    const isCleared = tracker.completedIds.has(trial.id);
+    const key = `${trial.id}:${tracker.stepIndex}:${isCleared ? 1 : 0}:${tracker.justCompletedTimer > 0 ? 1 : 0}`;
+    if (key === this.lastTrialKey) return;
+    this.lastTrialKey = key;
+
+    if (this.trialTitle) this.trialTitle.textContent = trial.title;
+    if (this.trialDiff) {
+      this.trialDiff.textContent = `${trial.difficulty} · ${tracker.completedIds.size} completados`;
+    }
+
+    if (this.trialSteps) {
+      this.trialSteps.innerHTML = '';
+      trial.steps.forEach((step, idx) => {
+        const done = idx < tracker.stepIndex || tracker.justCompletedTimer > 0;
+        const current = idx === tracker.stepIndex && tracker.justCompletedTimer === 0;
+        const pill = document.createElement('span');
+        pill.textContent = step.label;
+        pill.className = done
+          ? 'px-1.5 py-0.5 rounded text-[10px] font-mono-code font-bold bg-emerald-500/25 border border-emerald-400 text-emerald-200'
+          : current
+            ? 'px-1.5 py-0.5 rounded text-[10px] font-mono-code font-bold bg-amber-500/25 border border-amber-400 text-amber-200'
+            : 'px-1.5 py-0.5 rounded text-[10px] font-mono-code bg-slate-900 border border-slate-700 text-slate-400';
+        this.trialSteps!.appendChild(pill);
+      });
+    }
+
+    if (this.trialStatus) {
+      if (tracker.justCompletedTimer > 0) {
+        this.trialStatus.textContent = '¡TRIAL COMPLETADO!';
+        this.trialStatus.className = 'text-emerald-300 font-bold';
+      } else if (isCleared) {
+        this.trialStatus.textContent = '✓ Superado';
+        this.trialStatus.className = 'text-emerald-400 font-bold';
+      } else {
+        this.trialStatus.textContent = `Paso ${Math.min(tracker.stepIndex + 1, trial.steps.length)}/${trial.steps.length}`;
+        this.trialStatus.className = 'text-amber-300 font-bold';
       }
     }
   }
@@ -146,14 +221,8 @@ export class HudOverlay {
 
     this.p1HpWrap.style.borderColor = p1Spec.hudColor;
     this.p2HpWrap.style.borderColor = p2Spec.hudColor;
-    this.p1HpFill.style.background =
-      p1.character === 'RYUJIN'
-        ? 'linear-gradient(270deg, #22d3ee, #38bdf8, #34d399)'
-        : 'linear-gradient(270deg, #f43f5e, #ec4899, #fb923c)';
-    this.p2HpFill.style.background =
-      p2.character === 'RYUJIN'
-        ? 'linear-gradient(90deg, #22d3ee, #38bdf8, #34d399)'
-        : 'linear-gradient(90deg, #f43f5e, #ec4899, #fb923c)';
+    this.p1HpFill.style.background = getHpBarGradient(p1.character, true);
+    this.p2HpFill.style.background = getHpBarGradient(p2.character, false);
 
     this.p1HpFill.style.width = `${(p1.hp / p1.maxHp) * 100}%`;
     this.p1HpDel.style.width = `${(p1.delayedHp / p1.maxHp) * 100}%`;
@@ -236,6 +305,26 @@ export class HudOverlay {
       this.p2ComboScale.textContent = `${p1.comboDamage} DMG · ${Math.round(sc * 100)}%`;
     } else {
       this.p2ComboBox.classList.add('hidden');
+    }
+
+    const isIntro = state.phase === 'INTRO';
+    this.introBarTop?.classList.toggle('-translate-y-full', !isIntro);
+    this.introBarBottom?.classList.toggle('translate-y-full', !isIntro);
+
+    const anySpeedMove = state.fighters.some(
+      (f) =>
+        f.state === 'DASH_F' ||
+        (f.state === 'ATTACK' &&
+          f.moveId !== null &&
+          (f.moveId.startsWith('EX_') ||
+            f.moveId === 'SUPER' ||
+            f.moveId === '63214T'))
+    );
+    const speedActive =
+      state.superFlashFrames > 0 || state.slowMoFrames > 0 || anySpeedMove;
+    if (this.speedlinesOverlay) {
+      this.speedlinesOverlay.classList.toggle('opacity-100', speedActive);
+      this.speedlinesOverlay.classList.toggle('opacity-0', !speedActive);
     }
 
     if (state.phase === 'MATCH_END' && state.phaseTimer <= 55) {
