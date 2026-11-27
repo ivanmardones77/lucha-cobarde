@@ -1,20 +1,18 @@
 import './campaign.css';
 import { sfx } from '../audio/SoundEngine';
-import kazePortraitImg from '../assets/images/portrait_kaze_1795773106772.webp';
-import ryujinPortraitImg from '../assets/images/portrait_ryujin_1795773106942.webp';
-import titanPortraitImg from '../assets/images/portrait_titan_1795779369938.webp';
-import valkyriePortraitImg from '../assets/images/portrait_valkyrie_1795782381868.webp';
-import voltPortraitImg from '../assets/images/portrait_volt_1795782380711.webp';
 import type { DialogueLine } from '../campaign/story';
-import { CHARACTERS, CharacterId, getFighterHudColor } from '../core/types';
+import { CHARACTERS, CharacterId, StageId, getFighterHudColor } from '../core/types';
+import { STORY_BACKGROUNDS, STORY_CLIPS, STORY_SPRITES, StoryClip, framePosition, preloadStorySprites } from './storySprites';
 
-const PORTRAITS: Record<CharacterId, string> = {
-  KAZE: kazePortraitImg,
-  RYUJIN: ryujinPortraitImg,
-  TITAN: titanPortraitImg,
-  VALKYRIE: valkyriePortraitImg,
-  VOLT: voltPortraitImg,
-};
+/** Un luchador en escena: sprite animado a un lado del diálogo. */
+interface Actor {
+  el: HTMLElement;
+  sprite: HTMLElement;
+  id: CharacterId | null;
+  clip: StoryClip;
+  clipStart: number;
+  frame: number;
+}
 
 export interface MenuItem {
   label: string;
@@ -69,8 +67,9 @@ export class CampaignUI {
   private root: HTMLElement;
   private dlg: HTMLElement;
   private menuEl: HTMLElement;
-  private portraitL: HTMLImageElement;
-  private portraitR: HTMLImageElement;
+  private sceneEl: HTMLElement;
+  private actors: Record<'LEFT' | 'RIGHT', Actor>;
+  private reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   private nameEl: HTMLElement;
   private textEl: HTMLElement;
   private chapterEl: HTMLElement;
@@ -93,9 +92,10 @@ export class CampaignUI {
     this.root.id = 'campaign-ui';
     this.root.className = 'hidden';
     this.root.innerHTML = `
+      <div class="cg-scene"></div>
       <div class="cg-dialogue">
-        <img class="cg-portrait left" alt="" />
-        <img class="cg-portrait right" alt="" />
+        <div class="cg-portrait left" role="img"><div class="cg-sprite"></div></div>
+        <div class="cg-portrait right" role="img"><div class="cg-sprite"></div></div>
         <div class="cg-chapter"></div>
         <div class="cg-box" role="button" tabindex="0" aria-label="Siguiente">
           <div class="cg-name"></div>
@@ -121,8 +121,12 @@ export class CampaignUI {
 
     this.dlg = this.root.querySelector('.cg-dialogue')!;
     this.menuEl = this.root.querySelector('.cg-menu')!;
-    this.portraitL = this.root.querySelector('.cg-portrait.left')!;
-    this.portraitR = this.root.querySelector('.cg-portrait.right')!;
+    this.sceneEl = this.root.querySelector('.cg-scene')!;
+    const actor = (sel: string): Actor => {
+      const el = this.root.querySelector<HTMLElement>(sel)!;
+      return { el, sprite: el.querySelector<HTMLElement>('.cg-sprite')!, id: null, clip: 'idle', clipStart: 0, frame: -1 };
+    };
+    this.actors = { LEFT: actor('.cg-portrait.left'), RIGHT: actor('.cg-portrait.right') };
     this.nameEl = this.root.querySelector('.cg-name')!;
     this.textEl = this.root.querySelector('.cg-text')!;
     this.chapterEl = this.root.querySelector('.cg-chapter')!;
@@ -157,8 +161,21 @@ export class CampaignUI {
     return !this.root.classList.contains('hidden');
   }
 
+  /**
+   * Fondo ilustrado detrás de las escenas (tapa el escenario 3D). null = se ve el 3D,
+   * como en los diálogos de después de un combate.
+   */
+  setScene(stage: StageId | null): void {
+    if (stage) {
+      preloadStorySprites();
+      this.sceneEl.style.backgroundImage = `url(${STORY_BACKGROUNDS[stage]})`;
+    }
+    this.sceneEl.classList.toggle('shown', !!stage);
+  }
+
   hide(): void {
     this.mode = 'none';
+    this.setScene(null);
     this.root.classList.add('hidden');
     cancelAnimationFrame(this.raf);
   }
@@ -186,8 +203,11 @@ export class CampaignUI {
     this.dlg.classList.remove('hidden');
     this.menuEl.classList.add('hidden');
     this.showRoot();
-    this.portraitL.classList.remove('shown');
-    this.portraitR.classList.remove('shown');
+    preloadStorySprites();
+    for (const a of Object.values(this.actors)) {
+      a.el.classList.remove('shown', 'active');
+      a.id = null;
+    }
     if (lines.length === 0) {
       this.finishDialogue();
       return;
@@ -202,20 +222,18 @@ export class CampaignUI {
     this.progressEl.textContent = `${this.lineIdx + 1} / ${this.lines.length}`;
     if ('speakerId' in l) {
       const isNarr = l.speakerId === 'narrator';
-      const img = l.side === 'LEFT' ? this.portraitL : this.portraitR;
-      const other = l.side === 'LEFT' ? this.portraitR : this.portraitL;
+      const me = this.actors[l.side];
+      const other = this.actors[l.side === 'LEFT' ? 'RIGHT' : 'LEFT'];
       if (!isNarr) {
         const id = l.speakerId as CharacterId;
-        if (img.getAttribute('src') !== PORTRAITS[id]) img.src = PORTRAITS[id];
-        img.alt = CHARACTERS[id].name;
-        img.classList.add('shown');
-        img.classList.add('active');
-        other.classList.remove('active');
+        this.placeActor(me, id, l.side);
+        me.el.classList.add('shown', 'active');
+        other.el.classList.remove('active');
+        this.setClip(other, 'idle');
         this.nameEl.textContent = CHARACTERS[id].name;
         this.nameEl.style.color = getFighterHudColor(id, 0);
       } else {
-        this.portraitL.classList.remove('active');
-        this.portraitR.classList.remove('active');
+        this.idleAll();
         this.nameEl.textContent = '';
       }
       this.textEl.classList.toggle('narrator', isNarr);
@@ -225,8 +243,49 @@ export class CampaignUI {
       this.nameEl.style.color = l.color;
       this.textEl.classList.remove('narrator');
       this.dlg.classList.remove('right');
-      this.portraitL.classList.remove('active');
-      this.portraitR.classList.remove('active');
+      this.idleAll();
+    }
+  }
+
+  private placeActor(a: Actor, id: CharacterId, side: 'LEFT' | 'RIGHT'): void {
+    if (a.id !== id) {
+      const spec = STORY_SPRITES[id];
+      a.id = id;
+      a.sprite.style.backgroundImage = `url(${spec.sheet})`;
+      // Que mire hacia el centro: el de la izquierda a la derecha y al revés
+      const wanted = side === 'LEFT' ? 'right' : 'left';
+      a.sprite.classList.toggle('flip', spec.facing !== wanted);
+      a.el.setAttribute('aria-label', CHARACTERS[id].name);
+      a.frame = -1;
+    }
+    this.setClip(a, 'talk');
+  }
+
+  private setClip(a: Actor, clip: StoryClip): void {
+    if (a.clip === clip) return;
+    a.clip = clip;
+    a.clipStart = performance.now();
+  }
+
+  private idleAll(): void {
+    for (const a of Object.values(this.actors)) {
+      a.el.classList.remove('active');
+      this.setClip(a, 'idle');
+    }
+  }
+
+  /** Avanza la animación: el que habla mueve la boca mientras se escribe su frase. */
+  private animateActors(t: number): void {
+    const talking = this.mode === 'dialogue' && this.typed < this.currentText().length;
+    for (const a of Object.values(this.actors)) {
+      if (!a.id) continue;
+      if (a.clip === 'talk' && !talking) this.setClip(a, 'idle');
+      const c = STORY_CLIPS[a.clip];
+      const f = this.reducedMotion ? c.first : c.first + (Math.floor(((t - a.clipStart) / 1000) * c.fps) % c.count);
+      if (f !== a.frame) {
+        a.frame = f;
+        a.sprite.style.backgroundPosition = framePosition(f);
+      }
     }
   }
 
@@ -358,6 +417,7 @@ export class CampaignUI {
         this.textEl.textContent = full.slice(0, Math.floor(this.typed));
       }
     }
+    this.animateActors(t);
     this.pollPads();
     this.raf = requestAnimationFrame(this.loop);
   };

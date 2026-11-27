@@ -228,6 +228,7 @@ function openCharSelect(cfg: LaunchConfig): void {
 const campaignUI = new CampaignUI();
 const campaign = new CampaignRunner(campaignUI, {
   showBackdrop(stage, p1, p2) {
+    campaignUI.setScene(stage);
     inMatch = false;
     campaignMatch = false;
     backdropActive = true;
@@ -247,6 +248,7 @@ const campaign = new CampaignRunner(campaignUI, {
     touchControls.setOverlayVisible(false);
   },
   startCampaignMatch(m: CampaignMatch) {
+    campaignUI.setScene(null);
     backdropActive = false;
     campaignMatch = true;
     campaignEndReported = false;
