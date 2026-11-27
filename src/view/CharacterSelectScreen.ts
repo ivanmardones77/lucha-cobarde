@@ -273,6 +273,15 @@ export class CharacterSelectScreen {
       cfg.mode === '2P' ? '2 JUGADORES' : cfg.mode === 'AI' ? 'VS IA' : 'ENTRENAMIENTO';
     this.slots[1].el.tag.textContent =
       cfg.mode === '2P' ? 'P2' : cfg.mode === 'AI' ? 'CPU' : 'MUÑECO';
+    // Hay que soltar los botones del mando antes de que cuenten (el A que abrió la pantalla)
+    const allHeld = (): Record<string, boolean> =>
+      Object.fromEntries(
+        (['left', 'right', 'up', 'down', 'confirm', 'back', 'palette'] as Action[]).map((a) => [a, true])
+      );
+    this.pads = [
+      { held: allHeld(), repeatAt: {} },
+      { held: allHeld(), repeatAt: {} },
+    ];
     this.root.classList.remove('hidden', 'stage-phase', 'fade-out');
     this.render();
     this.lastT = performance.now();

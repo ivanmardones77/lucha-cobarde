@@ -1,9 +1,4 @@
 import dojoBackdropImg from '../assets/images/dojo_hero_backdrop_1795773106114.webp';
-import kazePortraitImg from '../assets/images/portrait_kaze_1795773106772.webp';
-import ryujinPortraitImg from '../assets/images/portrait_ryujin_1795773106942.webp';
-import titanPortraitImg from '../assets/images/portrait_titan_1795779369938.webp';
-import valkyriePortraitImg from '../assets/images/portrait_valkyrie_1795782381868.webp';
-import voltPortraitImg from '../assets/images/portrait_volt_1795782380711.webp';
 import { AiDifficulty } from '../core/ai';
 import {
   CHARACTERS,
@@ -11,8 +6,8 @@ import {
   CostumePalette,
   GameMode,
   StageId,
-  getFighterHudColor,
 } from '../core/types';
+import { CHARACTER_SPRITES, SpriteAnimator } from './characterSprites';
 
 export interface LaunchConfig {
   mode: GameMode;
@@ -27,37 +22,15 @@ export interface LaunchConfig {
   touchEnabled: boolean;
 }
 
-const PORTRAIT_MAP: Record<CharacterId, string> = {
-  RYUJIN: ryujinPortraitImg,
-  KAZE: kazePortraitImg,
-  TITAN: titanPortraitImg,
-  VOLT: voltPortraitImg,
-  VALKYRIE: valkyriePortraitImg,
-};
+/** Orden del plantel en la portada (el mismo que en la pantalla de selección) */
+const LINEUP: CharacterId[] = ['KAZE', 'RYUJIN', 'TITAN', 'VALKYRIE', 'VOLT'];
 
 export class LandingScreen {
   private root = document.getElementById('landing-screen')!;
   private bgImg = document.getElementById('landing-bg-img') as HTMLImageElement;
-  private p1Card = document.getElementById('landing-p1-card')!;
-  private p2Card = document.getElementById('landing-p2-card')!;
-  private p1Img = document.getElementById(
-    'landing-p1-img'
-  ) as HTMLImageElement;
-  private p2Img = document.getElementById(
-    'landing-p2-img'
-  ) as HTMLImageElement;
-
-  private p1NameEl = document.getElementById('landing-p1-name')!;
-  private p1MetaEl = document.getElementById('landing-p1-meta')!;
-  private p2NameEl = document.getElementById('landing-p2-name')!;
-  private p2MetaEl = document.getElementById('landing-p2-meta')!;
-  private p1ColorBtn = document.getElementById('landing-p1-color')!;
-  private p1SwatchEl = document.getElementById('landing-p1-swatch')!;
-  private p1ColorLabel = document.getElementById('landing-p1-color-label')!;
-  private p2ColorBtn = document.getElementById('landing-p2-color')!;
-  private p2SwatchEl = document.getElementById('landing-p2-swatch')!;
-  private p2ColorLabel = document.getElementById('landing-p2-color-label')!;
   private diffRow = document.getElementById('landing-diff-row')!;
+  private lineupEl = document.getElementById('landing-roster-lineup')!;
+  private showcaseBtn = document.getElementById('landing-roster-showcase')!;
 
   private modeBtns = Array.from(
     document.querySelectorAll<HTMLButtonElement>('[data-landing-mode]')
@@ -67,12 +40,6 @@ export class LandingScreen {
   );
   private diffBtns = Array.from(
     document.querySelectorAll<HTMLButtonElement>('[data-landing-diff]')
-  );
-  private p1Btns = Array.from(
-    document.querySelectorAll<HTMLButtonElement>('[data-landing-p1]')
-  );
-  private p2Btns = Array.from(
-    document.querySelectorAll<HTMLButtonElement>('[data-landing-p2]')
   );
 
   private optBoxesBtn = document.getElementById('landing-opt-boxes')!;
@@ -84,6 +51,12 @@ export class LandingScreen {
   private heroControlsBtn = document.getElementById('landing-btn-controls')!;
   private headerStartBtn = document.getElementById('landing-header-start')!;
   private mainStartBtn = document.getElementById('landing-btn-start')!;
+
+  private lineup: SpriteAnimator[] = [];
+  private raf = 0;
+  private lastT = 0;
+  /** Botones del mando ya pulsados al entrar (evita que el A de "volver" vuelva a entrar) */
+  private padHeld = true;
 
   public config: LaunchConfig = {
     mode: 'AI',
@@ -106,6 +79,7 @@ export class LandingScreen {
     this.config.touchEnabled = initialTouchEnabled;
 
     this.setupImage(this.bgImg, dojoBackdropImg);
+    this.buildLineup();
     this.syncUI();
 
     for (const btn of this.modeBtns) {
@@ -129,54 +103,6 @@ export class LandingScreen {
         this.syncUI();
       });
     }
-
-    for (const btn of this.p1Btns) {
-      btn.addEventListener('click', () => {
-        this.config.p1Character = btn.dataset.landingP1 as CharacterId;
-        if (
-          this.config.p1Character === this.config.p2Character &&
-          this.config.p1Palette === this.config.p2Palette
-        ) {
-          this.config.p2Palette = this.config.p1Palette === 0 ? 1 : 0;
-        }
-        this.syncUI();
-      });
-    }
-
-    for (const btn of this.p2Btns) {
-      btn.addEventListener('click', () => {
-        this.config.p2Character = btn.dataset.landingP2 as CharacterId;
-        if (
-          this.config.p1Character === this.config.p2Character &&
-          this.config.p1Palette === this.config.p2Palette
-        ) {
-          this.config.p2Palette = this.config.p1Palette === 0 ? 1 : 0;
-        }
-        this.syncUI();
-      });
-    }
-
-    this.p1ColorBtn.addEventListener('click', () => {
-      this.config.p1Palette = this.config.p1Palette === 0 ? 1 : 0;
-      if (
-        this.config.p1Character === this.config.p2Character &&
-        this.config.p1Palette === this.config.p2Palette
-      ) {
-        this.config.p2Palette = this.config.p1Palette === 0 ? 1 : 0;
-      }
-      this.syncUI();
-    });
-
-    this.p2ColorBtn.addEventListener('click', () => {
-      this.config.p2Palette = this.config.p2Palette === 0 ? 1 : 0;
-      if (
-        this.config.p1Character === this.config.p2Character &&
-        this.config.p1Palette === this.config.p2Palette
-      ) {
-        this.config.p1Palette = this.config.p2Palette === 0 ? 1 : 0;
-      }
-      this.syncUI();
-    });
 
     this.optBoxesBtn.addEventListener('click', () => {
       this.config.showBoxes = !this.config.showBoxes;
@@ -207,6 +133,63 @@ export class LandingScreen {
     const handleStart = () => this.onStart?.({ ...this.config });
     this.mainStartBtn.addEventListener('click', handleStart);
     this.headerStartBtn.addEventListener('click', handleStart);
+    this.showcaseBtn.addEventListener('click', handleStart);
+
+    this.startLineupLoop();
+  }
+
+  /** Los cinco luchadores en IDLE, mirando hacia el centro */
+  private buildLineup(): void {
+    LINEUP.forEach((id, i) => {
+      const set = CHARACTER_SPRITES[id];
+      if (!set) return;
+      const anim = new SpriteAnimator();
+      const lookRight = i < LINEUP.length / 2;
+      anim.flip = lookRight ? set.facing === 'left' : set.facing === 'right';
+      anim.play(set.idle, true);
+      // Desfase para que no respiren todos a la vez
+      anim.tick((i * 0.37) % 1.6);
+      const c = anim.canvas;
+      c.className = 'landing-lineup-fighter';
+      c.style.zIndex = String(10 - Math.abs(i - 2));
+      c.setAttribute('aria-hidden', 'true');
+      c.title = CHARACTERS[id].name;
+      this.lineupEl.appendChild(c);
+      this.lineup.push(anim);
+    });
+  }
+
+  private startLineupLoop(): void {
+    cancelAnimationFrame(this.raf);
+    this.lastT = performance.now();
+    const loop = (t: number) => {
+      if (!this.isVisible()) return;
+      const dt = Math.min((t - this.lastT) / 1000, 0.1);
+      this.lastT = t;
+      for (const a of this.lineup) a.tick(dt);
+      this.pollPadStart();
+      this.raf = requestAnimationFrame(loop);
+    };
+    this.raf = requestAnimationFrame(loop);
+  }
+
+  /** A o Start en cualquier mando abre la selección de personaje */
+  private pollPadStart(): void {
+    let pressed = false;
+    try {
+      for (const pad of navigator.getGamepads ? navigator.getGamepads() : []) {
+        if (pad?.connected && (pad.buttons[0]?.pressed || pad.buttons[9]?.pressed)) {
+          pressed = true;
+        }
+      }
+    } catch {
+      // Gamepad API no disponible
+    }
+    const controlsOpen = !document.getElementById('controls-modal')?.classList.contains('hidden');
+    if (pressed && !this.padHeld && !controlsOpen) {
+      this.onStart?.({ ...this.config });
+    }
+    this.padHeld = pressed;
   }
 
   private setupImage(img: HTMLImageElement, src: string): void {
@@ -223,39 +206,18 @@ export class LandingScreen {
   }
 
   public show(current: Partial<LaunchConfig>, muted: boolean): void {
-    if (current.mode !== undefined) this.config.mode = current.mode;
-    if (current.stageId !== undefined) this.config.stageId = current.stageId;
-    if (current.aiDifficulty !== undefined)
-      this.config.aiDifficulty = current.aiDifficulty;
-    if (current.p1Character !== undefined)
-      this.config.p1Character = current.p1Character;
-    if (current.p2Character !== undefined)
-      this.config.p2Character = current.p2Character;
-    if (current.p1Palette !== undefined)
-      this.config.p1Palette = current.p1Palette;
-    if (current.p2Palette !== undefined)
-      this.config.p2Palette = current.p2Palette;
-    if (current.showBoxes !== undefined)
-      this.config.showBoxes = current.showBoxes;
-    if (current.showFrames !== undefined)
-      this.config.showFrames = current.showFrames;
-    if (current.touchEnabled !== undefined)
-      this.config.touchEnabled = current.touchEnabled;
-
-    if (
-      this.config.p1Character === this.config.p2Character &&
-      this.config.p1Palette === this.config.p2Palette
-    ) {
-      this.config.p2Palette = this.config.p1Palette === 0 ? 1 : 0;
-    }
-
+    // Los personajes y trajes se recuerdan para colocar los cursores de la selección
+    Object.assign(this.config, current);
     this.syncMuteLabel(muted);
     this.syncUI();
     this.root.classList.remove('hidden');
+    this.padHeld = true;
+    this.startLineupLoop();
   }
 
   public hide(): void {
     this.root.classList.add('hidden');
+    cancelAnimationFrame(this.raf);
   }
 
   public isVisible(): boolean {
@@ -283,66 +245,6 @@ export class LandingScreen {
         aiActive && btn.dataset.landingDiff === this.config.aiDifficulty
       );
     }
-
-    for (const btn of this.p1Btns) {
-      btn.classList.toggle(
-        'active',
-        btn.dataset.landingP1 === this.config.p1Character
-      );
-    }
-    for (const btn of this.p2Btns) {
-      btn.classList.toggle(
-        'active',
-        btn.dataset.landingP2 === this.config.p2Character
-      );
-    }
-
-    const p1Spec = CHARACTERS[this.config.p1Character];
-    const p2Spec = CHARACTERS[this.config.p2Character];
-    const p1Color = getFighterHudColor(
-      this.config.p1Character,
-      this.config.p1Palette
-    );
-    const p2Color = getFighterHudColor(
-      this.config.p2Character,
-      this.config.p2Palette
-    );
-
-    this.p1Img.classList.remove('hidden');
-    this.p1Img.src = PORTRAIT_MAP[this.config.p1Character];
-    this.p1Img.alt = `Retrato de combate de ${p1Spec.name}`;
-    this.p1Img.style.filter =
-      this.config.p1Palette === 1
-        ? 'hue-rotate(155deg) saturate(1.12)'
-        : 'none';
-    this.p1Card.style.borderColor = p1Color;
-    this.p1NameEl.textContent = p1Spec.name;
-    this.p1NameEl.style.color = p1Color;
-    this.p1MetaEl.textContent = `${p1Spec.archetype} · ${p1Spec.maxHp} HP`;
-    this.p1SwatchEl.style.backgroundColor = p1Color;
-    this.p1ColorLabel.textContent =
-      this.config.p1Palette === 1
-        ? `Traje: ${p1Spec.altPaletteName}`
-        : 'Traje: Original';
-    this.p1ColorBtn.classList.toggle('active', this.config.p1Palette === 1);
-
-    this.p2Img.classList.remove('hidden');
-    this.p2Img.src = PORTRAIT_MAP[this.config.p2Character];
-    this.p2Img.alt = `Retrato de combate de ${p2Spec.name}`;
-    this.p2Img.style.filter =
-      this.config.p2Palette === 1
-        ? 'hue-rotate(155deg) saturate(1.12)'
-        : 'none';
-    this.p2Card.style.borderColor = p2Color;
-    this.p2NameEl.textContent = p2Spec.name;
-    this.p2NameEl.style.color = p2Color;
-    this.p2MetaEl.textContent = `${p2Spec.archetype} · ${p2Spec.maxHp} HP`;
-    this.p2SwatchEl.style.backgroundColor = p2Color;
-    this.p2ColorLabel.textContent =
-      this.config.p2Palette === 1
-        ? `Traje: ${p2Spec.altPaletteName}`
-        : 'Traje: Original';
-    this.p2ColorBtn.classList.toggle('active', this.config.p2Palette === 1);
 
     this.optBoxesBtn.textContent = this.config.showBoxes
       ? 'Cajas 2D: Activas'
