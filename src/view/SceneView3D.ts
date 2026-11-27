@@ -112,7 +112,7 @@ export class SceneView3D {
   private projGroup = new THREE.Group();
   private debugGroup = new THREE.Group();
   private particles = new ParticleSystem3D();
-  /** Prueba de concepto: luchadores como modelo 3D con esqueleto (activar con ?modelos3d) */
+  /** Luchadores como modelo 3D con esqueleto (desactivar con ?sin3d) */
   private glbOn = false;
   private glbFighters = new Map<string, GlbFighter>(); // clave «hueco:personaje», se cargan al usarse
   /** Impactos y super (src/vfx/CombatVfx.ts) */
@@ -203,7 +203,8 @@ export class SceneView3D {
 
     {
       const q = new URLSearchParams(location.search);
-      this.glbOn = q.has('modelos3d') || q.has('titan3d');
+      // Modelos 3D activos por defecto; ?sin3d vuelve a los muñecos de primitivas
+      this.glbOn = !q.has('sin3d');
     }
 
     if (!this.isSoftwareGl) {
