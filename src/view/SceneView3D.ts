@@ -630,6 +630,8 @@ export class SceneView3D {
           use = !glb.failed;
         }
         this.rigs[i].root.visible = !use;
+        // Las estelas y siluetas fantasma salen del muñeco de primitivas: fuera cuando hay modelo 3D
+        this.rigs[i].trailGroup.visible = !use;
       }
     }
 
