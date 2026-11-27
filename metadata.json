@@ -1,6 +1,0 @@
-{
-  "name": "Fighting 2.5D",
-  "description": "Juego de lucha 2.5D con simulación determinista 2D a 60 FPS fijos, Three.js y soporte para mandos.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
