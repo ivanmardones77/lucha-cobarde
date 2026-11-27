@@ -18,7 +18,9 @@ import {
 } from '../core/types';
 import { AlleyStage3D } from './AlleyStage3D';
 import { FighterRig3D } from './FighterRig3D';
+import titanGlbUrl from '../assets/models/titan.glb?url';
 import { CombatVfx } from '../vfx/CombatVfx';
+import { GlbFighter } from './GlbFighter';
 import { ParticleSystem3D } from './ParticleSystem3D';
 import { RooftopStage3D } from './RooftopStage3D';
 
@@ -110,6 +112,8 @@ export class SceneView3D {
   private projGroup = new THREE.Group();
   private debugGroup = new THREE.Group();
   private particles = new ParticleSystem3D();
+  /** Prueba de concepto: Titán como modelo 3D con esqueleto (activar con ?titan3d) */
+  private glbTitans: [GlbFighter, GlbFighter] | null = null;
   /** Impactos y super (src/vfx/CombatVfx.ts) */
   private vfx = new CombatVfx();
   private lastRenderMs = performance.now();
@@ -195,6 +199,11 @@ export class SceneView3D {
       this.vfx.group,
       this.debugGroup
     );
+
+    if (new URLSearchParams(location.search).has('titan3d')) {
+      this.glbTitans = [new GlbFighter(titanGlbUrl), new GlbFighter(titanGlbUrl)];
+      this.scene.add(this.glbTitans[0].root, this.glbTitans[1].root);
+    }
 
     if (!this.isSoftwareGl) {
       this.setupPostProcessing();
@@ -598,6 +607,16 @@ export class SceneView3D {
 
     this.rigs[0].sync(p1, state.frame, state.hitstop);
     this.rigs[1].sync(p2, state.frame, state.hitstop);
+    if (this.glbTitans) {
+      for (let i = 0; i < 2; i++) {
+        const f = state.fighters[i];
+        const glb = this.glbTitans[i];
+        const use = f.character === 'TITAN' && glb.ready;
+        if (use) glb.sync(f, state.frame);
+        else glb.hide();
+        this.rigs[i].root.visible = !use;
+      }
+    }
 
     this.syncProjectiles(state);
     if (
