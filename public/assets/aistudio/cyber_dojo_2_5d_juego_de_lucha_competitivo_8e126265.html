@@ -1,0 +1,3064 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CYBER DOJO 2.5D — Motor de Lucha Determinista 60 FPS</title>
+  <!-- Tailwind CSS para HUD y paneles modernos -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js r128 desde CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Fuentes de alto impacto para juegos de lucha -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,600;0,700;1,700&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #07090f;
+      font-family: 'Inter', sans-serif;
+      color: #f8fafc;
+      touch-action: none;
+      overscroll-behavior: none;
+    }
+
+    .font-fight {
+      font-family: 'Chakra Petch', sans-serif;
+    }
+
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+    }
+
+    #canvas-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Estilo inclinado clásico de barras de vida de juegos de lucha */
+    .skew-p1 {
+      transform: skewX(-16deg);
+    }
+
+    .skew-p2 {
+      transform: skewX(16deg);
+    }
+
+    .unskew-p1 {
+      transform: skewX(16deg);
+    }
+
+    .unskew-p2 {
+      transform: skewX(-16deg);
+    }
+
+    /* Animaciones de anuncios y avisos */
+    @keyframes bannerPop {
+      0% { transform: scale(1.65); opacity: 0; filter: blur(6px); }
+      20% { transform: scale(0.96); opacity: 1; filter: blur(0px); }
+      85% { transform: scale(1.02); opacity: 1; }
+      100% { transform: scale(1.1); opacity: 0; }
+    }
+
+    .animate-banner {
+      animation: bannerPop 1.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes calloutSlide {
+      0% { transform: translateX(-18px) scale(1.15); opacity: 0; }
+      15% { transform: translateX(0) scale(1); opacity: 1; }
+      85% { transform: translateX(0) scale(1); opacity: 1; }
+      100% { transform: translateX(10px) scale(0.95); opacity: 0; }
+    }
+
+    .animate-callout {
+      animation: calloutSlide 0.95s ease-out forwards;
+    }
+
+    @keyframes superPulse {
+      0%, 100% { box-shadow: 0 0 12px rgba(250, 204, 21, 0.75), inset 0 0 8px rgba(255, 255, 255, 0.5); }
+      50% { box-shadow: 0 0 24px rgba(250, 204, 21, 1), inset 0 0 14px rgba(255, 255, 255, 0.9); }
+    }
+
+    .super-ready {
+      animation: superPulse 0.9s infinite ease-in-out;
+    }
+
+    /* Botones estilizados */
+    .game-btn {
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.95));
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transition: all 0.15s ease;
+    }
+
+    .game-btn:hover {
+      border-color: rgba(56, 189, 248, 0.8);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(14, 165, 233, 0.35);
+    }
+
+    .game-btn.active {
+      background: linear-gradient(180deg, rgba(2, 132, 199, 0.95), rgba(3, 105, 161, 0.98));
+      border-color: rgba(125, 211, 252, 0.95);
+      color: #ffffff;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.5);
+    }
+
+    /* Frame Meter Cells */
+    .fm-cell {
+      height: 12px;
+      flex: 1;
+      border-radius: 2px;
+      min-width: 3px;
+    }
+
+    /* Controles Táctiles Multitáctiles */
+    .touch-zone {
+      touch-action: none;
+      -webkit-touch-callout: none;
+    }
+
+    .dpad-base {
+      width: 148px;
+      height: 148px;
+      border-radius: 9999px;
+      background: radial-gradient(circle at center, rgba(15, 23, 42, 0.72), rgba(2, 6, 23, 0.88));
+      border: 2px solid rgba(56, 189, 248, 0.45);
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55), inset 0 0 18px rgba(56, 189, 248, 0.14);
+      position: relative;
+      touch-action: none;
+    }
+
+    .dpad-thumb {
+      width: 54px;
+      height: 54px;
+      border-radius: 9999px;
+      background: radial-gradient(circle at 35% 35%, rgba(56, 189, 248, 0.95), rgba(3, 105, 161, 0.92));
+      border: 2px solid rgba(224, 242, 254, 0.85);
+      box-shadow: 0 4px 14px rgba(14, 165, 233, 0.55);
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      transition: transform 0.04s linear;
+    }
+
+    .dpad-dir-dot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 9999px;
+      background: rgba(148, 163, 184, 0.35);
+      pointer-events: none;
+      transition: background-color 0.06s, transform 0.06s;
+    }
+
+    .dpad-dir-dot.active {
+      background: #38bdf8;
+      box-shadow: 0 0 10px #38bdf8;
+      transform: scale(1.35);
+    }
+
+    .arcade-btn {
+      border-radius: 9999px;
+      font-family: 'Chakra Petch', sans-serif;
+      font-weight: 700;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55), inset 0 2px 4px rgba(255, 255, 255, 0.25);
+      transition: transform 0.06s ease, filter 0.06s ease;
+      touch-action: none;
+    }
+
+    .arcade-btn.pressed {
+      transform: scale(0.9);
+      filter: brightness(1.3);
+    }
+
+    @media (max-width: 640px) {
+      .dpad-base {
+        width: 132px;
+        height: 132px;
+      }
+      .dpad-thumb {
+        width: 48px;
+        height: 48px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Escena Three.js 2.5D -->
+  <div id="canvas-container"></div>
+
+  <!-- Capa HUD Principal -->
+  <div id="ui-layer" class="fixed inset-0 pointer-events-none flex flex-col justify-between z-10 p-2 sm:p-3">
+    
+    <!-- BARRA SUPERIOR DE MODOS Y UTILIDADES -->
+    <div class="pointer-events-auto flex flex-wrap items-center justify-between gap-2 bg-slate-950/75 backdrop-blur-md border border-slate-700/60 rounded-xl px-3 py-1.5 shadow-xl">
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="font-fight font-bold tracking-wider text-cyan-400 text-sm sm:text-base mr-1">CYBER DOJO 2.5D</span>
+        <div class="flex items-center gap-1" role="group" aria-label="Modo de juego">
+          <button id="btn-mode-ai" class="game-btn active text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer">VS IA</button>
+          <button id="btn-mode-2p" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer">2P Local</button>
+          <button id="btn-mode-train" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer">Entrenamiento</button>
+        </div>
+
+        <!-- Selector de Dummy solo visible en Entrenamiento -->
+        <div id="training-controls" class="hidden flex items-center gap-1.5 ml-1 pl-2 border-l border-slate-700">
+          <span class="text-[11px] text-amber-300 font-semibold">Dummy:</span>
+          <select id="select-dummy" class="bg-slate-900 border border-slate-600 text-slate-100 text-xs rounded-lg px-2 py-1 outline-none cursor-pointer">
+            <option value="NEUTRAL">Neutral</option>
+            <option value="BLOCK_ALL">Bloquear Todo</option>
+            <option value="BLOCK_AFTER">Bloquear tras 1er golpe</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <button id="btn-touch-toggle" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Activar/Desactivar Controles Táctiles">📱 TOUCH</button>
+        <button id="btn-debug-boxes" class="game-btn active text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Mostrar/Ocultar Cajas 2D (F1)">Cajas (F1)</button>
+        <button id="btn-debug-frames" class="game-btn active text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Mostrar/Ocultar Frame Meter y Datos (F2)">Frames (F2)</button>
+        <button id="btn-mute" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Silenciar / Activar Audio">🔊 Audio</button>
+        <button id="btn-controls" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer">Controles</button>
+        <button id="btn-reset" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer text-amber-300" title="Reiniciar Combate (R)">↻ Reiniciar</button>
+      </div>
+    </div>
+
+    <!-- HUD DE COMBATE (VIDA, RELOJ, RONDAS, CALLOUTS) -->
+    <div class="w-full max-w-6xl mx-auto mt-1.5 px-1 sm:px-3">
+      <div class="grid grid-cols-[1fr_auto_1fr] items-start gap-2 sm:gap-4">
+        
+        <!-- LADO P1 -->
+        <div class="flex flex-col gap-1">
+          <div class="flex items-center justify-between text-xs sm:text-sm px-1">
+            <div class="flex items-center gap-2">
+              <span class="font-fight font-bold text-cyan-300 tracking-wide text-sm sm:text-lg drop-shadow">RYUJIN</span>
+              <span id="p1-input-badge" class="text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md bg-slate-800/90 border border-slate-600 text-slate-300 font-mono-code">[Teclado]</span>
+            </div>
+            <!-- Indicador de Rondas P1 -->
+            <div class="flex items-center gap-1.5">
+              <div id="p1-round-1" class="w-3.5 h-3.5 rounded-full border-2 border-cyan-400 bg-slate-900/80 transition-all"></div>
+              <div id="p1-round-2" class="w-3.5 h-3.5 rounded-full border-2 border-cyan-400 bg-slate-900/80 transition-all"></div>
+            </div>
+          </div>
+
+          <!-- Barra de Vida P1 (se vacía de izquierda a derecha hacia el centro) -->
+          <div class="h-5 sm:h-7 bg-slate-950/90 border-2 border-cyan-400/80 rounded-md overflow-hidden relative skew-p1 shadow-lg">
+            <div id="p1-hp-delayed" class="absolute right-0 top-0 bottom-0 bg-gradient-to-l from-amber-400 to-red-500 transition-all duration-150" style="width: 100%;"></div>
+            <div id="p1-hp-fill" class="absolute right-0 top-0 bottom-0 bg-gradient-to-l from-cyan-400 via-sky-400 to-emerald-400" style="width: 100%;"></div>
+            <span id="p1-hp-text" class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] sm:text-xs font-mono-code font-bold text-slate-950 drop-shadow unskew-p1">1000</span>
+          </div>
+
+          <!-- Callouts y Combo P1 -->
+          <div class="flex flex-col items-start min-h-[54px] mt-1 pl-1">
+            <div id="p1-combo-box" class="hidden flex items-baseline gap-1.5 bg-slate-950/80 border-l-4 border-cyan-400 px-2.5 py-1 rounded-r-lg shadow-lg">
+              <span id="p1-combo-count" class="font-fight font-bold text-2xl sm:text-3xl text-cyan-300 italic leading-none">2</span>
+              <div class="flex flex-col leading-tight">
+                <span class="font-fight font-bold text-[10px] sm:text-xs text-white tracking-wider">HITS</span>
+                <span id="p1-combo-scaling" class="font-mono-code text-[10px] text-amber-300">85%</span>
+              </div>
+            </div>
+            <div id="p1-callout" class="mt-1 text-xs sm:text-sm font-fight font-bold tracking-wider"></div>
+          </div>
+        </div>
+
+        <!-- RELOJ CENTRAL 99s -->
+        <div class="flex flex-col items-center">
+          <div class="bg-slate-950/90 border-2 border-amber-400/80 rounded-xl px-3 sm:px-5 py-1 sm:py-1.5 shadow-[0_0_20px_rgba(251,191,36,0.25)]">
+            <div id="timer-display" class="font-fight font-bold text-2xl sm:text-4xl text-amber-300 leading-none tracking-wider tabular-nums">99</div>
+          </div>
+          <span id="round-label" class="mt-1 text-[10px] sm:text-xs font-fight font-bold tracking-widest text-slate-300 uppercase">ROUND 1</span>
+        </div>
+
+        <!-- LADO P2 -->
+        <div class="flex flex-col gap-1">
+          <div class="flex items-center justify-between text-xs sm:text-sm px-1">
+            <!-- Indicador de Rondas P2 -->
+            <div class="flex items-center gap-1.5">
+              <div id="p2-round-1" class="w-3.5 h-3.5 rounded-full border-2 border-rose-400 bg-slate-900/80 transition-all"></div>
+              <div id="p2-round-2" class="w-3.5 h-3.5 rounded-full border-2 border-rose-400 bg-slate-900/80 transition-all"></div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="p2-input-badge" class="text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md bg-slate-800/90 border border-slate-600 text-amber-300 font-mono-code">[IA]</span>
+              <span class="font-fight font-bold text-rose-400 tracking-wide text-sm sm:text-lg drop-shadow">KAZE</span>
+            </div>
+          </div>
+
+          <!-- Barra de Vida P2 (se vacía de derecha a izquierda hacia el centro) -->
+          <div class="h-5 sm:h-7 bg-slate-950/90 border-2 border-rose-400/80 rounded-md overflow-hidden relative skew-p2 shadow-lg">
+            <div id="p2-hp-delayed" class="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-amber-400 to-red-600 transition-all duration-150" style="width: 100%;"></div>
+            <div id="p2-hp-fill" class="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-rose-500 via-pink-500 to-orange-400" style="width: 100%;"></div>
+            <span id="p2-hp-text" class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] sm:text-xs font-mono-code font-bold text-slate-950 drop-shadow unskew-p2">1000</span>
+          </div>
+
+          <!-- Callouts y Combo P2 -->
+          <div class="flex flex-col items-end min-h-[54px] mt-1 pr-1">
+            <div id="p2-combo-box" class="hidden flex items-baseline gap-1.5 bg-slate-950/80 border-r-4 border-rose-400 px-2.5 py-1 rounded-l-lg shadow-lg">
+              <div class="flex flex-col items-end leading-tight">
+                <span class="font-fight font-bold text-[10px] sm:text-xs text-white tracking-wider">HITS</span>
+                <span id="p2-combo-scaling" class="font-mono-code text-[10px] text-amber-300">85%</span>
+              </div>
+              <span id="p2-combo-count" class="font-fight font-bold text-2xl sm:text-3xl text-rose-300 italic leading-none">2</span>
+            </div>
+            <div id="p2-callout" class="mt-1 text-xs sm:text-sm font-fight font-bold tracking-wider"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ANUNCIO CENTRAL (ROUND 1 - FIGHT! / K.O. / SUPER!) -->
+    <div id="center-banner-container" class="flex-1 flex items-center justify-center pointer-events-none">
+      <div id="center-banner" class="hidden font-fight font-bold italic text-4xl sm:text-7xl tracking-wider text-center px-6 py-2 drop-shadow-[0_6px_25px_rgba(0,0,0,0.9)]"></div>
+    </div>
+
+    <!-- ZONA INFERIOR: BARRAS DE SUPER + PANEL FRAME METER / DEBUG -->
+    <div class="w-full max-w-6xl mx-auto flex flex-col gap-2">
+
+      <!-- Panel de Frame Data, Input Buffer y Frame Meter (F2) -->
+      <div id="frame-debug-panel" class="bg-slate-950/80 backdrop-blur-md border border-slate-700/70 rounded-xl px-3 py-2 text-[11px] font-mono-code shadow-xl">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-center mb-1.5">
+          <!-- Datos P1 -->
+          <div class="flex items-center justify-between md:justify-start gap-2 text-cyan-300">
+            <span class="font-bold">P1:</span>
+            <span id="dbg-p1-state" class="text-white">IDLE</span>
+            <span id="dbg-p1-frame" class="text-slate-400">F:0</span>
+            <span id="dbg-p1-adv" class="px-1.5 py-0.5 rounded bg-slate-800 text-emerald-300">Adv: 0</span>
+          </div>
+
+          <!-- Input Buffer P1 (Notación Numérica) -->
+          <div class="flex items-center justify-center gap-1.5 overflow-hidden">
+            <span class="text-slate-400 text-[10px]">BUFFER P1:</span>
+            <div id="dbg-p1-buffer" class="flex items-center gap-1 text-amber-300 font-bold tracking-wider">5</div>
+          </div>
+
+          <!-- Datos P2 + Leyenda Cajas -->
+          <div class="flex items-center justify-between md:justify-end gap-2 text-rose-300">
+            <span id="dbg-p2-state" class="text-white">IDLE</span>
+            <span id="dbg-p2-frame" class="text-slate-400">F:0</span>
+            <span class="text-[10px] text-slate-400 hidden sm:inline">
+              <span class="text-yellow-400">■Push</span>
+              <span class="text-emerald-400 ml-1">■Hurt</span>
+              <span class="text-red-400 ml-1">■Hit</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Frame Meter visual (60 frames estilo SF6) -->
+        <div class="flex flex-col gap-1">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] text-cyan-400 w-6">P1</span>
+            <div id="frame-meter-p1" class="flex-1 flex gap-[1px] bg-slate-900/90 p-0.5 rounded border border-slate-800"></div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] text-rose-400 w-6">P2</span>
+            <div id="frame-meter-p2" class="flex-1 flex gap-[1px] bg-slate-900/90 p-0.5 rounded border border-slate-800"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barras de Super P1 y P2 -->
+      <div class="grid grid-cols-2 gap-4 sm:gap-12 items-end pb-0.5">
+        <!-- Super P1 -->
+        <div class="flex flex-col gap-0.5">
+          <div class="flex justify-between items-center text-[11px] font-fight font-bold px-1">
+            <span id="p1-super-label" class="text-cyan-300 tracking-wider">SUPER ART</span>
+            <span id="p1-super-pct" class="font-mono-code text-amber-300">0%</span>
+          </div>
+          <div id="p1-super-bar-wrap" class="h-3.5 sm:h-4 bg-slate-950/90 border border-cyan-500/70 rounded-md overflow-hidden skew-p1">
+            <div id="p1-super-fill" class="h-full bg-gradient-to-r from-blue-600 via-cyan-400 to-amber-300 transition-all duration-75" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Super P2 -->
+        <div class="flex flex-col gap-0.5">
+          <div class="flex justify-between items-center text-[11px] font-fight font-bold px-1">
+            <span id="p2-super-pct" class="font-mono-code text-amber-300">0%</span>
+            <span id="p2-super-label" class="text-rose-300 tracking-wider">SUPER ART</span>
+          </div>
+          <div id="p2-super-bar-wrap" class="h-3.5 sm:h-4 bg-slate-950/90 border border-rose-500/70 rounded-md overflow-hidden skew-p2">
+            <div id="p2-super-fill" class="h-full ml-auto bg-gradient-to-l from-rose-600 via-orange-400 to-amber-300 transition-all duration-75" style="width: 0%;"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CAPA DE CONTROLES TÁCTILES MULTITÁCTILES (MÓVIL / TABLET / TOGGLE) -->
+  <div id="touch-controls-layer" class="hidden fixed inset-x-0 bottom-14 sm:bottom-16 z-20 pointer-events-none px-3 sm:px-6 flex items-end justify-between touch-zone">
+    <!-- D-Pad Virtual Deslizante (Esquina Inferior Izquierda) -->
+    <div class="pointer-events-auto flex flex-col items-center gap-1">
+      <div id="virtual-dpad" class="dpad-base">
+        <!-- Indicadores de 8 direcciones (incluye diagonales) -->
+        <div class="dpad-dir-dot" data-dir="8" style="top: 10px; left: 50%; margin-left: -5px;"></div>
+        <div class="dpad-dir-dot" data-dir="2" style="bottom: 10px; left: 50%; margin-left: -5px;"></div>
+        <div class="dpad-dir-dot" data-dir="4" style="left: 10px; top: 50%; margin-top: -5px;"></div>
+        <div class="dpad-dir-dot" data-dir="6" style="right: 10px; top: 50%; margin-top: -5px;"></div>
+        <div class="dpad-dir-dot" data-dir="7" style="top: 26px; left: 26px;"></div>
+        <div class="dpad-dir-dot" data-dir="9" style="top: 26px; right: 26px;"></div>
+        <div class="dpad-dir-dot" data-dir="1" style="bottom: 26px; left: 26px;"></div>
+        <div class="dpad-dir-dot" data-dir="3" style="bottom: 26px; right: 26px;"></div>
+        <div id="dpad-thumb" class="dpad-thumb"></div>
+      </div>
+      <span class="text-[10px] font-mono-code text-cyan-300/80 bg-slate-950/70 px-2 py-0.5 rounded-full">DESLIZA: 236 / 623 / 66 / 44</span>
+    </div>
+
+    <!-- Botonera Estilo Arcade (Esquina Inferior Derecha) -->
+    <div class="pointer-events-auto flex flex-col items-end gap-2">
+      <!-- Fila Superior: DASH y SUPER -->
+      <div class="flex items-center gap-2.5 pr-1">
+        <button id="tbtn-dash" data-btn="dash" class="arcade-btn w-14 h-11 sm:w-16 sm:h-12 text-xs text-white bg-gradient-to-b from-indigo-500/90 to-indigo-700/95">
+          <span>DASH</span>
+          <span class="text-[9px] opacity-80">66/44</span>
+        </button>
+        <button id="tbtn-super" data-btn="s" class="arcade-btn w-16 h-12 sm:w-20 sm:h-12 text-xs text-slate-950 bg-gradient-to-b from-amber-300/90 to-amber-500/95 opacity-60">
+          <span>SUPER</span>
+          <span class="text-[9px] font-mono-code">100%</span>
+        </button>
+      </div>
+      <!-- Fila Inferior Arcade: P, K, T -->
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <button id="tbtn-p" data-btn="p" class="arcade-btn w-14 h-14 sm:w-16 sm:h-16 text-lg text-white bg-gradient-to-b from-sky-400/90 to-blue-600/95">
+          <span>P</span>
+          <span class="text-[9px] opacity-90">PUÑO</span>
+        </button>
+        <button id="tbtn-k" data-btn="k" class="arcade-btn w-14 h-14 sm:w-16 sm:h-16 text-lg text-white bg-gradient-to-b from-rose-500/90 to-red-700/95 -mt-4">
+          <span>K</span>
+          <span class="text-[9px] opacity-90">PATADA</span>
+        </button>
+        <button id="tbtn-t" data-btn="t" class="arcade-btn w-14 h-14 sm:w-16 sm:h-16 text-lg text-white bg-gradient-to-b from-emerald-400/90 to-teal-700/95 -mt-1">
+          <span>T</span>
+          <span class="text-[9px] opacity-90">AGARRE</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE CONTROLES Y LISTA DE MOVIMIENTOS -->
+  <div id="controls-modal" class="hidden fixed inset-0 z-30 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-cyan-500/40 rounded-2xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-700 pb-3 mb-4">
+        <h2 class="font-fight font-bold text-xl sm:text-2xl text-cyan-300 tracking-wide">LISTA DE MOVIMIENTOS Y CONTROLES</h2>
+        <button id="btn-close-controls" class="game-btn px-3 py-1 rounded-lg text-sm font-bold cursor-pointer">✕ Cerrar</button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
+        <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+          <h3 class="font-fight font-bold text-cyan-400 mb-2 text-base">JUGADOR 1 (Teclado)</h3>
+          <ul class="space-y-1.5 text-slate-200">
+            <li><span class="font-mono-code text-amber-300">W / A / S / D</span> — Saltar (7/8/9), Mover, Agacharse</li>
+            <li><span class="font-mono-code text-amber-300">Atrás (4) / Abajo-Atrás (1)</span> — Bloqueo Alto / Bajo</li>
+            <li><span class="font-mono-code text-amber-300">J</span> — <strong>P (Puño)</strong>: <code class="text-cyan-300">5P</code>, <code class="text-cyan-300">2P</code>, <code class="text-cyan-300">j.P</code> (Overhead)</li>
+            <li><span class="font-mono-code text-amber-300">K</span> — <strong>K (Patada)</strong>: <code class="text-rose-300">5K</code>, <code class="text-rose-300">2K</code> (Barrido LOW), <code class="text-rose-300">j.K</code></li>
+            <li><span class="font-mono-code text-amber-300">L</span> — <strong>T (Agarre)</strong>: <code class="text-emerald-300">Throw</code> / <code class="text-emerald-300">Throw Tech</code> (6F)</li>
+            <li><span class="font-mono-code text-amber-300">U</span> — <strong>S (SUPER ART)</strong> (requiere 100% barra)</li>
+            <li><span class="font-mono-code text-amber-300">Shift</span> o <span class="font-mono-code text-amber-300">66 / 44</span> — Forward Dash / Backdash</li>
+          </ul>
+        </div>
+
+        <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+          <h3 class="font-fight font-bold text-rose-400 mb-2 text-base">JUGADOR 2 (Teclado) &amp; MANDOS</h3>
+          <ul class="space-y-1.5 text-slate-200">
+            <li><span class="font-mono-code text-amber-300">Flechas</span> — Movimiento, Salto, Bloqueo y Dashes (66/44)</li>
+            <li><span class="font-mono-code text-amber-300">Num1 / Num2 / Num3</span> — Puño (P) / Patada (K) / Agarre (T)</li>
+            <li><span class="font-mono-code text-amber-300">Num4 / Num0</span> — Super Art (S) / Dash rápido</li>
+            <li class="pt-1 border-t border-slate-800 text-emerald-300 font-semibold">Mando Xbox / PS / Fightstick (1 o 2 mandos):</li>
+            <li><span class="font-mono-code text-slate-300">D-Pad / Stick Izq</span> — Direcciones (deadzone 0.35)</li>
+            <li><span class="font-mono-code text-slate-300">X/□</span> Puño (P) · <span class="font-mono-code text-slate-300">A/✕</span> Patada (K) · <span class="font-mono-code text-slate-300">B/○</span> Agarre (T)</li>
+            <li><span class="font-mono-code text-slate-300">Y/△</span> Super Art (S) · <span class="font-mono-code text-slate-300">RB/R1</span> Dash · <span class="font-mono-code text-slate-300">Start</span> Reiniciar</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mt-4 bg-slate-950/70 border border-amber-500/30 rounded-xl p-3.5 text-xs sm:text-sm">
+        <h3 class="font-fight font-bold text-amber-300 mb-2 text-base">MOTION INPUTS, DASHES Y MECÁNICAS AVANZADAS</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-200">
+          <div>• <strong class="text-cyan-300">Hadouken (236 + P):</strong> Proyectil 2.5D con choque (Clash) y chip damage.</div>
+          <div>• <strong class="text-cyan-300">Uppercut (623 + P):</strong> Antiaéreo con <em>i-frames</em> (F1-F7) y Derribo.</div>
+          <div>• <strong class="text-rose-300">Patada Giratoria (236 + K):</strong> Avance tipo Tatsumaki multi-hit con Derribo.</div>
+          <div>• <strong class="text-amber-300">Super Art (U o 236 + U):</strong> Pausa cinemática, 3 impactos y Derribo.</div>
+          <div>• <strong class="text-indigo-300">Dashes (66 / 44 o Dash):</strong> Forward Dash cancelable en ataque; Backdash con 6F de <em>i-frames</em>.</div>
+          <div>• <strong class="text-emerald-300">Cancelaciones:</strong> Cancela 5P, 2P y 5K al conectar hacia 236P, 623P, 236K o Super.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. MOTOR DE AUDIO PROCEDIMENTAL (WEB AUDIO API - SIN ARCHIVOS EXTERNOS)
+    // =========================================================================
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      unlock() {
+        try {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+          }
+        } catch (e) {
+          // Ignorar errores de política de audio
+        }
+      }
+
+      toggleMute() {
+        this.muted = !this.muted;
+        return this.muted;
+      }
+
+      playNoise(duration, filterFreq, gainVal, type = 'bandpass') {
+        if (this.muted || !this.ctx) return;
+        try {
+          const bufferSize = Math.floor(this.ctx.sampleRate * duration);
+          const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.35));
+          }
+          const src = this.ctx.createBufferSource();
+          src.buffer = buffer;
+
+          const filter = this.ctx.createBiquadFilter();
+          filter.type = type;
+          filter.frequency.setValueAtTime(filterFreq, this.ctx.currentTime);
+
+          const gain = this.ctx.createGain();
+          gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+
+          src.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+          src.start();
+        } catch (e) {}
+      }
+
+      playTone(freqStart, freqEnd, duration, type = 'sawtooth', gainVal = 0.2) {
+        if (this.muted || !this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freqStart, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd), this.ctx.currentTime + duration);
+
+          gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {}
+      }
+
+      hitLight() {
+        this.playNoise(0.09, 1200, 0.25);
+        this.playTone(240, 80, 0.08, 'triangle', 0.22);
+      }
+
+      hitHeavy() {
+        this.playNoise(0.18, 600, 0.38, 'lowpass');
+        this.playTone(170, 42, 0.17, 'sawtooth', 0.3);
+      }
+
+      block() {
+        this.playNoise(0.08, 2800, 0.18, 'highpass');
+        this.playTone(520, 310, 0.09, 'square', 0.12);
+      }
+
+      projectile() {
+        this.playTone(220, 760, 0.22, 'sawtooth', 0.16);
+        this.playNoise(0.18, 1600, 0.15);
+      }
+
+      uppercut() {
+        this.playTone(180, 920, 0.24, 'sawtooth', 0.2);
+        this.playNoise(0.2, 1800, 0.2);
+      }
+
+      tatsumaki() {
+        this.playNoise(0.26, 1100, 0.22, 'bandpass');
+        this.playTone(320, 580, 0.14, 'triangle', 0.16);
+      }
+
+      dash() {
+        this.playNoise(0.11, 2200, 0.16, 'highpass');
+        this.playTone(260, 520, 0.1, 'sine', 0.12);
+      }
+
+      backdash() {
+        this.playNoise(0.12, 3000, 0.18, 'highpass');
+        this.playTone(540, 290, 0.12, 'triangle', 0.14);
+      }
+
+      throwGrab() {
+        this.playTone(300, 140, 0.12, 'triangle', 0.22);
+      }
+
+      throwTech() {
+        this.playTone(680, 1240, 0.16, 'sine', 0.25);
+        this.playNoise(0.12, 3200, 0.2);
+      }
+
+      superFlash() {
+        this.playTone(110, 880, 0.48, 'sawtooth', 0.26);
+        this.playTone(220, 1320, 0.48, 'sine', 0.22);
+        this.playNoise(0.35, 900, 0.25, 'lowpass');
+      }
+
+      ko() {
+        this.playNoise(0.45, 320, 0.42, 'lowpass');
+        this.playTone(150, 32, 0.55, 'sawtooth', 0.32);
+      }
+
+      roundStart() {
+        this.playTone(440, 660, 0.18, 'triangle', 0.18);
+      }
+    }
+
+    const sfx = new SoundEngine();
+
+    // =========================================================================
+    // 2. NÚCLEO DETERMINISTA 2D (60 FPS FIJOS - SIN DEPENDENCIAS DE THREE.JS)
+    // =========================================================================
+    const FIXED_DT = 1 / 60;
+    const STAGE_HALF_WIDTH = 6.2;
+    const GRAVITY = -0.022;
+    const JUMP_VY = 0.34;
+    const JUMP_VX = 0.105;
+    const WALK_F_SPEED = 0.088;
+    const WALK_B_SPEED = 0.068;
+    const MAX_HP = 1000;
+    const BUFFER_SIZE = 20;
+    const THROW_TECH_WINDOW = 6;
+    const COMBO_SCALING = [1.0, 0.85, 0.70, 0.55, 0.45, 0.35, 0.25, 0.15];
+
+    // Definición de Frame Data para cada movimiento
+    const MOVES = {
+      // === BOTÓN P (PUÑO) ===
+      '5P': {
+        id: '5P', name: 'Jab (5P)',
+        startup: 4, active: 3, recovery: 7,
+        damage: 45, chip: 0, hitstun: 13, blockstun: 9, hitstop: 5,
+        pushbackHit: 0.40, pushbackBlock: 0.34,
+        hitLevel: 'MID', isSpecial: false, isSuper: false, knockdown: false,
+        cancelToSpecial: true, cancelToSuper: true,
+        hitbox: { x: 0.9, y: 1.28, w: 0.95, h: 0.34 }
+      },
+      '2P': {
+        id: '2P', name: 'Puño Bajo (2P)',
+        startup: 5, active: 3, recovery: 8,
+        damage: 45, chip: 0, hitstun: 13, blockstun: 9, hitstop: 5,
+        pushbackHit: 0.42, pushbackBlock: 0.36,
+        hitLevel: 'MID', isSpecial: false, isSuper: false, knockdown: false,
+        cancelToSpecial: true, cancelToSuper: true,
+        hitbox: { x: 0.92, y: 0.72, w: 0.98, h: 0.32 }
+      },
+      'jP': {
+        id: 'jP', name: 'Puño Aéreo (j.P)',
+        startup: 5, active: 8, recovery: 9,
+        damage: 65, chip: 0, hitstun: 16, blockstun: 11, hitstop: 7,
+        pushbackHit: 0.40, pushbackBlock: 0.35,
+        hitLevel: 'OVERHEAD', isSpecial: false, isSuper: false, knockdown: false,
+        cancelToSpecial: false, cancelToSuper: false,
+        hitbox: { x: 0.72, y: 0.65, w: 0.92, h: 0.58 }
+      },
+      '236P': {
+        id: '236P', name: 'Hadouken (236P)',
+        startup: 11, active: 4, recovery: 20,
+        damage: 75, chip: 14, hitstun: 18, blockstun: 13, hitstop: 6,
+        pushbackHit: 0.55, pushbackBlock: 0.48,
+        hitLevel: 'MID', isSpecial: true, isSuper: false, knockdown: false,
+        cancelToSpecial: false, cancelToSuper: true,
+        spawnsProjectile: true,
+        hitbox: null
+      },
+      '623P': {
+        id: '623P', name: 'Uppercut (623P)',
+        startup: 4, active: 9, recovery: 22,
+        damage: 115, chip: 18, hitstun: 26, blockstun: 15, hitstop: 10,
+        pushbackHit: 0.85, pushbackBlock: 0.65,
+        hitLevel: 'MID', isSpecial: true, isSuper: false, knockdown: true,
+        invulnUntil: 7, // i-frames antiaéreos F1-F7
+        cancelToSpecial: false, cancelToSuper: true,
+        hitbox: { x: 0.72, y: 1.45, w: 0.85, h: 1.25 }
+      },
+
+      // === BOTÓN K (PATADA) ===
+      '5K': {
+        id: '5K', name: 'Patada Media (5K)',
+        startup: 7, active: 4, recovery: 12,
+        damage: 75, chip: 0, hitstun: 18, blockstun: 12, hitstop: 8,
+        pushbackHit: 0.68, pushbackBlock: 0.54,
+        hitLevel: 'MID', isSpecial: false, isSuper: false, knockdown: false,
+        cancelToSpecial: true, cancelToSuper: true,
+        hitbox: { x: 1.18, y: 1.05, w: 1.28, h: 0.42 }
+      },
+      '2K': {
+        id: '2K', name: 'Barrido Bajo (2K)',
+        startup: 8, active: 4, recovery: 18,
+        damage: 80, chip: 0, hitstun: 22, blockstun: 12, hitstop: 9,
+        pushbackHit: 0.62, pushbackBlock: 0.55,
+        hitLevel: 'LOW', isSpecial: false, isSuper: false, knockdown: true,
+        cancelToSpecial: false, cancelToSuper: true,
+        hitbox: { x: 1.15, y: 0.28, w: 1.25, h: 0.36 }
+      },
+      'jK': {
+        id: 'jK', name: 'Patada Aérea (j.K)',
+        startup: 6, active: 10, recovery: 10,
+        damage: 85, chip: 0, hitstun: 19, blockstun: 13, hitstop: 8,
+        pushbackHit: 0.48, pushbackBlock: 0.42,
+        hitLevel: 'OVERHEAD', isSpecial: false, isSuper: false, knockdown: false,
+        cancelToSpecial: false, cancelToSuper: false,
+        hitbox: { x: 0.92, y: 0.52, w: 1.22, h: 0.65 }
+      },
+      '236K': {
+        id: '236K', name: 'Patada Giratoria (236K)',
+        startup: 8, active: 18, recovery: 16,
+        damage: 48, chip: 9, hitstun: 20, blockstun: 12, hitstop: 6,
+        pushbackHit: 0.42, pushbackBlock: 0.36,
+        hitLevel: 'MID', isSpecial: true, isSuper: false, knockdown: true,
+        multiHits: [9, 15, 21], // 3 impactos giratorios avanzando
+        cancelToSpecial: false, cancelToSuper: true,
+        hitbox: { x: 0.85, y: 1.1, w: 1.35, h: 0.65 }
+      },
+
+      // === BOTÓN T (AGARRE) Y BOTÓN S (SUPER ART) ===
+      'THROW': {
+        id: 'THROW', name: 'Agarre (Throw)',
+        startup: 5, active: 3, recovery: 18,
+        damage: 110, chip: 0, hitstun: 0, blockstun: 0, hitstop: 8,
+        pushbackHit: 1.4, pushbackBlock: 0,
+        hitLevel: 'THROW', isSpecial: false, isSuper: false, knockdown: true,
+        cancelToSpecial: false, cancelToSuper: false,
+        hitbox: { x: 0.68, y: 1.05, w: 0.78, h: 1.1 }
+      },
+      'SUPER': {
+        id: 'SUPER', name: 'CYBER OVERDRIVE (SUPER)',
+        startup: 6, active: 18, recovery: 22,
+        damage: 72, chip: 14, hitstun: 28, blockstun: 16, hitstop: 7,
+        pushbackHit: 0.45, pushbackBlock: 0.35,
+        hitLevel: 'MID', isSpecial: true, isSuper: true, knockdown: true,
+        invulnUntil: 12,
+        multiHits: [7, 13, 20], // 3 impactos en los frames activos
+        cancelToSpecial: false, cancelToSuper: false,
+        hitbox: { x: 1.35, y: 1.15, w: 1.9, h: 1.1 }
+      }
+    };
+
+    // Input Buffer Circular (20 frames, notación numérica 1-9 + doble toque para Dashes)
+    class InputBuffer {
+      constructor() {
+        this.reset();
+      }
+
+      reset() {
+        this.history = [];
+        this.prev = { p: false, k: false, t: false, s: false, dash: false };
+      }
+
+      push(raw, facing) {
+        const x = (raw.right ? 1 : 0) - (raw.left ? 1 : 0);
+        const y = (raw.up ? 1 : 0) - (raw.down ? 1 : 0);
+        const relX = x * facing;
+        const dir = 5 + relX + y * 3; // 1..9
+
+        const frame = {
+          dir,
+          p: raw.p,
+          k: raw.k,
+          t: raw.t,
+          s: raw.s,
+          dash: raw.dash,
+          pPressed: raw.p && !this.prev.p,
+          kPressed: raw.k && !this.prev.k,
+          tPressed: raw.t && !this.prev.t,
+          sPressed: raw.s && !this.prev.s,
+          dashPressed: raw.dash && !this.prev.dash,
+        };
+
+        this.prev = {
+          p: raw.p,
+          k: raw.k,
+          t: raw.t,
+          s: raw.s,
+          dash: raw.dash,
+        };
+
+        this.history.unshift(frame);
+        if (this.history.length > BUFFER_SIZE) this.history.pop();
+      }
+
+      getCurrent() {
+        return this.history[0] || {
+          dir: 5, p: false, k: false, t: false, s: false, dash: false,
+          pPressed: false, kPressed: false, tPressed: false, sPressed: false, dashPressed: false
+        };
+      }
+
+      wasPressed(btnKey, windowFrames = 5) {
+        const lim = Math.min(windowFrames, this.history.length);
+        for (let i = 0; i < lim; i++) {
+          if (this.history[i][btnKey]) return i;
+        }
+        return -1;
+      }
+
+      matchMotion(sequence, btnKeys, buttonWindow = 5, maxWindow = 16) {
+        let pressedIndex = -1;
+        const limBtn = Math.min(buttonWindow, this.history.length);
+        for (let i = 0; i < limBtn; i++) {
+          for (const k of btnKeys) {
+            if (this.history[i][k]) {
+              pressedIndex = i;
+              break;
+            }
+          }
+          if (pressedIndex !== -1) break;
+        }
+        if (pressedIndex === -1) return false;
+
+        let seqIdx = sequence.length - 1;
+        const limit = Math.min(pressedIndex + maxWindow, this.history.length);
+        for (let i = pressedIndex; i < limit; i++) {
+          if (this.history[i].dir === sequence[seqIdx]) {
+            seqIdx--;
+            if (seqIdx < 0) return true;
+          }
+        }
+        return false;
+      }
+
+      /**
+       * Detecta doble toque (6-5-6 para Forward Dash o 4-5-4 para Backdash)
+       * dentro de una ventana de `maxWindow` frames (por defecto 12).
+       */
+      matchDoubleTap(targetDir, maxWindow = 12) {
+        if (this.history.length < 3) return false;
+        // Debe acabar de entrar en targetDir en el frame actual (flanco de subida)
+        if (this.history[0].dir !== targetDir || this.history[1].dir === targetDir) return false;
+
+        let sawNeutral = false;
+        const limit = Math.min(maxWindow, this.history.length);
+        for (let i = 1; i < limit; i++) {
+          const d = this.history[i].dir;
+          if (!sawNeutral) {
+            if (d === 5) sawNeutral = true;
+            else if (d !== targetDir && d !== 5) return false;
+          } else {
+            if (d === targetDir) return true;
+          }
+        }
+        return false;
+      }
+
+      getDisplayString(count = 10) {
+        const dirs = [];
+        for (let i = Math.min(count, this.history.length) - 1; i >= 0; i--) {
+          const d = this.history[i].dir;
+          if (dirs.length === 0 || dirs[dirs.length - 1] !== d) {
+            dirs.push(d);
+          }
+        }
+        return dirs.join(' → ') || '5';
+      }
+    }
+
+    // Colisiones AABB 2D puras
+    function aabbIntersects(a, b) {
+      if (!a || !b) return false;
+      return (
+        Math.abs(a.x - b.x) * 2 < a.w + b.w &&
+        Math.abs(a.y - b.y) * 2 < a.h + b.h
+      );
+    }
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    // Crear estado inicial de luchador
+    function createFighter(id, x, facing) {
+      return {
+        id,
+        x, y: 0, vx: 0, vy: 0,
+        facing,
+        hp: MAX_HP,
+        delayedHp: MAX_HP,
+        superMeter: 0,
+        roundsWon: 0,
+        state: 'IDLE',
+        stateFrame: 0,
+        move: null,
+        moveConnected: false, // true si golpeó o fue bloqueado (para cancelaciones)
+        hitMask: new Set(),   // para controlar golpes únicos o multi-hit
+        stunFrames: 0,
+        invulnFrames: 0,
+        throwTechTimer: 0,
+        comboCount: 0,        // golpes recibidos en el combo actual
+        regenDelay: 0,        // contador para modo entrenamiento
+        pushbox: { x, y: 0.9, w: 0.8, h: 1.8 },
+        hurtbox: { x, y: 0.95, w: 0.92, h: 1.9 },
+        hitbox: null,
+        frameMeter: new Array(60).fill('N'), // N=neutral, S=startup, A=active, R=recovery, H=hitstun, B=block, I=invuln
+        lastAdvantage: 0
+      };
+    }
+
+    // Estado completo serializable del combate
+    function createMatchState(mode = 'AI') {
+      return {
+        mode, // 'AI' | '2P' | 'TRAINING'
+        dummyMode: 'NEUTRAL', // 'NEUTRAL' | 'BLOCK_ALL' | 'BLOCK_AFTER'
+        frame: 0,
+        hitstop: 0,
+        superFlashFrames: 0,
+        superFlashOwner: -1,
+        screenShake: 0,
+        round: 1,
+        timerFrames: 99 * 60,
+        phase: 'INTRO', // 'INTRO' | 'FIGHT' | 'ROUND_END' | 'MATCH_END'
+        phaseTimer: 90,
+        winnerId: -1,
+        fighters: [createFighter(0, -2.2, 1), createFighter(1, 2.2, -1)],
+        projectiles: [],
+        events: [] // eventos visuales/sonoros consumidos por la vista 3D y HUD
+      };
+    }
+
+    function resetRoundState(state, fullMatchReset = false) {
+      const r0 = fullMatchReset ? 0 : state.fighters[0].roundsWon;
+      const r1 = fullMatchReset ? 0 : state.fighters[1].roundsWon;
+      const m0 = fullMatchReset ? (state.mode === 'TRAINING' ? 100 : 0) : state.fighters[0].superMeter;
+      const m1 = fullMatchReset ? (state.mode === 'TRAINING' ? 100 : 0) : state.fighters[1].superMeter;
+
+      state.fighters[0] = createFighter(0, -2.2, 1);
+      state.fighters[1] = createFighter(1, 2.2, -1);
+      state.fighters[0].roundsWon = r0;
+      state.fighters[1].roundsWon = r1;
+      state.fighters[0].superMeter = m0;
+      state.fighters[1].superMeter = m1;
+      state.projectiles = [];
+      state.hitstop = 0;
+      state.superFlashFrames = 0;
+      state.superFlashOwner = -1;
+      state.screenShake = 0;
+      state.timerFrames = 99 * 60;
+      if (fullMatchReset) {
+        state.round = 1;
+        state.winnerId = -1;
+      }
+
+      if (state.mode === 'TRAINING') {
+        state.phase = 'FIGHT';
+        state.phaseTimer = 0;
+        state.fighters[0].superMeter = 100;
+        state.fighters[1].superMeter = 100;
+      } else {
+        state.phase = 'INTRO';
+        state.phaseTimer = 85;
+        state.events.push({ type: 'BANNER', text: `ROUND ${state.round}`, color: '#38bdf8' });
+      }
+    }
+
+    // =========================================================================
+    // 3. IA CON RETRASO DE REACCIÓN HUMANO SIMULADO Y FOOTSIES
+    // =========================================================================
+    class FightingAI {
+      constructor() {
+        this.snapshotQueue = [];
+        this.reactionDelay = 15; // ~250ms de reacción humana
+        this.decisionCooldown = 0;
+        this.currentPlan = 'NEUTRAL';
+        this.planTimer = 0;
+        this.motionQueue = [];
+      }
+
+      reset() {
+        this.snapshotQueue = [];
+        this.decisionCooldown = 0;
+        this.currentPlan = 'NEUTRAL';
+        this.planTimer = 0;
+        this.motionQueue = [];
+      }
+
+      getInput(state) {
+        const ai = state.fighters[1];
+        const p1 = state.fighters[0];
+
+        // Guardar estado actual para leerlo con retraso humano
+        this.snapshotQueue.push({
+          dist: Math.abs(p1.x - ai.x),
+          p1X: p1.x,
+          p1Y: p1.y,
+          p1State: p1.state,
+          p1Move: p1.move ? p1.move.id : null,
+          projNear: state.projectiles.some(pr => pr.owner === 0 && Math.abs(pr.x - ai.x) < 2.6)
+        });
+        if (this.snapshotQueue.length > this.reactionDelay + 2) {
+          this.snapshotQueue.shift();
+        }
+
+        const delayed = this.snapshotQueue[0];
+        const out = { up: false, down: false, left: false, right: false, p: false, k: false, t: false, s: false, dash: false };
+
+        if (state.phase !== 'FIGHT') return out;
+
+        // Modo Entrenamiento: comportamiento del Dummy
+        if (state.mode === 'TRAINING') {
+          const backLeft = ai.facing === 1;
+          if (state.dummyMode === 'BLOCK_ALL') {
+            out.left = backLeft;
+            out.right = !backLeft;
+            // Agacharse si el jugador hace barrido 2K
+            if (p1.move && p1.move.id === '2K') out.down = true;
+          } else if (state.dummyMode === 'BLOCK_AFTER') {
+            if (ai.comboCount >= 1 || ai.state === 'HITSTUN' || ai.state === 'BLOCK_STAND' || ai.state === 'BLOCK_CROUCH') {
+              out.left = backLeft;
+              out.right = !backLeft;
+              if (p1.move && p1.move.id === '2K') out.down = true;
+            }
+          }
+          return out;
+        }
+
+        // Si hay una secuencia de motion input en cola (ej. 236P, 236K o 623P)
+        if (this.motionQueue.length > 0) {
+          const step = this.motionQueue.shift();
+          return this.dirToRaw(step.dir, ai.facing, step);
+        }
+
+        // Reacción defensiva a agarre (Throw Tech humano 35% de las veces)
+        if (ai.throwTechTimer > 0 && ai.throwTechTimer <= 4 && Math.random() < 0.35) {
+          out.t = true;
+          return out;
+        }
+
+        // Bloqueo reactivo o Backdash defensivo (con retraso humano)
+        if ((delayed.p1State === 'ATTACK' && delayed.dist < 2.7) || delayed.projNear) {
+          const rDef = Math.random();
+          if (rDef < 0.65) {
+            const holdLow = delayed.p1Move === '2K';
+            return this.dirToRaw(holdLow ? 1 : 4, ai.facing);
+          } else if (rDef < 0.78 && ai.y === 0 && !delayed.projNear) {
+            return this.dirToRaw(4, ai.facing, { dash: true });
+          }
+        }
+
+        // Cancelación a especial o Super si el ataque de la IA conectó
+        if (ai.state === 'ATTACK' && ai.moveConnected && ai.move && ai.move.cancelToSpecial) {
+          if (ai.superMeter >= 100 && Math.random() < 0.35) {
+            out.s = true;
+            return out;
+          }
+          const rCancel = Math.random();
+          if (rCancel < 0.28) {
+            this.queueMotion([2, 3, 6], 'p');
+            return this.dirToRaw(2, ai.facing);
+          } else if (rCancel < 0.52) {
+            this.queueMotion([2, 3, 6], 'k');
+            return this.dirToRaw(2, ai.facing);
+          }
+        }
+
+        // Antiaéreo si el jugador salta cerca
+        if (delayed.p1Y > 0.65 && delayed.dist < 2.2 && ai.y === 0 && this.decisionCooldown <= 0) {
+          this.decisionCooldown = 28;
+          this.queueMotion([6, 2, 3], 'p');
+          return this.dirToRaw(6, ai.facing);
+        }
+
+        if (this.decisionCooldown > 0) this.decisionCooldown--;
+        if (this.planTimer > 0) this.planTimer--;
+
+        if (this.planTimer <= 0) {
+          const r = Math.random();
+          if (delayed.dist > 4.2) {
+            if (r < 0.30) {
+              this.queueMotion([2, 3, 6], 'p');
+              this.planTimer = 30;
+            } else if (r < 0.55) {
+              this.currentPlan = 'DASH_IN';
+              this.planTimer = 16;
+            } else if (r < 0.82) {
+              this.currentPlan = 'APPROACH';
+              this.planTimer = 24;
+            } else {
+              this.currentPlan = 'JUMP_IN';
+              this.planTimer = 18;
+            }
+          } else if (delayed.dist > 1.85) {
+            if (r < 0.22) {
+              this.currentPlan = 'APPROACH';
+              this.planTimer = 14;
+            } else if (r < 0.38) {
+              this.currentPlan = 'FOOTSIE_BACK';
+              this.planTimer = 14;
+            } else if (r < 0.58) {
+              this.currentPlan = 'POKE_5K';
+              this.planTimer = 10;
+            } else if (r < 0.74) {
+              this.queueMotion([2, 3, 6], 'k'); // Tatsumaki
+              this.planTimer = 26;
+            } else if (r < 0.88) {
+              this.queueMotion([2, 3, 6], 'p'); // Hadouken
+              this.planTimer = 24;
+            } else {
+              this.currentPlan = 'JUMP_IN';
+              this.planTimer = 22;
+            }
+          } else {
+            // Rango cercano
+            if (ai.superMeter >= 100 && r < 0.22) {
+              this.currentPlan = 'SUPER';
+              this.planTimer = 10;
+            } else if (r < 0.34) {
+              this.currentPlan = 'JAB';
+              this.planTimer = 10;
+            } else if (r < 0.54) {
+              this.currentPlan = 'SWEEP_2K';
+              this.planTimer = 14;
+            } else if (r < 0.70) {
+              this.currentPlan = 'THROW';
+              this.planTimer = 12;
+            } else if (r < 0.82) {
+              this.currentPlan = 'BACKDASH';
+              this.planTimer = 14;
+            } else {
+              this.currentPlan = 'BLOCK';
+              this.planTimer = 16;
+            }
+          }
+        }
+
+        // Ejecutar plan actual
+        switch (this.currentPlan) {
+          case 'APPROACH': return this.dirToRaw(6, ai.facing);
+          case 'FOOTSIE_BACK': return this.dirToRaw(4, ai.facing);
+          case 'BLOCK': return this.dirToRaw(4, ai.facing);
+          case 'DASH_IN':
+            this.currentPlan = 'POKE_5K';
+            return this.dirToRaw(6, ai.facing, { dash: true });
+          case 'BACKDASH':
+            this.currentPlan = 'NEUTRAL';
+            return this.dirToRaw(4, ai.facing, { dash: true });
+          case 'JAB':
+            this.currentPlan = 'NEUTRAL';
+            return this.dirToRaw(5, ai.facing, { p: true });
+          case 'SWEEP_2K':
+            this.currentPlan = 'NEUTRAL';
+            return this.dirToRaw(2, ai.facing, { k: true });
+          case 'POKE_5K':
+            this.currentPlan = 'NEUTRAL';
+            return this.dirToRaw(5, ai.facing, { k: true });
+          case 'THROW':
+            this.currentPlan = 'NEUTRAL';
+            return this.dirToRaw(5, ai.facing, { t: true });
+          case 'SUPER':
+            this.currentPlan = 'NEUTRAL';
+            return this.dirToRaw(5, ai.facing, { s: true });
+          case 'JUMP_IN':
+            if (ai.y === 0) return this.dirToRaw(9, ai.facing);
+            if (ai.vy < 0.04 && delayed.dist < 2.4) return this.dirToRaw(5, ai.facing, { k: true });
+            return out;
+          default:
+            return out;
+        }
+      }
+
+      queueMotion(seq, btn) {
+        this.motionQueue = seq.map((d, idx) => ({
+          dir: d,
+          p: idx === seq.length - 1 && btn === 'p',
+          k: idx === seq.length - 1 && btn === 'k'
+        }));
+      }
+
+      dirToRaw(numpad, facing, btns = {}) {
+        const relX = ((numpad - 1) % 3) - 1;
+        const y = Math.floor((numpad - 1) / 3) - 1;
+        const worldX = relX * facing;
+        return {
+          left: worldX < 0,
+          right: worldX > 0,
+          up: y > 0,
+          down: y < 0,
+          p: !!btns.p,
+          k: !!btns.k,
+          t: !!btns.t,
+          s: !!btns.s,
+          dash: !!btns.dash
+        };
+      }
+    }
+
+    // =========================================================================
+    // 4. SIMULACIÓN DETERMINISTA DE 1 FRAME (TICK 60 HZ)
+    // =========================================================================
+    const buffers = [new InputBuffer(), new InputBuffer()];
+    const aiController = new FightingAI();
+
+    function startMove(state, f, moveKey) {
+      const m = MOVES[moveKey];
+      if (!m) return;
+
+      if (moveKey === 'SUPER') {
+        if (f.superMeter < 100) return;
+        f.superMeter = 0;
+        state.superFlashFrames = 32;
+        state.superFlashOwner = f.id;
+        state.events.push({ type: 'SUPER_FLASH', owner: f.id, x: f.x, y: f.y + 1.1 });
+      } else if (moveKey === '623P') {
+        f.vy = 0.25;
+        f.vx = f.facing * 0.085;
+        state.events.push({ type: 'SFX', name: 'uppercut' });
+      } else if (moveKey === '236K') {
+        f.vy = 0.08;
+        f.vx = f.facing * 0.14;
+        state.events.push({ type: 'SFX', name: 'tatsumaki' });
+      } else if (moveKey === '236P') {
+        state.events.push({ type: 'SFX', name: 'projectile' });
+      }
+
+      f.state = 'ATTACK';
+      f.stateFrame = 0;
+      f.move = m;
+      f.moveConnected = false;
+      f.hitMask.clear();
+      if (m.invulnUntil) {
+        f.invulnFrames = Math.max(f.invulnFrames, m.invulnUntil);
+      }
+    }
+
+    function stepSimulation(state, rawInputs) {
+      state.frame++;
+      state.events = [];
+
+      // Suavizar barra de daño diferido
+      for (const f of state.fighters) {
+        if (f.delayedHp > f.hp) {
+          f.delayedHp = Math.max(f.hp, f.delayedHp - 4.5);
+        } else {
+          f.delayedHp = f.hp;
+        }
+      }
+
+      // Reducir screen shake
+      if (state.screenShake > 0) state.screenShake = Math.max(0, state.screenShake - 0.08);
+
+      // 1. Actualizar siempre los Input Buffers (incluso durante Hitstop o Super Flash)
+      buffers[0].push(rawInputs[0], state.fighters[0].facing);
+      buffers[1].push(rawInputs[1], state.fighters[1].facing);
+
+      // 2. Super Flash cinemático (congela el combate para impacto visual)
+      if (state.superFlashFrames > 0) {
+        state.superFlashFrames--;
+        return;
+      }
+
+      // 3. Fases de Ronda (INTRO / ROUND_END / MATCH_END)
+      if (state.phase === 'INTRO') {
+        state.phaseTimer--;
+        if (state.phaseTimer === 25) {
+          state.events.push({ type: 'BANNER', text: '¡FIGHT!', color: '#facc15' });
+          state.events.push({ type: 'SFX', name: 'roundStart' });
+        }
+        if (state.phaseTimer <= 0) {
+          state.phase = 'FIGHT';
+        }
+        syncAllBoxes(state);
+        return;
+      }
+
+      if (state.phase === 'ROUND_END') {
+        state.phaseTimer--;
+        if (state.phaseTimer <= 0) {
+          state.round++;
+          resetRoundState(state, false);
+        }
+        return;
+      }
+
+      if (state.phase === 'MATCH_END') {
+        state.phaseTimer--;
+        if (state.phaseTimer <= 0) {
+          resetRoundState(state, true);
+        }
+        return;
+      }
+
+      // 4. Hitstop (congela física y animaciones pero mantiene buffer activo)
+      if (state.hitstop > 0) {
+        state.hitstop--;
+        return;
+      }
+
+      // 5. Temporizador 99s (infinito en Entrenamiento)
+      if (state.mode !== 'TRAINING') {
+        if (state.timerFrames > 0) state.timerFrames--;
+        if (state.timerFrames === 0) {
+          resolveRoundEnd(state, true);
+          return;
+        }
+      }
+
+      // 6. Actualizar cada luchador (FSM, Cancelaciones, Física 2D)
+      for (let i = 0; i < 2; i++) {
+        updateFighter(state, state.fighters[i], state.fighters[1 - i], buffers[i]);
+      }
+
+      // 7. Resolver Pushboxes y bordes del escenario
+      resolvePushboxes(state.fighters[0], state.fighters[1]);
+      syncAllBoxes(state);
+
+      // 8. Actualizar Proyectiles 2.5D y Clash entre proyectiles
+      updateProjectiles(state);
+
+      // 9. Evaluar colisiones Hitbox vs Hurtbox (cuerpo a cuerpo y agarres)
+      resolveCombatHits(state);
+
+      // 10. Actualizar facing automático en suelo y estado neutral
+      const [p1, p2] = state.fighters;
+      for (let i = 0; i < 2; i++) {
+        const f = state.fighters[i];
+        const opp = state.fighters[1 - i];
+        if (f.y === 0 && (f.state === 'IDLE' || f.state === 'WALK_F' || f.state === 'WALK_B' || f.state === 'CROUCH')) {
+          if (Math.abs(f.x - opp.x) > 0.05) {
+            f.facing = f.x < opp.x ? 1 : -1;
+          }
+        }
+      }
+
+      // 11. Modo Entrenamiento: regeneración automática de vida y barra Super
+      if (state.mode === 'TRAINING') {
+        for (const f of state.fighters) {
+          if (f.state === 'HITSTUN' || f.state === 'KNOCKDOWN' || f.state === 'THROWN') {
+            f.regenDelay = 85;
+          } else if (f.regenDelay > 0) {
+            f.regenDelay--;
+          } else {
+            if (f.hp < MAX_HP) f.hp = Math.min(MAX_HP, f.hp + 18);
+            if (f.superMeter < 100) f.superMeter = Math.min(100, f.superMeter + 1.5);
+          }
+        }
+      }
+
+      // 12. Actualizar Frame Meter (60 frames visuales)
+      recordFrameMeter(state);
+
+      // 13. Comprobar K.O.
+      if (state.mode !== 'TRAINING' && (p1.hp <= 0 || p2.hp <= 0)) {
+        resolveRoundEnd(state, false);
+      }
+    }
+
+    function updateFighter(state, f, opp, buf) {
+      f.stateFrame++;
+      if (f.invulnFrames > 0) f.invulnFrames--;
+
+      const cur = buf.getCurrent();
+
+      // Ventana de Throw Tech (6 frames)
+      if (f.state === 'THROWN' && f.throwTechTimer > 0) {
+        f.throwTechTimer--;
+        if (buf.wasPressed('tPressed', 3) !== -1) {
+          // ¡THROW TECH! Romper agarre
+          f.throwTechTimer = 0;
+          f.state = 'IDLE';
+          f.stateFrame = 0;
+          opp.state = 'IDLE';
+          opp.stateFrame = 0;
+          opp.move = null;
+          f.x = clamp(f.x - f.facing * 1.15, -STAGE_HALF_WIDTH, STAGE_HALF_WIDTH);
+          opp.x = clamp(opp.x - opp.facing * 1.15, -STAGE_HALF_WIDTH, STAGE_HALF_WIDTH);
+          state.hitstop = 10;
+          state.screenShake = 0.25;
+          state.events.push({ type: 'CALLOUT', side: f.id, text: 'THROW TECH!', color: '#34d399' });
+          state.events.push({ type: 'SPARK', x: (f.x + opp.x) * 0.5, y: 1.15, kind: 'GOLD' });
+          state.events.push({ type: 'SFX', name: 'throwTech' });
+          return;
+        }
+        if (f.throwTechTimer === 0) {
+          // Completar agarre con daño y Derribo
+          const dmg = MOVES.THROW.damage;
+          f.hp = Math.max(state.mode === 'TRAINING' ? 1 : 0, f.hp - dmg);
+          opp.superMeter = Math.min(100, opp.superMeter + 12);
+          f.superMeter = Math.min(100, f.superMeter + 8);
+          f.state = 'KNOCKDOWN';
+          f.stateFrame = 0;
+          f.vy = 0.20;
+          f.vx = opp.facing * 0.14;
+          state.hitstop = 9;
+          state.screenShake = 0.4;
+          state.events.push({ type: 'SPARK', x: f.x, y: 1.0, kind: 'HIT' });
+          state.events.push({ type: 'SFX', name: 'hitHeavy' });
+        }
+        return;
+      }
+
+      if (f.state === 'THROW_HOLD') {
+        if (f.stateFrame >= 16) {
+          f.state = 'IDLE';
+          f.stateFrame = 0;
+          f.move = null;
+        }
+        return;
+      }
+
+      // Estados de aturdimiento y bloqueo
+      if (f.state === 'HITSTUN' || f.state === 'BLOCK_STAND' || f.state === 'BLOCK_CROUCH') {
+        f.stunFrames--;
+        applyPhysics(f);
+        if (f.stunFrames <= 0 && f.y === 0) {
+          f.state = 'IDLE';
+          f.stateFrame = 0;
+          f.comboCount = 0;
+        }
+        return;
+      }
+
+      // Estado Derribo (Knockdown) -> Levantarse (Wake-up con i-frames)
+      if (f.state === 'KNOCKDOWN') {
+        applyPhysics(f);
+        if (f.y === 0) {
+          f.vx *= 0.8;
+          if (f.stateFrame >= 36) {
+            f.state = 'WAKEUP';
+            f.stateFrame = 0;
+            f.invulnFrames = 14; // Wake-up i-frames
+            f.comboCount = 0;
+          }
+        }
+        return;
+      }
+
+      if (f.state === 'WAKEUP') {
+        if (f.stateFrame >= 14) {
+          f.state = 'IDLE';
+          f.stateFrame = 0;
+        }
+        return;
+      }
+
+      // === FORWARD DASH (66) — Impulso rápido cancelable en ataque tras F4 ===
+      if (f.state === 'DASH_F') {
+        f.vx = f.facing * 0.23;
+        applyPhysics(f);
+
+        if (f.stateFrame % 3 === 1) {
+          state.events.push({ type: 'SPARK', x: f.x - f.facing * 0.35, y: 0.75, kind: 'DASH' });
+        }
+
+        // Cancelable en ataque/especial/agarre tras los 4 frames iniciales
+        if (f.stateFrame >= 4) {
+          if (tryGroundOffensiveInput(state, f, buf, cur)) return;
+        }
+
+        if (f.stateFrame >= 13) {
+          f.state = 'IDLE';
+          f.stateFrame = 0;
+          f.vx = 0;
+        }
+        return;
+      }
+
+      // === BACKDASH (44) — Retroceso rápido con i-frames en F1-F6 ===
+      if (f.state === 'DASH_B') {
+        f.vx = -f.facing * (f.stateFrame <= 9 ? 0.22 : 0.08);
+        applyPhysics(f);
+
+        if (f.stateFrame % 3 === 1) {
+          state.events.push({ type: 'SPARK', x: f.x + f.facing * 0.35, y: 0.85, kind: 'BACKDASH' });
+        }
+
+        if (f.stateFrame >= 16) {
+          f.state = 'IDLE';
+          f.stateFrame = 0;
+          f.vx = 0;
+        }
+        return;
+      }
+
+      // Estado Ataque (incluye Cancel Windows)
+      if (f.state === 'ATTACK' && f.move) {
+        const m = f.move;
+
+        // Ventanas de Cancelación si el golpe conectó o fue bloqueado
+        if (f.moveConnected && f.y === 0) {
+          if (m.cancelToSuper && f.superMeter >= 100 &&
+             (buf.wasPressed('sPressed', 5) !== -1 || buf.matchMotion([2, 3, 6], ['sPressed']))) {
+            startMove(state, f, 'SUPER');
+            return;
+          }
+          if (m.cancelToSpecial) {
+            if (buf.matchMotion([6, 2, 3], ['pPressed'])) {
+              startMove(state, f, '623P');
+              return;
+            }
+            if (buf.matchMotion([2, 3, 6], ['kPressed'])) {
+              startMove(state, f, '236K');
+              return;
+            }
+            if (buf.matchMotion([2, 3, 6], ['pPressed'])) {
+              startMove(state, f, '236P');
+              return;
+            }
+          }
+        }
+
+        // Proyectil Hadouken se genera al iniciar frames activos
+        if (m.spawnsProjectile && f.stateFrame === m.startup) {
+          state.projectiles.push({
+            id: state.frame + '_' + f.id,
+            owner: f.id,
+            x: f.x + f.facing * 1.05,
+            y: f.y + 1.15,
+            vx: f.facing * 0.19,
+            w: 0.65,
+            h: 0.55,
+            damage: m.damage,
+            chip: m.chip,
+            hitstun: m.hitstun,
+            blockstun: m.blockstun,
+            active: true
+          });
+        }
+
+        // Movimiento especial durante SUPER o 236K (Tatsumaki)
+        if (m.id === 'SUPER' && f.stateFrame >= m.startup && f.stateFrame <= m.startup + 12) {
+          f.vx = f.facing * 0.14;
+        } else if (m.id === '236K') {
+          if (f.stateFrame >= m.startup && f.stateFrame <= m.startup + m.active) {
+            f.vx = f.facing * 0.145;
+            f.y = Math.max(0.28, f.y);
+            f.vy = 0;
+          } else {
+            f.vx *= 0.78;
+          }
+        } else if (m.id !== '623P' && f.y === 0) {
+          f.vx *= 0.72;
+        }
+
+        applyPhysics(f);
+
+        // Aterrizar cancela el ataque aéreo (j.P / j.K)
+        if ((m.id === 'jP' || m.id === 'jK') && f.y === 0 && f.stateFrame > 2) {
+          f.state = 'IDLE';
+          f.stateFrame = 0;
+          f.move = null;
+          return;
+        }
+
+        const total = m.startup + m.active + m.recovery;
+        if (f.stateFrame >= total && f.y === 0) {
+          f.state = 'IDLE';
+          f.stateFrame = 0;
+          f.move = null;
+        }
+        return;
+      }
+
+      // Estado Aéreo (Salto)
+      if (f.y > 0 || f.state === 'JUMP') {
+        if (buf.wasPressed('kPressed', 4) !== -1) {
+          startMove(state, f, 'jK');
+          return;
+        }
+        if (buf.wasPressed('pPressed', 4) !== -1) {
+          startMove(state, f, 'jP');
+          return;
+        }
+        applyPhysics(f);
+        if (f.y === 0) {
+          f.state = 'IDLE';
+          f.stateFrame = 0;
+          f.vx = 0;
+        }
+        return;
+      }
+
+      // === ESTADO NEUTRAL EN SUELO (EVALUAR INPUTS CON PRIORIDAD) ===
+      if (tryGroundOffensiveInput(state, f, buf, cur)) return;
+
+      // 5. Dashes: doble toque (66 / 44 en 12 frames) o botón rápido de Dash
+      const quickDash = buf.wasPressed('dashPressed', 4) !== -1;
+      const wantBackDash = buf.matchDoubleTap(4, 12) || (quickDash && (cur.dir === 4 || cur.dir === 1));
+      const wantForwardDash = buf.matchDoubleTap(6, 12) || (quickDash && cur.dir !== 4 && cur.dir !== 1);
+
+      if (wantBackDash) {
+        f.state = 'DASH_B';
+        f.stateFrame = 0;
+        f.invulnFrames = 6; // 6 frames de i-frames iniciales en Backdash
+        state.events.push({ type: 'SPARK', x: f.x, y: 0.9, kind: 'BACKDASH' });
+        state.events.push({ type: 'SFX', name: 'backdash' });
+        return;
+      }
+      if (wantForwardDash) {
+        f.state = 'DASH_F';
+        f.stateFrame = 0;
+        state.events.push({ type: 'SPARK', x: f.x, y: 0.75, kind: 'DASH' });
+        state.events.push({ type: 'SFX', name: 'dash' });
+        return;
+      }
+
+      // 6. Salto en 3 direcciones (7, 8, 9)
+      if (cur.dir === 7 || cur.dir === 8 || cur.dir === 9) {
+        f.state = 'JUMP';
+        f.stateFrame = 0;
+        f.vy = JUMP_VY;
+        if (cur.dir === 9) f.vx = f.facing * JUMP_VX;
+        else if (cur.dir === 7) f.vx = -f.facing * JUMP_VX;
+        else f.vx = 0;
+        applyPhysics(f);
+        return;
+      }
+
+      // 7. Agacharse (1, 2, 3)
+      if (cur.dir === 1 || cur.dir === 2 || cur.dir === 3) {
+        f.state = 'CROUCH';
+        f.vx = 0;
+        return;
+      }
+
+      // 8. Caminar adelante (6) o atrás (4)
+      if (cur.dir === 6) {
+        f.state = 'WALK_F';
+        f.vx = f.facing * WALK_F_SPEED;
+        f.x = clamp(f.x + f.vx, -STAGE_HALF_WIDTH, STAGE_HALF_WIDTH);
+      } else if (cur.dir === 4) {
+        f.state = 'WALK_B';
+        f.vx = -f.facing * WALK_B_SPEED;
+        f.x = clamp(f.x + f.vx, -STAGE_HALF_WIDTH, STAGE_HALF_WIDTH);
+      } else {
+        f.state = 'IDLE';
+        f.vx = 0;
+      }
+    }
+
+    function tryGroundOffensiveInput(state, f, buf, cur) {
+      // 1. Super Art (botón dedicado S o 236 + S)
+      if (f.superMeter >= 100 && (buf.wasPressed('sPressed', 5) !== -1 || buf.matchMotion([2, 3, 6], ['sPressed']))) {
+        startMove(state, f, 'SUPER');
+        return true;
+      }
+
+      // 2. Motion Inputs Especiales: 623P > 236K > 236P
+      if (buf.matchMotion([6, 2, 3], ['pPressed'])) {
+        startMove(state, f, '623P');
+        return true;
+      }
+      if (buf.matchMotion([2, 3, 6], ['kPressed'])) {
+        startMove(state, f, '236K');
+        return true;
+      }
+      if (buf.matchMotion([2, 3, 6], ['pPressed'])) {
+        startMove(state, f, '236P');
+        return true;
+      }
+
+      // 3. Agarre (T)
+      if (buf.wasPressed('tPressed', 4) !== -1) {
+        startMove(state, f, 'THROW');
+        return true;
+      }
+
+      const isCrouching = cur.dir === 1 || cur.dir === 2 || cur.dir === 3;
+
+      // 4. Botón K (Patada): 2K (Barrido LOW) / 5K (Patada media)
+      if (buf.wasPressed('kPressed', 4) !== -1) {
+        startMove(state, f, isCrouching ? '2K' : '5K');
+        return true;
+      }
+
+      // 5. Botón P (Puño): 2P (Puño bajo) / 5P (Jab)
+      if (buf.wasPressed('pPressed', 4) !== -1) {
+        startMove(state, f, isCrouching ? '2P' : '5P');
+        return true;
+      }
+
+      return false;
+    }
+
+    function applyPhysics(f) {
+      f.x = clamp(f.x + f.vx, -STAGE_HALF_WIDTH, STAGE_HALF_WIDTH);
+      if (f.y > 0 || f.vy !== 0) {
+        f.y += f.vy;
+        f.vy += GRAVITY;
+        if (f.y <= 0) {
+          f.y = 0;
+          f.vy = 0;
+          if (f.state !== 'KNOCKDOWN') f.vx = 0;
+        }
+      }
+    }
+
+    function resolvePushboxes(p1, p2) {
+      if (!aabbIntersects(p1.pushbox, p2.pushbox)) return;
+      const overlapX = (p1.pushbox.w + p2.pushbox.w) * 0.5 - Math.abs(p1.x - p2.x);
+      if (overlapX <= 0) return;
+
+      const dir = p1.x <= p2.x ? -1 : 1;
+      const half = overlapX * 0.5;
+      p1.x = clamp(p1.x + dir * half, -STAGE_HALF_WIDTH, STAGE_HALF_WIDTH);
+      p2.x = clamp(p2.x - dir * half, -STAGE_HALF_WIDTH, STAGE_HALF_WIDTH);
+    }
+
+    function syncAllBoxes(state) {
+      for (const f of state.fighters) {
+        const isCrouch = f.state === 'CROUCH' || f.state === 'BLOCK_CROUCH' || (f.move && (f.move.id === '2P' || f.move.id === '2K'));
+        const h = isCrouch ? 1.25 : 1.85;
+        f.pushbox = { x: f.x, y: f.y + h * 0.5, w: 0.78, h: h * 0.95 };
+        f.hurtbox = (f.invulnFrames > 0 || f.state === 'KNOCKDOWN' || f.state === 'WAKEUP')
+          ? null
+          : { x: f.x, y: f.y + h * 0.52, w: 0.92, h };
+
+        f.hitbox = null;
+        if (f.state === 'ATTACK' && f.move && f.move.hitbox) {
+          const m = f.move;
+          const inActive = f.stateFrame > m.startup && f.stateFrame <= m.startup + m.active;
+          if (inActive) {
+            const hb = m.hitbox;
+            f.hitbox = { x: f.x + hb.x * f.facing, y: f.y + hb.y, w: hb.w, h: hb.h };
+          }
+        }
+      }
+    }
+
+    function updateProjectiles(state) {
+      for (const p of state.projectiles) {
+        if (!p.active) continue;
+        p.x += p.vx;
+        if (Math.abs(p.x) > STAGE_HALF_WIDTH + 1.5) p.active = false;
+      }
+
+      // Choque entre proyectiles (CLASH)
+      for (let i = 0; i < state.projectiles.length; i++) {
+        for (let j = i + 1; j < state.projectiles.length; j++) {
+          const a = state.projectiles[i];
+          const b = state.projectiles[j];
+          if (!a.active || !b.active || a.owner === b.owner) continue;
+          const boxA = { x: a.x, y: a.y, w: a.w, h: a.h };
+          const boxB = { x: b.x, y: b.y, w: b.w, h: b.h };
+          if (aabbIntersects(boxA, boxB)) {
+            a.active = false;
+            b.active = false;
+            state.events.push({ type: 'SPARK', x: (a.x + b.x) * 0.5, y: a.y, kind: 'GOLD' });
+            state.events.push({ type: 'SFX', name: 'block' });
+          }
+        }
+      }
+
+      // Colisión proyectil vs luchador rival
+      for (const p of state.projectiles) {
+        if (!p.active) continue;
+        const defender = state.fighters[1 - p.owner];
+        const attacker = state.fighters[p.owner];
+        const boxP = { x: p.x, y: p.y, w: p.w, h: p.h };
+        if (defender.hurtbox && aabbIntersects(boxP, defender.hurtbox)) {
+          p.active = false;
+          applyHit(state, attacker, defender, {
+            id: 'PROJ',
+            damage: p.damage,
+            chip: p.chip,
+            hitstun: p.hitstun,
+            blockstun: p.blockstun,
+            hitstop: 6,
+            pushbackHit: 0.52,
+            pushbackBlock: 0.44,
+            hitLevel: 'MID',
+            isSpecial: true,
+            isSuper: false,
+            knockdown: false
+          }, p.x, p.y);
+        }
+      }
+
+      state.projectiles = state.projectiles.filter(p => p.active);
+    }
+
+    function resolveCombatHits(state) {
+      const [p1, p2] = state.fighters;
+      checkMeleeHit(state, p1, p2);
+      checkMeleeHit(state, p2, p1);
+    }
+
+    function checkMeleeHit(state, attacker, defender) {
+      if (!attacker.hitbox || !attacker.move || !defender.hurtbox) return;
+      const m = attacker.move;
+
+      // Control de golpes únicos o multi-hit (SUPER)
+      let hitKey = 'single';
+      if (m.multiHits) {
+        const idx = m.multiHits.findIndex(f => attacker.stateFrame >= f && attacker.stateFrame < f + 4);
+        if (idx === -1) return;
+        hitKey = 'mh_' + idx;
+      }
+      if (attacker.hitMask.has(hitKey)) return;
+
+      if (!aabbIntersects(attacker.hitbox, defender.hurtbox)) return;
+
+      // Agarre (THROW): solo conecta en suelo y es imbloqueable
+      if (m.hitLevel === 'THROW') {
+        if (defender.y > 0 || defender.state === 'HITSTUN' || defender.state === 'BLOCK_STAND' || defender.state === 'BLOCK_CROUCH') {
+          return;
+        }
+        attacker.hitMask.add(hitKey);
+        attacker.state = 'THROW_HOLD';
+        attacker.stateFrame = 0;
+        defender.state = 'THROWN';
+        defender.stateFrame = 0;
+        defender.throwTechTimer = THROW_TECH_WINDOW;
+        defender.x = clamp(attacker.x + attacker.facing * 0.9, -STAGE_HALF_WIDTH, STAGE_HALF_WIDTH);
+        state.events.push({ type: 'SFX', name: 'throwGrab' });
+        return;
+      }
+
+      attacker.hitMask.add(hitKey);
+      attacker.moveConnected = true;
+
+      const isFinalMultiHit = !m.multiHits || hitKey === 'mh_' + (m.multiHits.length - 1);
+      const effectiveMove = m.multiHits ? { ...m, knockdown: isFinalMultiHit } : m;
+      applyHit(state, attacker, defender, effectiveMove, attacker.hitbox.x, attacker.hitbox.y);
+    }
+
+    function canBlock(defender, hitLevel, buf) {
+      if (defender.y > 0) return false;
+      const blockableStates = ['IDLE', 'WALK_B', 'CROUCH', 'BLOCK_STAND', 'BLOCK_CROUCH'];
+      if (!blockableStates.includes(defender.state)) return false;
+
+      const dir = buf.getCurrent().dir;
+      const holdingBack = dir === 4;
+      const holdingDownBack = dir === 1;
+
+      if (hitLevel === 'OVERHEAD') return holdingBack;
+      if (hitLevel === 'LOW') return holdingDownBack;
+      return holdingBack || holdingDownBack;
+    }
+
+    function applyHit(state, attacker, defender, move, sparkX, sparkY) {
+      const defBuf = buffers[defender.id];
+      const blocked = canBlock(defender, move.hitLevel, defBuf);
+
+      // Cálculo aproximado de ventaja de frames para Debug
+      const remainingAttacker = attacker.move
+        ? Math.max(0, (attacker.move.startup + attacker.move.active + attacker.move.recovery) - attacker.stateFrame)
+        : 10;
+
+      if (blocked) {
+        const chipDmg = move.chip || 0;
+        if (chipDmg > 0) {
+          const minHp = move.isSuper ? 0 : 1; // Solo Super mata por chip damage
+          defender.hp = Math.max(state.mode === 'TRAINING' ? 1 : minHp, defender.hp - chipDmg);
+        }
+        defender.state = defBuf.getCurrent().dir === 1 ? 'BLOCK_CROUCH' : 'BLOCK_STAND';
+        defender.stateFrame = 0;
+        defender.stunFrames = move.blockstun;
+        defender.x = clamp(defender.x + attacker.facing * move.pushbackBlock, -STAGE_HALF_WIDTH, STAGE_HALF_WIDTH);
+
+        attacker.superMeter = Math.min(100, attacker.superMeter + 6);
+        defender.superMeter = Math.min(100, defender.superMeter + 5);
+        attacker.lastAdvantage = move.blockstun - remainingAttacker;
+
+        state.hitstop = Math.max(4, Math.floor(move.hitstop * 0.8));
+        state.screenShake = 0.14;
+        state.events.push({ type: 'SPARK', x: sparkX, y: sparkY, kind: 'BLOCK' });
+        state.events.push({ type: 'SFX', name: 'block' });
+        return;
+      }
+
+      // === IMPACTO LIMPIO ===
+      const isCounter = defender.state === 'ATTACK' && defender.move && defender.stateFrame <= defender.move.startup + defender.move.active;
+
+      defender.comboCount++;
+      const scaleIdx = Math.min(defender.comboCount - 1, COMBO_SCALING.length - 1);
+      const scale = COMBO_SCALING[scaleIdx];
+      const counterBonus = isCounter ? 1.2 : 1.0;
+      const finalDmg = Math.max(8, Math.round(move.damage * scale * counterBonus));
+
+      defender.hp = Math.max(state.mode === 'TRAINING' ? 1 : 0, defender.hp - finalDmg);
+      attacker.superMeter = Math.min(100, attacker.superMeter + (move.isSuper ? 0 : 12));
+      defender.superMeter = Math.min(100, defender.superMeter + 8);
+
+      // Hitstun Decay para evitar combos infinitos
+      const decay = Math.max(0, defender.comboCount - 2);
+      const finalHitstun = Math.max(6, move.hitstun + (isCounter ? 4 : 0) - decay);
+      attacker.lastAdvantage = finalHitstun - remainingAttacker;
+
+      if (move.knockdown) {
+        defender.state = 'KNOCKDOWN';
+        defender.stateFrame = 0;
+        defender.vy = 0.22;
+        defender.vx = attacker.facing * 0.13;
+      } else {
+        defender.state = 'HITSTUN';
+        defender.stateFrame = 0;
+        defender.stunFrames = finalHitstun;
+        defender.x = clamp(defender.x + attacker.facing * move.pushbackHit, -STAGE_HALF_WIDTH, STAGE_HALF_WIDTH);
+      }
+
+      state.hitstop = move.hitstop + (isCounter ? 3 : 0);
+      state.screenShake = (move.damage >= 80 || isCounter || move.isSuper) ? 0.36 : 0.18;
+
+      const sparkKind = (isCounter || move.isSuper) ? 'GOLD' : 'HIT';
+      state.events.push({ type: 'SPARK', x: sparkX, y: sparkY, kind: sparkKind });
+      state.events.push({ type: 'SFX', name: (move.damage >= 80 || move.isSuper) ? 'hitHeavy' : 'hitLight' });
+
+      if (isCounter) {
+        state.events.push({ type: 'CALLOUT', side: attacker.id, text: 'COUNTER HIT!', color: '#facc15' });
+      }
+    }
+
+    function resolveRoundEnd(state, timeOver) {
+      const [p1, p2] = state.fighters;
+      let roundWinner = -1;
+      if (p1.hp > p2.hp) roundWinner = 0;
+      else if (p2.hp > p1.hp) roundWinner = 1;
+
+      if (roundWinner === 0) {
+        p1.roundsWon++;
+        p1.state = 'VICTORY';
+        p2.state = 'DEFEAT';
+      } else if (roundWinner === 1) {
+        p2.roundsWon++;
+        p2.state = 'VICTORY';
+        p1.state = 'DEFEAT';
+      }
+
+      state.events.push({ type: 'SFX', name: 'ko' });
+      state.events.push({
+        type: 'BANNER',
+        text: timeOver ? 'TIME OVER' : 'K.O.!',
+        color: '#f43f5e'
+      });
+
+      if (p1.roundsWon >= 2 || p2.roundsWon >= 2) {
+        state.phase = 'MATCH_END';
+        state.phaseTimer = 170;
+        state.winnerId = p1.roundsWon >= 2 ? 0 : 1;
+        setTimeout(() => {
+          showCenterBanner(state.winnerId === 0 ? '¡VICTORIA RYUJIN!' : '¡VICTORIA KAZE!', state.winnerId === 0 ? '#38bdf8' : '#fb7185');
+        }, 1050);
+      } else {
+        state.phase = 'ROUND_END';
+        state.phaseTimer = 115;
+      }
+    }
+
+    function recordFrameMeter(state) {
+      for (const f of state.fighters) {
+        let code = 'N';
+        if (f.invulnFrames > 0) code = 'I';
+        else if (f.state === 'DASH_F' || f.state === 'DASH_B') code = 'D';
+        else if (f.state === 'HITSTUN' || f.state === 'KNOCKDOWN' || f.state === 'THROWN') code = 'H';
+        else if (f.state === 'BLOCK_STAND' || f.state === 'BLOCK_CROUCH') code = 'B';
+        else if (f.state === 'ATTACK' && f.move) {
+          if (f.stateFrame <= f.move.startup) code = 'S';
+          else if (f.stateFrame <= f.move.startup + f.move.active) code = 'A';
+          else code = 'R';
+        }
+        f.frameMeter.push(code);
+        if (f.frameMeter.length > 60) f.frameMeter.shift();
+      }
+    }
+
+    // =========================================================================
+    // 5. CONTROLES TÁCTILES MULTITÁCTILES + TECLADO + WEB GAMEPAD API
+    // =========================================================================
+    class TouchControls {
+      constructor() {
+        this.layer = document.getElementById('touch-controls-layer');
+        this.dpadEl = document.getElementById('virtual-dpad');
+        this.thumbEl = document.getElementById('dpad-thumb');
+        this.dirDots = Array.from(this.dpadEl.querySelectorAll('.dpad-dir-dot'));
+        this.superBtnEl = document.getElementById('tbtn-super');
+
+        this.enabled = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        this.state = { up: false, down: false, left: false, right: false, p: false, k: false, t: false, s: false, dash: false };
+
+        this.dpadTouchId = null;
+        this.dpadMouseActive = false;
+        this.btnTouchMap = new Map(); // touchId -> btnKey
+
+        this.setupDpadEvents();
+        this.setupButtonEvents();
+        this.applyVisibility();
+      }
+
+      toggle() {
+        this.enabled = !this.enabled;
+        if (!this.enabled) this.clearAll();
+        this.applyVisibility();
+        return this.enabled;
+      }
+
+      applyVisibility() {
+        this.layer.classList.toggle('hidden', !this.enabled);
+        const btn = document.getElementById('btn-touch-toggle');
+        if (btn) btn.classList.toggle('active', this.enabled);
+      }
+
+      clearAll() {
+        this.state = { up: false, down: false, left: false, right: false, p: false, k: false, t: false, s: false, dash: false };
+        this.dpadTouchId = null;
+        this.dpadMouseActive = false;
+        this.btnTouchMap.clear();
+        this.resetDpadVisual();
+        document.querySelectorAll('.arcade-btn').forEach(b => b.classList.remove('pressed'));
+      }
+
+      updateDpadFromPoint(clientX, clientY) {
+        const rect = this.dpadEl.getBoundingClientRect();
+        const cx = rect.left + rect.width * 0.5;
+        const cy = rect.top + rect.height * 0.5;
+        const dx = clientX - cx;
+        const dy = clientY - cy;
+        const maxR = rect.width * 0.34;
+        const dist = Math.hypot(dx, dy);
+        const deadzone = rect.width * 0.12;
+
+        // Mover el thumb visual dentro del radio del D-Pad
+        const clampedDist = Math.min(dist, maxR);
+        const angle = Math.atan2(dy, dx);
+        const tx = Math.cos(angle) * clampedDist;
+        const ty = Math.sin(angle) * clampedDist;
+        this.thumbEl.style.transform = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px))`;
+
+        if (dist < deadzone) {
+          this.state.up = this.state.down = this.state.left = this.state.right = false;
+          this.highlightDirDot(5);
+          return;
+        }
+
+        // 8 direcciones con soporte fluido para diagonales (1, 3, 7, 9)
+        const deg = (angle * 180) / Math.PI; // -180..180 (0 = derecha, 90 = abajo, -90 = arriba)
+        const right = deg > -67.5 && deg < 67.5;
+        const left = deg > 112.5 || deg < -112.5;
+        const down = deg > 22.5 && deg < 157.5;
+        const up = deg < -22.5 && deg > -157.5;
+
+        this.state.up = up;
+        this.state.down = down;
+        this.state.left = left;
+        this.state.right = right;
+
+        const numDir = 5 + ((right ? 1 : 0) - (left ? 1 : 0)) + ((up ? 1 : 0) - (down ? 1 : 0)) * 3;
+        this.highlightDirDot(numDir);
+      }
+
+      highlightDirDot(dir) {
+        for (const dot of this.dirDots) {
+          dot.classList.toggle('active', Number(dot.dataset.dir) === dir);
+        }
+      }
+
+      resetDpadVisual() {
+        this.thumbEl.style.transform = 'translate(-50%, -50%)';
+        this.highlightDirDot(5);
+      }
+
+      setupDpadEvents() {
+        this.dpadEl.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          sfx.unlock();
+          if (this.dpadTouchId === null && e.changedTouches.length > 0) {
+            const t = e.changedTouches[0];
+            this.dpadTouchId = t.identifier;
+            this.updateDpadFromPoint(t.clientX, t.clientY);
+          }
+        }, { passive: false });
+
+        this.dpadEl.addEventListener('touchmove', (e) => {
+          e.preventDefault();
+          for (const t of e.changedTouches) {
+            if (t.identifier === this.dpadTouchId) {
+              this.updateDpadFromPoint(t.clientX, t.clientY);
+              break;
+            }
+          }
+        }, { passive: false });
+
+        const endDpadTouch = (e) => {
+          e.preventDefault();
+          for (const t of e.changedTouches) {
+            if (t.identifier === this.dpadTouchId) {
+              this.dpadTouchId = null;
+              this.state.up = this.state.down = this.state.left = this.state.right = false;
+              this.resetDpadVisual();
+              break;
+            }
+          }
+        };
+        this.dpadEl.addEventListener('touchend', endDpadTouch, { passive: false });
+        this.dpadEl.addEventListener('touchcancel', endDpadTouch, { passive: false });
+
+        // Soporte ratón para probar en escritorio cuando TOUCH está activado
+        this.dpadEl.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          sfx.unlock();
+          this.dpadMouseActive = true;
+          this.updateDpadFromPoint(e.clientX, e.clientY);
+        });
+        window.addEventListener('mousemove', (e) => {
+          if (this.dpadMouseActive) this.updateDpadFromPoint(e.clientX, e.clientY);
+        });
+        window.addEventListener('mouseup', () => {
+          if (this.dpadMouseActive) {
+            this.dpadMouseActive = false;
+            this.state.up = this.state.down = this.state.left = this.state.right = false;
+            this.resetDpadVisual();
+          }
+        });
+      }
+
+      setupButtonEvents() {
+        const buttons = Array.from(this.layer.querySelectorAll('.arcade-btn'));
+        for (const btn of buttons) {
+          const key = btn.dataset.btn;
+
+          btn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            sfx.unlock();
+            for (const t of e.changedTouches) {
+              this.btnTouchMap.set(t.identifier, { key, el: btn });
+            }
+            this.state[key] = true;
+            btn.classList.add('pressed');
+          }, { passive: false });
+
+          const releaseTouch = (e) => {
+            e.preventDefault();
+            for (const t of e.changedTouches) {
+              const entry = this.btnTouchMap.get(t.identifier);
+              if (entry) {
+                this.btnTouchMap.delete(t.identifier);
+                // Solo soltar si ningún otro dedo mantiene este mismo botón
+                const stillHeld = Array.from(this.btnTouchMap.values()).some(v => v.key === entry.key);
+                if (!stillHeld) {
+                  this.state[entry.key] = false;
+                  entry.el.classList.remove('pressed');
+                }
+              }
+            }
+          };
+          btn.addEventListener('touchend', releaseTouch, { passive: false });
+          btn.addEventListener('touchcancel', releaseTouch, { passive: false });
+
+          // Fallback ratón en escritorio
+          btn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            sfx.unlock();
+            this.state[key] = true;
+            btn.classList.add('pressed');
+          });
+          const releaseMouse = () => {
+            if (this.state[key]) {
+              this.state[key] = false;
+              btn.classList.remove('pressed');
+            }
+          };
+          btn.addEventListener('mouseup', releaseMouse);
+          btn.addEventListener('mouseleave', releaseMouse);
+        }
+      }
+
+      syncSuperGlow(p1SuperMeter) {
+        if (!this.superBtnEl) return;
+        const ready = p1SuperMeter >= 100;
+        this.superBtnEl.classList.toggle('super-ready', ready);
+        this.superBtnEl.style.opacity = ready ? '1' : '0.58';
+      }
+    }
+
+    class InputManager {
+      constructor(touchControls) {
+        this.touch = touchControls;
+        this.keys = new Set();
+        this.gamepadConnected = [false, false];
+
+        window.addEventListener('keydown', (e) => {
+          sfx.unlock();
+          this.keys.add(e.code);
+          if (e.code === 'F1') { e.preventDefault(); toggleDebugBoxes(); }
+          if (e.code === 'F2') { e.preventDefault(); toggleDebugFrames(); }
+          if (e.code === 'KeyR') { resetRoundState(matchState, true); }
+        });
+        window.addEventListener('keyup', (e) => this.keys.delete(e.code));
+      }
+
+      readGamepad(index) {
+        const res = { connected: false, up: false, down: false, left: false, right: false, p: false, k: false, t: false, s: false, dash: false, start: false };
+        try {
+          const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+          const activePads = Array.from(pads).filter(p => p && p.connected);
+          const pad = activePads[index];
+          if (!pad) return res;
+
+          res.connected = true;
+          const dz = 0.35;
+          const ax = pad.axes[0] || 0;
+          const ay = pad.axes[1] || 0;
+          const b = (i) => !!(pad.buttons[i] && pad.buttons[i].pressed);
+
+          res.left = ax < -dz || b(14);
+          res.right = ax > dz || b(15);
+          res.up = ay < -dz || b(12);
+          res.down = ay > dz || b(13);
+
+          // Mapeo estándar Xbox / PS / Fightstick:
+          // X/Cuadrado (2)=P, A/Cruz (0)=K, B/Círculo (1)=T, Y/Triángulo (3)=Super, RB/R1 (5) o LB/L1 (4)=Dash
+          res.p = b(2);
+          res.k = b(0);
+          res.t = b(1);
+          res.s = b(3);
+          res.dash = b(5) || b(4);
+          res.start = b(9);
+        } catch (e) {}
+        return res;
+      }
+
+      poll(mode) {
+        const gp0 = this.readGamepad(0);
+        const gp1 = this.readGamepad(1);
+        this.gamepadConnected = [gp0.connected, gp1.connected];
+
+        if (gp0.start || gp1.start) {
+          sfx.unlock();
+          resetRoundState(matchState, true);
+        }
+
+        const tc = this.touch && this.touch.enabled ? this.touch.state : {};
+
+        // P1: WASD + J=P, K=K, L=T, U=Super, Shift=Dash (+ Gamepad 1 + Touch)
+        const p1 = {
+          up: this.keys.has('KeyW') || gp0.up || !!tc.up,
+          down: this.keys.has('KeyS') || gp0.down || !!tc.down,
+          left: this.keys.has('KeyA') || gp0.left || !!tc.left,
+          right: this.keys.has('KeyD') || gp0.right || !!tc.right,
+          p: this.keys.has('KeyJ') || gp0.p || !!tc.p,
+          k: this.keys.has('KeyK') || gp0.k || !!tc.k,
+          t: this.keys.has('KeyL') || gp0.t || !!tc.t,
+          s: this.keys.has('KeyU') || gp0.s || !!tc.s,
+          dash: this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') || gp0.dash || !!tc.dash
+        };
+
+        let p2;
+        if (mode === '2P') {
+          // P2: Flechas + Num1=P, Num2=K, Num3=T, Num4=Super, Num0=Dash (+ Gamepad 2)
+          p2 = {
+            up: this.keys.has('ArrowUp') || gp1.up,
+            down: this.keys.has('ArrowDown') || gp1.down,
+            left: this.keys.has('ArrowLeft') || gp1.left,
+            right: this.keys.has('ArrowRight') || gp1.right,
+            p: this.keys.has('Numpad1') || gp1.p,
+            k: this.keys.has('Numpad2') || gp1.k,
+            t: this.keys.has('Numpad3') || gp1.t,
+            s: this.keys.has('Numpad4') || gp1.s,
+            dash: this.keys.has('Numpad0') || gp1.dash
+          };
+        } else {
+          p2 = aiController.getInput(matchState);
+        }
+
+        return [p1, p2];
+      }
+    }
+
+    // =========================================================================
+    // 6. CAPA VISUAL 3D (THREE.JS) — LUCHADORES ARTICULADOS, ARENA Y PARTÍCULAS
+    // =========================================================================
+    class FighterRig3D {
+      constructor(primaryHex, accentHex) {
+        this.root = new THREE.Group();
+        const matBody = new THREE.MeshStandardMaterial({ color: primaryHex, roughness: 0.35, metalness: 0.4 });
+        const matDark = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.5, metalness: 0.6 });
+        const matGlow = new THREE.MeshStandardMaterial({ color: accentHex, emissive: accentHex, emissiveIntensity: 1.4 });
+
+        this.hips = new THREE.Group();
+        this.hips.position.y = 0.95;
+        this.root.add(this.hips);
+
+        // Torso
+        this.torso = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.62, 0.34), matBody);
+        this.torso.position.y = 0.32;
+        this.torso.castShadow = true;
+        this.hips.add(this.torso);
+
+        // Cinturón luminoso
+        const belt = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.1, 0.36), matGlow);
+        belt.position.y = 0.04;
+        this.hips.add(belt);
+
+        // Cabeza + Visor Cyber
+        this.head = new THREE.Group();
+        this.head.position.set(0, 0.78, 0);
+        const skull = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.34, 0.32), matDark);
+        const visor = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.1, 0.35), matGlow);
+        visor.position.set(0.06, 0.03, 0);
+        this.head.add(skull, visor);
+        this.hips.add(this.head);
+
+        // Brazos (pivote en hombros)
+        this.armF = this.createLimb(0.16, 0.56, 0.16, matBody, matGlow);
+        this.armF.position.set(0.05, 0.56, 0.28);
+        this.hips.add(this.armF);
+
+        this.armB = this.createLimb(0.16, 0.56, 0.16, matDark, matGlow);
+        this.armB.position.set(-0.05, 0.56, -0.28);
+        this.hips.add(this.armB);
+
+        // Piernas (pivote en cadera)
+        this.legF = this.createLimb(0.19, 0.78, 0.19, matDark, matBody);
+        this.legF.position.set(0.06, -0.02, 0.14);
+        this.hips.add(this.legF);
+
+        this.legB = this.createLimb(0.19, 0.78, 0.19, matDark, matBody);
+        this.legB.position.set(-0.06, -0.02, -0.14);
+        this.hips.add(this.legB);
+        // Aura energética (para Super / i-frames / Backdash)
+        this.accentHex = accentHex;
+        this.aura = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.65, 0.85, 2.1, 16, 1, true),
+          new THREE.MeshBasicMaterial({ color: accentHex, transparent: true, opacity: 0.0, side: THREE.DoubleSide })
+        );
+        this.aura.position.y = 1.05;
+        this.root.add(this.aura);
+      }
+
+      createLimb(w, h, d, matMain, matTip) {
+        const pivot = new THREE.Group();
+        const seg = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), matMain);
+        seg.position.y = -h * 0.45;
+        seg.castShadow = true;
+        const tip = new THREE.Mesh(new THREE.BoxGeometry(w * 1.15, h * 0.26, d * 1.15), matTip);
+        tip.position.y = -h * 0.85;
+        pivot.add(seg, tip);
+        return pivot;
+      }
+
+      sync(f, globalFrame) {
+        // Plano estrictamente 2D (Z = 0)
+        this.root.position.set(f.x, f.y, 0);
+        this.root.rotation.y = f.facing === 1 ? 0 : Math.PI;
+
+        // Reset poses base
+        this.hips.position.set(0, 0.92, 0);
+        this.hips.rotation.set(0, 0, 0);
+        this.torso.rotation.set(0, 0, 0);
+        this.armF.rotation.set(0, 0, 0.55);
+        this.armB.rotation.set(0, 0, 0.85);
+        this.legF.rotation.set(0, 0, 0.22);
+        this.legB.rotation.set(0, 0, -0.22);
+
+        const t = f.stateFrame;
+        const breath = Math.sin(globalFrame * 0.12) * 0.035;
+
+        if (f.state === 'IDLE') {
+          this.hips.position.y = 0.92 + breath;
+          this.armF.rotation.z = 0.75 + breath * 2;
+          this.armB.rotation.z = 1.05 - breath * 2;
+        } else if (f.state === 'WALK_F' || f.state === 'WALK_B') {
+          const s = Math.sin(globalFrame * 0.35);
+          this.legF.rotation.z = s * 0.55;
+          this.legB.rotation.z = -s * 0.55;
+          this.armF.rotation.z = 0.7 - s * 0.35;
+          this.armB.rotation.z = 0.7 + s * 0.35;
+        } else if (f.state === 'CROUCH') {
+          this.hips.position.y = 0.56;
+          this.torso.rotation.z = -0.22;
+          this.legF.rotation.z = 0.85;
+          this.legB.rotation.z = -0.75;
+        } else if (f.state === 'JUMP') {
+          this.hips.position.y = 1.0;
+          this.legF.rotation.z = 0.65;
+          this.legB.rotation.z = -0.45;
+          this.armF.rotation.z = 1.25;
+        } else if (f.state === 'BLOCK_STAND') {
+          this.torso.rotation.z = 0.16;
+          this.armF.rotation.z = 1.7;
+          this.armB.rotation.z = 1.5;
+        } else if (f.state === 'BLOCK_CROUCH') {
+          this.hips.position.y = 0.56;
+          this.torso.rotation.z = 0.12;
+          this.armF.rotation.z = 1.75;
+          this.armB.rotation.z = 1.55;
+          this.legF.rotation.z = 0.85;
+        } else if (f.state === 'HITSTUN' || f.state === 'THROWN') {
+          this.torso.rotation.z = 0.42;
+          this.hips.position.x = -0.12;
+          this.armF.rotation.z = -0.5;
+          this.armB.rotation.z = -0.7;
+        } else if (f.state === 'KNOCKDOWN') {
+          this.hips.position.y = 0.25;
+          this.hips.rotation.z = Math.PI * 0.48;
+          this.armF.rotation.z = -0.4;
+        } else if (f.state === 'WAKEUP') {
+          const p = Math.min(1, t / 14);
+          this.hips.position.y = 0.25 + p * 0.67;
+          this.hips.rotation.z = (1 - p) * Math.PI * 0.45;
+        } else if (f.state === 'DASH_F') {
+          this.hips.position.y = 0.82;
+          this.torso.rotation.z = -0.45;
+          this.armF.rotation.z = -0.35;
+          this.armB.rotation.z = -0.65;
+          this.legF.rotation.z = 0.72;
+          this.legB.rotation.z = -0.78;
+        } else if (f.state === 'DASH_B') {
+          this.hips.position.y = 0.96 + Math.sin((t / 16) * Math.PI) * 0.22;
+          this.torso.rotation.z = 0.38;
+          this.armF.rotation.z = 1.15;
+          this.armB.rotation.z = 0.85;
+          this.legF.rotation.z = -0.55;
+          this.legB.rotation.z = 0.55;
+        } else if (f.state === 'VICTORY') {
+          this.armF.rotation.z = 2.8;
+          this.armB.rotation.z = 2.6;
+        } else if (f.state === 'DEFEAT') {
+          this.hips.position.y = 0.25;
+          this.hips.rotation.z = Math.PI * 0.5;
+        } else if (f.state === 'ATTACK' && f.move) {
+          const id = f.move.id;
+          const active = t > f.move.startup && t <= f.move.startup + f.move.active;
+          if (id === '5P') {
+            this.torso.rotation.z = -0.18;
+            this.armF.rotation.z = active ? 1.58 : 0.6;
+          } else if (id === '2P') {
+            this.hips.position.y = 0.56;
+            this.torso.rotation.z = -0.24;
+            this.armF.rotation.z = active ? 1.58 : 0.55;
+            this.legF.rotation.z = 0.85;
+            this.legB.rotation.z = -0.75;
+          } else if (id === 'jP') {
+            this.torso.rotation.z = -0.28;
+            this.armF.rotation.z = active ? 1.32 : 0.65;
+            this.legF.rotation.z = 0.6;
+          } else if (id === '5K') {
+            this.torso.rotation.z = active ? 0.28 : 0.1;
+            this.legF.rotation.z = active ? 1.62 : 0.65;
+            this.legB.rotation.z = -0.18;
+            this.armF.rotation.z = -0.35;
+          } else if (id === '2K') {
+            this.hips.position.y = 0.44;
+            this.torso.rotation.z = active ? 0.35 : -0.15;
+            this.legF.rotation.z = active ? 1.68 : 0.7;
+            this.legB.rotation.z = -0.85;
+            this.armB.rotation.z = -0.5;
+          } else if (id === 'jK') {
+            this.torso.rotation.z = 0.25;
+            this.legF.rotation.z = active ? 1.48 : 0.6;
+            this.legB.rotation.z = -0.55;
+            this.armF.rotation.z = -0.25;
+          } else if (id === '236K') {
+            // Patada giratoria tipo Tatsumaki (rotación rápida en Y con pierna extendida)
+            this.hips.position.y = 1.05;
+            this.hips.rotation.y = t * 0.72;
+            this.legF.rotation.z = 1.58;
+            this.legB.rotation.z = -0.35;
+            this.armF.rotation.z = 1.1;
+            this.armB.rotation.z = -1.1;
+          } else if (id === '236P') {
+            this.torso.rotation.z = -0.28;
+            this.armF.rotation.z = active ? 1.55 : 0.2;
+            this.armB.rotation.z = active ? 1.55 : 0.2;
+          } else if (id === '623P') {
+            this.torso.rotation.z = -0.12;
+            this.armF.rotation.z = 2.95;
+            this.legF.rotation.z = 0.9;
+          } else if (id === 'THROW') {
+            this.armF.rotation.z = 1.55;
+            this.armB.rotation.z = 1.45;
+          } else if (id === 'SUPER') {
+            this.torso.rotation.z = -0.35;
+            this.armF.rotation.z = 1.6 + Math.sin(t * 1.4) * 0.45;
+            this.armB.rotation.z = 1.6 - Math.sin(t * 1.4) * 0.45;
+          }
+        }
+
+        // Aura visual: destello blanco/azul en Backdash i-frames, o aura de personaje en Super/i-frames
+        const isBackdashInvuln = f.state === 'DASH_B' && f.invulnFrames > 0;
+        const showAura = f.invulnFrames > 0 || (f.move && f.move.isSuper) || f.state === 'DASH_F';
+        if (isBackdashInvuln) {
+          this.aura.material.color.setHex(0xe0f2fe);
+          this.aura.material.opacity = 0.58;
+        } else if (f.state === 'DASH_F') {
+          this.aura.material.color.setHex(this.accentHex);
+          this.aura.material.opacity = 0.22;
+        } else {
+          this.aura.material.color.setHex(this.accentHex);
+          this.aura.material.opacity = showAura ? 0.38 : 0.0;
+        }
+        if (showAura) this.aura.rotation.y += 0.18;
+      }
+    }
+
+    class SceneView3D {
+      constructor(container) {
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x070a14);
+        this.scene.fog = new THREE.FogExp2(0x070a14, 0.032);
+
+        // Cámara 2.5D con FOV bajo (32°)
+        this.camera = new THREE.PerspectiveCamera(32, window.innerWidth / window.innerHeight, 0.1, 100);
+        this.camera.position.set(0, 2.25, 13.5);
+
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.enabled = true;
+        container.appendChild(this.renderer.domElement);
+
+        this.setupLights();
+        this.setupArena();
+
+        this.rigs = [
+          new FighterRig3D(0x0284c7, 0x38bdf8), // P1: RYUJIN (Cyan)
+          new FighterRig3D(0xbe123c, 0xfb7185)  // P2: KAZE (Crimson)
+        ];
+        this.scene.add(this.rigs[0].root, this.rigs[1].root);
+
+        this.projGroup = new THREE.Group();
+        this.sparkGroup = new THREE.Group();
+        this.debugGroup = new THREE.Group();
+        this.scene.add(this.projGroup, this.sparkGroup, this.debugGroup);
+
+        this.sparks = [];
+        this.showDebugBoxes = true;
+
+        window.addEventListener('resize', () => {
+          this.camera.aspect = window.innerWidth / window.innerHeight;
+          this.camera.updateProjectionMatrix();
+          this.renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+      }
+
+      setupLights() {
+        this.ambientLight = new THREE.AmbientLight(0xcbd5e1, 0.65);
+        this.scene.add(this.ambientLight);
+
+        this.dirLight = new THREE.DirectionalLight(0xffffff, 1.15);
+        this.dirLight.position.set(4, 12, 8);
+        this.dirLight.castShadow = true;
+        this.scene.add(this.dirLight);
+
+        this.rimP1 = new THREE.PointLight(0x38bdf8, 1.8, 18);
+        this.rimP1.position.set(-6, 3.5, -2.5);
+        this.scene.add(this.rimP1);
+
+        this.rimP2 = new THREE.PointLight(0xf43f5e, 1.8, 18);
+        this.rimP2.position.set(6, 3.5, -2.5);
+        this.scene.add(this.rimP2);
+      }
+
+      setupArena() {
+        // Suelo principal del dojo cyber
+        const floor = new THREE.Mesh(
+          new THREE.PlaneGeometry(24, 9),
+          new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.45, metalness: 0.35 })
+        );
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        this.scene.add(floor);
+
+        // Rejilla neón sobre el tatami
+        const grid = new THREE.GridHelper(20, 20, 0x0ea5e9, 0x1e293b);
+        grid.position.y = 0.01;
+        this.scene.add(grid);
+
+        // Línea central del plano 2D (Z=0)
+        const centerLine = new THREE.Mesh(
+          new THREE.PlaneGeometry(STAGE_HALF_WIDTH * 2, 0.08),
+          new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.45 })
+        );
+        centerLine.rotation.x = -Math.PI / 2;
+        centerLine.position.y = 0.015;
+        this.scene.add(centerLine);
+
+        // Pilares de esquina (Corner Walls visuales)
+        const pillarGeo = new THREE.BoxGeometry(0.45, 4.8, 0.45);
+        const pillarMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.3 });
+        const neonStripGeo = new THREE.BoxGeometry(0.12, 4.6, 0.48);
+
+        [-STAGE_HALF_WIDTH - 0.65, STAGE_HALF_WIDTH + 0.65].forEach((px, idx) => {
+          const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+          pillar.position.set(px, 2.4, -0.9);
+          const strip = new THREE.Mesh(
+            neonStripGeo,
+            new THREE.MeshBasicMaterial({ color: idx === 0 ? 0x38bdf8 : 0xf43f5e })
+          );
+          strip.position.set(px, 2.4, -0.9);
+          this.scene.add(pillar, strip);
+        });
+
+        // Arco Torii Cyber de fondo
+        const toriiMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.5, roughness: 0.4 });
+        const topBeam = new THREE.Mesh(new THREE.BoxGeometry(10.5, 0.45, 0.5), toriiMat);
+        topBeam.position.set(0, 5.2, -4.5);
+        const subBeam = new THREE.Mesh(new THREE.BoxGeometry(8.5, 0.25, 0.4), new THREE.MeshBasicMaterial({ color: 0x0284c7 }));
+        subBeam.position.set(0, 4.4, -4.5);
+        const colL = new THREE.Mesh(new THREE.BoxGeometry(0.45, 5.4, 0.45), toriiMat);
+        colL.position.set(-3.8, 2.7, -4.5);
+        const colR = colL.clone();
+        colR.position.x = 3.8;
+        this.scene.add(topBeam, subBeam, colL, colR);
+      }
+
+      spawnSparks(x, y, kind) {
+        const colors = {
+          HIT: [0xff4d00, 0xfacc15, 0xef4444],
+          BLOCK: [0x38bdf8, 0xe0f2fe, 0x7dd3fc],
+          GOLD: [0xfacc15, 0xfef08a, 0xf59e0b],
+          DASH: [0x38bdf8, 0x818cf8, 0xc084fc],
+          BACKDASH: [0xffffff, 0xbae6fd, 0x38bdf8]
+        }[kind] || [0xffffff];
+
+        const count = kind === 'GOLD' ? 18 : (kind === 'DASH' || kind === 'BACKDASH' ? 7 : 11);
+        for (let i = 0; i < count; i++) {
+          const col = colors[i % colors.length];
+          const mesh = new THREE.Mesh(
+            new THREE.BoxGeometry(0.12, 0.12, 0.12),
+            new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 1 })
+          );
+          mesh.position.set(x, y, 0.25);
+          const angle = Math.random() * Math.PI * 2;
+          const speed = (kind === 'DASH' || kind === 'BACKDASH') ? (0.04 + Math.random() * 0.09) : (0.06 + Math.random() * 0.18);
+          this.sparkGroup.add(mesh);
+          this.sparks.push({
+            mesh,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            vz: (Math.random() - 0.5) * 0.08,
+            life: 14 + Math.floor(Math.random() * 10),
+            maxLife: 24
+          });
+        }
+      }
+
+      updateSparks() {
+        for (let i = this.sparks.length - 1; i >= 0; i--) {
+          const s = this.sparks[i];
+          s.mesh.position.x += s.vx;
+          s.mesh.position.y += s.vy;
+          s.mesh.position.z += s.vz;
+          s.mesh.rotation.x += 0.25;
+          s.mesh.rotation.y += 0.25;
+          s.life--;
+          s.mesh.material.opacity = Math.max(0, s.life / s.maxLife);
+          if (s.life <= 0) {
+            this.sparkGroup.remove(s.mesh);
+            s.mesh.geometry.dispose();
+            s.mesh.material.dispose();
+            this.sparks.splice(i, 1);
+          }
+        }
+      }
+
+      render(state) {
+        const [p1, p2] = state.fighters;
+
+        // 1. Sincronizar modelos 3D articulados
+        this.rigs[0].sync(p1, state.frame);
+        this.rigs[1].sync(p2, state.frame);
+
+        // 2. Proyectiles 3D
+        while (this.projGroup.children.length > 0) {
+          const c = this.projGroup.children.pop();
+          c.geometry.dispose();
+          c.material.dispose();
+        }
+        for (const p of state.projectiles) {
+          const col = p.owner === 0 ? 0x38bdf8 : 0xfb7185;
+          const orb = new THREE.Mesh(
+            new THREE.SphereGeometry(0.32, 14, 14),
+            new THREE.MeshBasicMaterial({ color: col })
+          );
+          orb.position.set(p.x, p.y, 0);
+          orb.scale.set(1.25, 0.9, 0.9);
+          this.projGroup.add(orb);
+        }
+
+        // 3. Partículas 3D
+        this.updateSparks();
+
+        // 4. Cámara 2.5D dinámica + Super Flash + Screen Shake
+        let targetX = (p1.x + p2.x) * 0.5;
+        let targetY = 2.15 + Math.max(p1.y, p2.y) * 0.25;
+        const dist = Math.abs(p1.x - p2.x);
+        let targetZ = clamp(8.8 + dist * 0.95, 10.2, 16.5);
+
+        if (state.superFlashFrames > 0 && state.superFlashOwner !== -1) {
+          const owner = state.fighters[state.superFlashOwner];
+          targetX = owner.x;
+          targetY = owner.y + 1.5;
+          targetZ = 6.2;
+          this.ambientLight.intensity = 0.16;
+          this.dirLight.intensity = 0.25;
+        } else {
+          this.ambientLight.intensity = 0.65;
+          this.dirLight.intensity = 1.15;
+        }
+
+        this.camera.position.x += (targetX - this.camera.position.x) * 0.14;
+        this.camera.position.y += (targetY - this.camera.position.y) * 0.14;
+        this.camera.position.z += (targetZ - this.camera.position.z) * 0.14;
+
+        const shakeX = state.screenShake > 0 ? (Math.random() - 0.5) * state.screenShake : 0;
+        const shakeY = state.screenShake > 0 ? (Math.random() - 0.5) * state.screenShake : 0;
+
+        this.camera.lookAt(this.camera.position.x + shakeX, 1.35 + shakeY, 0);
+
+        // 5. Debug Overlay 2D (Cajas sobre la escena 3D)
+        this.updateDebugBoxes(state);
+
+        this.renderer.render(this.scene, this.camera);
+      }
+
+      updateDebugBoxes(state) {
+        while (this.debugGroup.children.length > 0) {
+          const c = this.debugGroup.children.pop();
+          c.geometry.dispose();
+          c.material.dispose();
+        }
+        if (!this.showDebugBoxes) return;
+
+        for (const f of state.fighters) {
+          this.addBox(f.pushbox, 0xfacc15, 0.50); // Amarillo: Pushbox
+          if (f.hurtbox) this.addBox(f.hurtbox, 0x22c55e, 0.54); // Verde: Hurtbox
+          if (f.hitbox) this.addBox(f.hitbox, 0xef4444, 0.58);   // Rojo: Hitbox
+        }
+        for (const p of state.projectiles) {
+          this.addBox({ x: p.x, y: p.y, w: p.w, h: p.h }, 0xf97316, 0.60); // Naranja: Proyectil
+        }
+      }
+
+      addBox(box, color, z) {
+        const edges = new THREE.EdgesGeometry(new THREE.PlaneGeometry(box.w, box.h));
+        const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color }));
+        line.position.set(box.x, box.y, z);
+        this.debugGroup.add(line);
+      }
+    }
+
+    // =========================================================================
+    // 7. ACTUALIZACIÓN DEL HUD, FRAME METER Y EVENTOS DE INTERFAZ
+    // =========================================================================
+    const el = {
+      p1HpFill: document.getElementById('p1-hp-fill'),
+      p1HpDel: document.getElementById('p1-hp-delayed'),
+      p1HpText: document.getElementById('p1-hp-text'),
+      p2HpFill: document.getElementById('p2-hp-fill'),
+      p2HpDel: document.getElementById('p2-hp-delayed'),
+      p2HpText: document.getElementById('p2-hp-text'),
+      p1SuperFill: document.getElementById('p1-super-fill'),
+      p1SuperPct: document.getElementById('p1-super-pct'),
+      p1SuperWrap: document.getElementById('p1-super-bar-wrap'),
+      p2SuperFill: document.getElementById('p2-super-fill'),
+      p2SuperPct: document.getElementById('p2-super-pct'),
+      p2SuperWrap: document.getElementById('p2-super-bar-wrap'),
+      timer: document.getElementById('timer-display'),
+      roundLabel: document.getElementById('round-label'),
+      p1R1: document.getElementById('p1-round-1'),
+      p1R2: document.getElementById('p1-round-2'),
+      p2R1: document.getElementById('p2-round-1'),
+      p2R2: document.getElementById('p2-round-2'),
+      p1Badge: document.getElementById('p1-input-badge'),
+      p2Badge: document.getElementById('p2-input-badge'),
+      p1ComboBox: document.getElementById('p1-combo-box'),
+      p1ComboCount: document.getElementById('p1-combo-count'),
+      p1ComboScale: document.getElementById('p1-combo-scaling'),
+      p2ComboBox: document.getElementById('p2-combo-box'),
+      p2ComboCount: document.getElementById('p2-combo-count'),
+      p2ComboScale: document.getElementById('p2-combo-scaling'),
+      p1Callout: document.getElementById('p1-callout'),
+      p2Callout: document.getElementById('p2-callout'),
+      banner: document.getElementById('center-banner'),
+      framePanel: document.getElementById('frame-debug-panel'),
+      dbgP1State: document.getElementById('dbg-p1-state'),
+      dbgP1Frame: document.getElementById('dbg-p1-frame'),
+      dbgP1Adv: document.getElementById('dbg-p1-adv'),
+      dbgP1Buf: document.getElementById('dbg-p1-buffer'),
+      dbgP2State: document.getElementById('dbg-p2-state'),
+      dbgP2Frame: document.getElementById('dbg-p2-frame'),
+      fmP1: document.getElementById('frame-meter-p1'),
+      fmP2: document.getElementById('frame-meter-p2')
+    };
+
+    // Inicializar las 60 celdas del Frame Meter
+    const fmCells = [[], []];
+    for (let p = 0; p < 2; p++) {
+      const container = p === 0 ? el.fmP1 : el.fmP2;
+      for (let i = 0; i < 60; i++) {
+        const d = document.createElement('div');
+        d.className = 'fm-cell bg-slate-800';
+        container.appendChild(d);
+        fmCells[p].push(d);
+      }
+    }
+
+    const FM_COLORS = {
+      N: '#1e293b', // Neutral
+      S: '#38bdf8', // Startup (Cian)
+      A: '#ef4444', // Active (Rojo)
+      R: '#2563eb', // Recovery (Azul)
+      H: '#facc15', // Hitstun (Amarillo)
+      B: '#a855f7', // Blockstun (Morado)
+      I: '#f8fafc', // Invulnerable (Blanco)
+      D: '#6366f1'  // Dash (Índigo)
+    };
+
+    function showCenterBanner(text, color = '#facc15') {
+      el.banner.textContent = text;
+      el.banner.style.color = color;
+      el.banner.classList.remove('hidden', 'animate-banner');
+      void el.banner.offsetWidth;
+      el.banner.classList.add('animate-banner');
+    }
+
+    function showCallout(side, text, color) {
+      const target = side === 0 ? el.p1Callout : el.p2Callout;
+      target.textContent = text;
+      target.style.color = color;
+      target.classList.remove('animate-callout');
+      void target.offsetWidth;
+      target.classList.add('animate-callout');
+    }
+
+    function processEvents(state, view) {
+      for (const ev of state.events) {
+        if (ev.type === 'SPARK') {
+          view.spawnSparks(ev.x, ev.y, ev.kind);
+        } else if (ev.type === 'SFX') {
+          if (typeof sfx[ev.name] === 'function') sfx[ev.name]();
+        } else if (ev.type === 'BANNER') {
+          showCenterBanner(ev.text, ev.color);
+        } else if (ev.type === 'CALLOUT') {
+          showCallout(ev.side, ev.text, ev.color);
+        } else if (ev.type === 'SUPER_FLASH') {
+          sfx.superFlash();
+          view.spawnSparks(ev.x, ev.y, 'GOLD');
+          showCenterBanner('¡SUPER ART!', '#facc15');
+          showCallout(ev.owner, 'CYBER OVERDRIVE!', '#facc15');
+        }
+      }
+    }
+
+    function updateHUD(state, inputMgr) {
+      const [p1, p2] = state.fighters;
+
+      // Vida
+      el.p1HpFill.style.width = `${(p1.hp / MAX_HP) * 100}%`;
+      el.p1HpDel.style.width = `${(p1.delayedHp / MAX_HP) * 100}%`;
+      el.p1HpText.textContent = Math.ceil(p1.hp);
+
+      el.p2HpFill.style.width = `${(p2.hp / MAX_HP) * 100}%`;
+      el.p2HpDel.style.width = `${(p2.delayedHp / MAX_HP) * 100}%`;
+      el.p2HpText.textContent = Math.ceil(p2.hp);
+
+      // Barras Super
+      const s1 = Math.floor(p1.superMeter);
+      const s2 = Math.floor(p2.superMeter);
+      el.p1SuperFill.style.width = `${s1}%`;
+      el.p1SuperPct.textContent = s1 >= 100 ? '¡MAX!' : `${s1}%`;
+      el.p1SuperWrap.classList.toggle('super-ready', s1 >= 100);
+      if (touchControls) touchControls.syncSuperGlow(p1.superMeter);
+
+      el.p2SuperFill.style.width = `${s2}%`;
+      el.p2SuperPct.textContent = s2 >= 100 ? '¡MAX!' : `${s2}%`;
+      el.p2SuperWrap.classList.toggle('super-ready', s2 >= 100);
+
+      // Reloj y Ronda
+      el.timer.textContent = state.mode === 'TRAINING' ? '∞' : String(Math.ceil(state.timerFrames / 60)).padStart(2, '0');
+      el.roundLabel.textContent = state.mode === 'TRAINING' ? 'ENTRENAMIENTO' : `ROUND ${state.round}`;
+
+      // Rondas ganadas
+      el.p1R1.style.backgroundColor = p1.roundsWon >= 1 ? '#38bdf8' : 'rgba(15,23,42,0.8)';
+      el.p1R2.style.backgroundColor = p1.roundsWon >= 2 ? '#38bdf8' : 'rgba(15,23,42,0.8)';
+      el.p2R1.style.backgroundColor = p2.roundsWon >= 1 ? '#fb7185' : 'rgba(15,23,42,0.8)';
+      el.p2R2.style.backgroundColor = p2.roundsWon >= 2 ? '#fb7185' : 'rgba(15,23,42,0.8)';
+
+      // Badges de Mando / Teclado / Touch / IA
+      el.p1Badge.textContent = inputMgr.gamepadConnected[0]
+        ? '[Mando 1]'
+        : (touchControls && touchControls.enabled ? '[Touch+Teclado]' : '[Teclado]');
+      el.p1Badge.className = inputMgr.gamepadConnected[0]
+        ? 'text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md bg-emerald-950/90 border border-emerald-500 text-emerald-300 font-mono-code'
+        : 'text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md bg-slate-800/90 border border-slate-600 text-slate-300 font-mono-code';
+
+      if (state.mode === '2P') {
+        el.p2Badge.textContent = inputMgr.gamepadConnected[1] ? '[Mando 2]' : '[Teclado]';
+        el.p2Badge.className = inputMgr.gamepadConnected[1]
+          ? 'text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md bg-emerald-950/90 border border-emerald-500 text-emerald-300 font-mono-code'
+          : 'text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md bg-slate-800/90 border border-slate-600 text-slate-300 font-mono-code';
+      } else {
+        el.p2Badge.textContent = state.mode === 'TRAINING' ? '[Dummy]' : '[IA]';
+        el.p2Badge.className = 'text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md bg-slate-800/90 border border-slate-600 text-amber-300 font-mono-code';
+      }
+
+      // Contadores de Combo (p2.comboCount = combo que está haciendo P1)
+      if (p2.comboCount >= 2) {
+        el.p1ComboBox.classList.remove('hidden');
+        el.p1ComboCount.textContent = p2.comboCount;
+        const sc = COMBO_SCALING[Math.min(p2.comboCount - 1, COMBO_SCALING.length - 1)];
+        el.p1ComboScale.textContent = `${Math.round(sc * 100)}% daño`;
+      } else {
+        el.p1ComboBox.classList.add('hidden');
+      }
+
+      if (p1.comboCount >= 2) {
+        el.p2ComboBox.classList.remove('hidden');
+        el.p2ComboCount.textContent = p1.comboCount;
+        const sc = COMBO_SCALING[Math.min(p1.comboCount - 1, COMBO_SCALING.length - 1)];
+        el.p2ComboScale.textContent = `${Math.round(sc * 100)}% daño`;
+      } else {
+        el.p2ComboBox.classList.add('hidden');
+      }
+
+      // Panel de Frame Data y Frame Meter
+      if (!el.framePanel.classList.contains('hidden')) {
+        el.dbgP1State.textContent = p1.move ? `${p1.state} (${p1.move.id})` : p1.state;
+        el.dbgP1Frame.textContent = `F:${p1.stateFrame}`;
+        el.dbgP1Adv.textContent = `Adv: ${p1.lastAdvantage >= 0 ? '+' : ''}${p1.lastAdvantage}`;
+        el.dbgP1Adv.className = p1.lastAdvantage >= 0
+          ? 'px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300'
+          : 'px-1.5 py-0.5 rounded bg-rose-950 text-rose-300';
+        el.dbgP1Buf.textContent = buffers[0].getDisplayString(10);
+
+        el.dbgP2State.textContent = p2.move ? `${p2.state} (${p2.move.id})` : p2.state;
+        el.dbgP2Frame.textContent = `F:${p2.stateFrame}`;
+
+        for (let p = 0; p < 2; p++) {
+          const fm = state.fighters[p].frameMeter;
+          for (let i = 0; i < 60; i++) {
+            fmCells[p][i].style.backgroundColor = FM_COLORS[fm[i]] || FM_COLORS.N;
+          }
+        }
+      }
+    }
+
+    // =========================================================================
+    // 8. INICIALIZACIÓN Y BUCLE FIJO A 60 FPS (FIXED TIMESTEP ACCUMULATOR)
+    // =========================================================================
+    let matchState = createMatchState('AI');
+    let sceneView = null;
+    let touchControls = null;
+    let inputManager = null;
+
+    function setGameMode(mode) {
+      matchState.mode = mode;
+      aiController.reset();
+      buffers[0].reset();
+      buffers[1].reset();
+      resetRoundState(matchState, true);
+
+      document.getElementById('btn-mode-ai').classList.toggle('active', mode === 'AI');
+      document.getElementById('btn-mode-2p').classList.toggle('active', mode === '2P');
+      document.getElementById('btn-mode-train').classList.toggle('active', mode === 'TRAINING');
+      document.getElementById('training-controls').classList.toggle('hidden', mode !== 'TRAINING');
+    }
+
+    function toggleDebugBoxes() {
+      if (!sceneView) return;
+      sceneView.showDebugBoxes = !sceneView.showDebugBoxes;
+      document.getElementById('btn-debug-boxes').classList.toggle('active', sceneView.showDebugBoxes);
+    }
+
+    function toggleDebugFrames() {
+      const hidden = el.framePanel.classList.toggle('hidden');
+      document.getElementById('btn-debug-frames').classList.toggle('active', !hidden);
+    }
+
+    // Eventos de botones de la barra superior
+    document.getElementById('btn-touch-toggle').addEventListener('click', () => {
+      sfx.unlock();
+      if (touchControls) touchControls.toggle();
+    });
+    document.getElementById('btn-mode-ai').addEventListener('click', () => { sfx.unlock(); setGameMode('AI'); });
+    document.getElementById('btn-mode-2p').addEventListener('click', () => { sfx.unlock(); setGameMode('2P'); });
+    document.getElementById('btn-mode-train').addEventListener('click', () => { sfx.unlock(); setGameMode('TRAINING'); });
+    document.getElementById('select-dummy').addEventListener('change', (e) => { matchState.dummyMode = e.target.value; });
+    document.getElementById('btn-debug-boxes').addEventListener('click', toggleDebugBoxes);
+    document.getElementById('btn-debug-frames').addEventListener('click', toggleDebugFrames);
+    document.getElementById('btn-reset').addEventListener('click', () => { sfx.unlock(); resetRoundState(matchState, true); });
+
+    document.getElementById('btn-mute').addEventListener('click', (e) => {
+      sfx.unlock();
+      const muted = sfx.toggleMute();
+      e.target.textContent = muted ? '🔇 Silencio' : '🔊 Audio';
+    });
+
+    document.getElementById('btn-controls').addEventListener('click', () => {
+      document.getElementById('controls-modal').classList.remove('hidden');
+    });
+    document.getElementById('btn-close-controls').addEventListener('click', () => {
+      document.getElementById('controls-modal').classList.add('hidden');
+    });
+
+    // Arrancar bucle principal tras cargar la ventana
+    window.onload = function () {
+      sceneView = new SceneView3D(document.getElementById('canvas-container'));
+      touchControls = new TouchControls();
+      inputManager = new InputManager(touchControls);
+      resetRoundState(matchState, true);
+
+      let lastTime = performance.now() / 1000;
+      let accumulator = 0;
+      const MAX_STEPS = 4;
+
+      function gameLoop(nowMs) {
+        requestAnimationFrame(gameLoop);
+
+        const now = nowMs / 1000;
+        accumulator += Math.min(now - lastTime, 0.1);
+        lastTime = now;
+
+        let steps = 0;
+        while (accumulator >= FIXED_DT && steps < MAX_STEPS) {
+          const inputs = inputManager.poll(matchState.mode);
+          stepSimulation(matchState, inputs);
+          processEvents(matchState, sceneView);
+          accumulator -= FIXED_DT;
+          steps++;
+        }
+
+        sceneView.render(matchState);
+        updateHUD(matchState, inputManager);
+      }
+
+      requestAnimationFrame(gameLoop);
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CYBER DOJO 2.5D — Motor de Lucha Determinista 60 FPS</title>
+    <meta name="description" content="Juego de lucha 2.5D con simulación determinista 2D a 60 FPS fijos, Three.js y soporte para mandos." />
+    <meta property="og:title" content="CYBER DOJO 2.5D — Motor de Lucha Determinista 60 FPS" />
+    <meta property="og:description" content="Juego de lucha 2.5D con simulación determinista 2D a 60 FPS fijos, Three.js y soporte para mandos." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,600;0,700;1,700&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <!-- Escena Three.js 2.5D -->
+    <div id="canvas-container"></div>
+
+    <!-- Capa HUD Principal -->
+    <div id="ui-layer" class="fixed inset-0 pointer-events-none flex flex-col justify-between z-10 p-2 sm:p-3">
+      <!-- BARRA SUPERIOR DE MODOS Y UTILIDADES -->
+      <div class="pointer-events-auto flex flex-wrap items-center justify-between gap-2 bg-slate-950/85 border border-slate-700/60 rounded-xl px-3 py-1.5 shadow-xl">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="font-fight font-bold tracking-wider text-cyan-400 text-sm sm:text-base mr-1">CYBER DOJO 2.5D</span>
+          <div class="flex items-center gap-1" role="group" aria-label="Modo de juego">
+            <button id="btn-mode-ai" class="game-btn active text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer">VS IA</button>
+            <button id="btn-mode-2p" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer">2P Local</button>
+            <button id="btn-mode-train" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer">Entrenamiento</button>
+          </div>
+
+          <!-- Selector de Dummy y posición solo visible en Entrenamiento -->
+          <div id="training-controls" class="hidden flex items-center gap-1.5 flex-wrap ml-1 pl-2 border-l border-slate-700">
+            <span class="text-[11px] text-amber-300 font-semibold">Dummy:</span>
+            <select id="select-dummy" class="bg-slate-900 border border-slate-600 text-slate-100 text-xs rounded-lg px-2 py-1 outline-none cursor-pointer">
+              <option value="NEUTRAL">Neutral</option>
+              <option value="BLOCK_ALL">Bloquear Todo</option>
+              <option value="BLOCK_AFTER">Bloquear tras 1er golpe</option>
+              <option value="RANDOM_GUARD">Guardia Aleatoria</option>
+              <option value="WAKEUP_DP">Wake-up Reversal (623P)</option>
+              <option value="JUMP">Saltar (Antiaéreo)</option>
+            </select>
+            <div class="flex items-center gap-1 ml-1">
+              <button id="btn-pos-left" class="game-btn text-[11px] font-semibold px-2 py-1 rounded-md cursor-pointer" title="Posición Esquina Izquierda">◧ Izq</button>
+              <button id="btn-pos-center" class="game-btn text-[11px] font-semibold px-2 py-1 rounded-md cursor-pointer" title="Posición Centro">◫ Centro</button>
+              <button id="btn-pos-right" class="game-btn text-[11px] font-semibold px-2 py-1 rounded-md cursor-pointer" title="Posición Esquina Derecha">◨ Der</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <div id="topbar-actions" class="flex items-center gap-1.5 flex-wrap">
+            <button id="btn-swap-chars" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer text-cyan-300" title="Cambiar personaje de P1 (RYUJIN / KAZE)">⇄ P1: RYUJIN</button>
+            <button id="btn-touch-toggle" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Activar/Desactivar Controles Táctiles">📱 TOUCH</button>
+            <button id="btn-debug-boxes" class="game-btn active text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Mostrar/Ocultar Cajas 2D (F1)">Cajas (F1)</button>
+            <button id="btn-debug-frames" class="game-btn active text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Mostrar/Ocultar Frame Meter y Datos (F2)">Frames (F2)</button>
+            <button id="btn-mute" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Silenciar / Activar Audio">🔊 Audio</button>
+            <button id="btn-controls" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer">Controles</button>
+            <button id="btn-reset" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer text-amber-300" title="Reiniciar Combate (R)">↻ Reiniciar</button>
+          </div>
+          <button id="btn-toggle-topbar" class="game-btn text-xs font-semibold px-2 py-1.5 rounded-lg cursor-pointer text-slate-300" title="Contraer / Expandir utilidades">▴</button>
+        </div>
+      </div>
+
+      <!-- HUD DE COMBATE (VIDA, RELOJ, RONDAS, CALLOUTS) -->
+      <div class="w-full max-w-6xl mx-auto mt-1.5 px-1 sm:px-3">
+        <div class="grid grid-cols-[1fr_auto_1fr] items-start gap-2 sm:gap-4">
+          <!-- LADO P1 -->
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between text-xs sm:text-sm px-1">
+              <div class="flex items-center gap-2">
+                <span id="p1-char-name" class="font-fight font-bold text-cyan-300 tracking-wide text-sm sm:text-lg drop-shadow">RYUJIN</span>
+                <span id="p1-input-badge" class="text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md bg-slate-800/90 border border-slate-600 text-slate-300 font-mono-code">[Teclado]</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <div id="p1-round-1" class="w-3.5 h-3.5 rounded-full border-2 border-cyan-400 bg-slate-900/80 transition-all"></div>
+                <div id="p1-round-2" class="w-3.5 h-3.5 rounded-full border-2 border-cyan-400 bg-slate-900/80 transition-all"></div>
+              </div>
+            </div>
+
+            <div id="p1-hp-wrap" class="h-5 sm:h-7 bg-slate-950/90 border-2 border-cyan-400/80 rounded-md overflow-hidden relative skew-p1 shadow-lg">
+              <div id="p1-hp-delayed" class="absolute right-0 top-0 bottom-0 bg-gradient-to-l from-amber-400 to-red-500 transition-all duration-150" style="width: 100%;"></div>
+              <div id="p1-hp-fill" class="absolute right-0 top-0 bottom-0 bg-gradient-to-l from-cyan-400 via-sky-400 to-emerald-400" style="width: 100%;"></div>
+              <span id="p1-hp-text" class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] sm:text-xs font-mono-code font-bold text-slate-950 drop-shadow unskew-p1">1000</span>
+            </div>
+
+            <div class="flex flex-col items-start min-h-[54px] mt-1 pl-1">
+              <div id="p1-combo-box" class="hidden flex items-baseline gap-1.5 bg-slate-950/80 border-l-4 border-cyan-400 px-2.5 py-1 rounded-r-lg shadow-lg">
+                <span id="p1-combo-count" class="font-fight font-bold text-2xl sm:text-3xl text-cyan-300 italic leading-none">2</span>
+                <div class="flex flex-col leading-tight">
+                  <span class="font-fight font-bold text-[10px] sm:text-xs text-white tracking-wider">HITS</span>
+                  <span id="p1-combo-scaling" class="font-mono-code text-[10px] text-amber-300">85%</span>
+                </div>
+              </div>
+              <div id="p1-callout" class="mt-1 text-xs sm:text-sm font-fight font-bold tracking-wider"></div>
+            </div>
+          </div>
+
+          <!-- RELOJ CENTRAL 99s -->
+          <div class="flex flex-col items-center">
+            <div class="bg-slate-950/90 border-2 border-amber-400/80 rounded-xl px-3 sm:px-5 py-1 sm:py-1.5 shadow-[0_0_20px_rgba(251,191,36,0.25)]">
+              <div id="timer-display" class="font-fight font-bold text-2xl sm:text-4xl text-amber-300 leading-none tracking-wider tabular-nums">99</div>
+            </div>
+            <span id="round-label" class="mt-1 text-[10px] sm:text-xs font-fight font-bold tracking-widest text-slate-300 uppercase">ROUND 1</span>
+          </div>
+
+          <!-- LADO P2 -->
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between text-xs sm:text-sm px-1">
+              <div class="flex items-center gap-1.5">
+                <div id="p2-round-1" class="w-3.5 h-3.5 rounded-full border-2 border-rose-400 bg-slate-900/80 transition-all"></div>
+                <div id="p2-round-2" class="w-3.5 h-3.5 rounded-full border-2 border-rose-400 bg-slate-900/80 transition-all"></div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span id="p2-input-badge" class="text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md bg-slate-800/90 border border-slate-600 text-amber-300 font-mono-code">[IA]</span>
+                <span id="p2-char-name" class="font-fight font-bold text-rose-400 tracking-wide text-sm sm:text-lg drop-shadow">KAZE</span>
+              </div>
+            </div>
+
+            <div id="p2-hp-wrap" class="h-5 sm:h-7 bg-slate-950/90 border-2 border-rose-400/80 rounded-md overflow-hidden relative skew-p2 shadow-lg">
+              <div id="p2-hp-delayed" class="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-amber-400 to-red-600 transition-all duration-150" style="width: 100%;"></div>
+              <div id="p2-hp-fill" class="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-rose-500 via-pink-500 to-orange-400" style="width: 100%;"></div>
+              <span id="p2-hp-text" class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] sm:text-xs font-mono-code font-bold text-slate-950 drop-shadow unskew-p2">920</span>
+            </div>
+
+            <div class="flex flex-col items-end min-h-[54px] mt-1 pr-1">
+              <div id="p2-combo-box" class="hidden flex items-baseline gap-1.5 bg-slate-950/80 border-r-4 border-rose-400 px-2.5 py-1 rounded-l-lg shadow-lg">
+                <div class="flex flex-col items-end leading-tight">
+                  <span class="font-fight font-bold text-[10px] sm:text-xs text-white tracking-wider">HITS</span>
+                  <span id="p2-combo-scaling" class="font-mono-code text-[10px] text-amber-300">85%</span>
+                </div>
+                <span id="p2-combo-count" class="font-fight font-bold text-2xl sm:text-3xl text-rose-300 italic leading-none">2</span>
+              </div>
+              <div id="p2-callout" class="mt-1 text-xs sm:text-sm font-fight font-bold tracking-wider"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANUNCIO CENTRAL -->
+      <div id="center-banner-container" class="flex-1 flex items-center justify-center pointer-events-none">
+        <div id="center-banner" class="hidden font-fight font-bold italic text-4xl sm:text-7xl tracking-wider text-center px-6 py-2 drop-shadow-[0_6px_25px_rgba(0,0,0,0.9)]"></div>
+      </div>
+
+      <!-- ZONA INFERIOR: BARRAS DE SUPER + PANEL FRAME METER / DEBUG -->
+      <div class="w-full max-w-6xl mx-auto flex flex-col gap-2">
+        <div id="frame-debug-panel" class="bg-slate-950/88 border border-slate-700/70 rounded-xl px-3 py-2 text-[11px] font-mono-code shadow-xl">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-center mb-1.5">
+            <div class="flex items-center justify-between md:justify-start gap-2 text-cyan-300">
+              <span class="font-bold">P1:</span>
+              <span id="dbg-p1-state" class="text-white">IDLE</span>
+              <span id="dbg-p1-frame" class="text-slate-400">F:0</span>
+              <span id="dbg-p1-adv" class="px-1.5 py-0.5 rounded bg-slate-800 text-emerald-300">Adv: 0</span>
+            </div>
+
+            <div class="flex items-center justify-center gap-1.5 overflow-hidden">
+              <span class="text-slate-400 text-[10px]">BUFFER P1:</span>
+              <div id="dbg-p1-buffer" class="flex items-center gap-1 text-amber-300 font-bold tracking-wider">5</div>
+            </div>
+
+            <div class="flex items-center justify-between md:justify-end gap-2 text-rose-300">
+              <span id="dbg-p2-state" class="text-white">IDLE</span>
+              <span id="dbg-p2-frame" class="text-slate-400">F:0</span>
+              <span class="text-[10px] text-slate-400 hidden sm:inline">
+                <span class="text-yellow-400">■Push</span>
+                <span class="text-emerald-400 ml-1">■Hurt</span>
+                <span class="text-red-400 ml-1">■Hit</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] text-cyan-400 w-6">P1</span>
+              <div id="frame-meter-p1" class="flex-1 flex gap-[1px] bg-slate-900/90 p-0.5 rounded border border-slate-800"></div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] text-rose-400 w-6">P2</span>
+              <div id="frame-meter-p2" class="flex-1 flex gap-[1px] bg-slate-900/90 p-0.5 rounded border border-slate-800"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 sm:gap-12 items-end pb-0.5">
+          <div class="flex flex-col gap-0.5">
+            <div class="flex justify-between items-center text-[11px] font-fight font-bold px-1">
+              <span id="p1-super-label" class="text-cyan-300 tracking-wider">SUPER ART</span>
+              <span id="p1-super-pct" class="font-mono-code text-amber-300">0%</span>
+            </div>
+            <div id="p1-super-bar-wrap" class="h-3.5 sm:h-4 bg-slate-950/90 border border-cyan-500/70 rounded-md overflow-hidden skew-p1">
+              <div id="p1-super-fill" class="h-full bg-gradient-to-r from-blue-600 via-cyan-400 to-amber-300 transition-all duration-75" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-0.5">
+            <div class="flex justify-between items-center text-[11px] font-fight font-bold px-1">
+              <span id="p2-super-pct" class="font-mono-code text-amber-300">0%</span>
+              <span id="p2-super-label" class="text-rose-300 tracking-wider">SUPER ART</span>
+            </div>
+            <div id="p2-super-bar-wrap" class="h-3.5 sm:h-4 bg-slate-950/90 border border-rose-500/70 rounded-md overflow-hidden skew-p2">
+              <div id="p2-super-fill" class="h-full ml-auto bg-gradient-to-l from-rose-600 via-orange-400 to-amber-300 transition-all duration-75" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CAPA DE CONTROLES TÁCTILES MULTITÁCTILES -->
+    <div id="touch-controls-layer" class="hidden fixed inset-x-0 bottom-14 sm:bottom-16 z-20 pointer-events-none px-3 sm:px-6 flex items-end justify-between touch-zone">
+      <div class="pointer-events-auto flex flex-col items-center gap-1">
+        <div id="virtual-dpad" class="dpad-base">
+          <div class="dpad-dir-dot" data-dir="8" style="top: 10px; left: 50%; margin-left: -5px;"></div>
+          <div class="dpad-dir-dot" data-dir="2" style="bottom: 10px; left: 50%; margin-left: -5px;"></div>
+          <div class="dpad-dir-dot" data-dir="4" style="left: 10px; top: 50%; margin-top: -5px;"></div>
+          <div class="dpad-dir-dot" data-dir="6" style="right: 10px; top: 50%; margin-top: -5px;"></div>
+          <div class="dpad-dir-dot" data-dir="7" style="top: 26px; left: 26px;"></div>
+          <div class="dpad-dir-dot" data-dir="9" style="top: 26px; right: 26px;"></div>
+          <div class="dpad-dir-dot" data-dir="1" style="bottom: 26px; left: 26px;"></div>
+          <div class="dpad-dir-dot" data-dir="3" style="bottom: 26px; right: 26px;"></div>
+          <div id="dpad-thumb" class="dpad-thumb"></div>
+        </div>
+        <span class="text-[10px] font-mono-code text-cyan-300/80 bg-slate-950/70 px-2 py-0.5 rounded-full">DESLIZA: 236 / 623 / 66 / 44</span>
+      </div>
+
+      <div class="pointer-events-auto flex flex-col items-end gap-2">
+        <div class="flex items-center gap-2.5 pr-1">
+          <button id="tbtn-dash" data-btn="dash" class="arcade-btn w-14 h-11 sm:w-16 sm:h-12 text-xs text-white bg-gradient-to-b from-indigo-500/90 to-indigo-700/95">
+            <span>DASH</span>
+            <span class="text-[9px] opacity-80">66/44</span>
+          </button>
+          <button id="tbtn-super" data-btn="s" class="arcade-btn w-16 h-12 sm:w-20 sm:h-12 text-xs text-slate-950 bg-gradient-to-b from-amber-300/90 to-amber-500/95 opacity-60">
+            <span>SUPER</span>
+            <span class="text-[9px] font-mono-code">100%</span>
+          </button>
+        </div>
+        <div class="flex items-center gap-2.5 sm:gap-3">
+          <button id="tbtn-p" data-btn="p" class="arcade-btn w-14 h-14 sm:w-16 sm:h-16 text-lg text-white bg-gradient-to-b from-sky-400/90 to-blue-600/95">
+            <span>P</span>
+            <span class="text-[9px] opacity-90">PUÑO</span>
+          </button>
+          <button id="tbtn-k" data-btn="k" class="arcade-btn w-14 h-14 sm:w-16 sm:h-16 text-lg text-white bg-gradient-to-b from-rose-500/90 to-red-700/95 -mt-4">
+            <span>K</span>
+            <span class="text-[9px] opacity-90">PATADA</span>
+          </button>
+          <button id="tbtn-t" data-btn="t" class="arcade-btn w-14 h-14 sm:w-16 sm:h-16 text-lg text-white bg-gradient-to-b from-emerald-400/90 to-teal-700/95 -mt-1">
+            <span>T</span>
+            <span class="text-[9px] opacity-90">AGARRE</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL DE CONTROLES Y LISTA DE MOVIMIENTOS -->
+    <div id="controls-modal" class="hidden fixed inset-0 z-30 bg-slate-950/85 flex items-center justify-center p-4">
+      <div class="bg-slate-900 border border-cyan-500/40 rounded-2xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-slate-700 pb-3 mb-4">
+          <h2 class="font-fight font-bold text-xl sm:text-2xl text-cyan-300 tracking-wide">LISTA DE MOVIMIENTOS Y CONTROLES</h2>
+          <button id="btn-close-controls" class="game-btn px-3 py-1 rounded-lg text-sm font-bold cursor-pointer">✕ Cerrar</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
+          <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+            <h3 class="font-fight font-bold text-cyan-400 mb-2 text-base">JUGADOR 1 (Teclado)</h3>
+            <ul class="space-y-1.5 text-slate-200">
+              <li><span class="font-mono-code text-amber-300">W / A / S / D</span> — Saltar (7/8/9), Mover, Agacharse</li>
+              <li><span class="font-mono-code text-amber-300">Atrás (4) / Abajo-Atrás (1)</span> — Bloqueo Alto / Bajo</li>
+              <li><span class="font-mono-code text-amber-300">J</span> — <strong>P (Puño)</strong>: <code class="text-cyan-300">5P</code>, <code class="text-cyan-300">2P</code>, <code class="text-cyan-300">j.P</code> (Overhead)</li>
+              <li><span class="font-mono-code text-amber-300">K</span> — <strong>K (Patada)</strong>: <code class="text-rose-300">5K</code>, <code class="text-rose-300">2K</code> (Barrido LOW), <code class="text-rose-300">j.K</code></li>
+              <li><span class="font-mono-code text-amber-300">L</span> — <strong>T (Agarre)</strong>: <code class="text-emerald-300">Throw</code> / <code class="text-emerald-300">Throw Tech</code> (6F)</li>
+              <li><span class="font-mono-code text-amber-300">U</span> — <strong>S (SUPER ART)</strong> (requiere 100% barra)</li>
+              <li><span class="font-mono-code text-amber-300">Shift</span> o <span class="font-mono-code text-amber-300">66 / 44</span> — Forward Dash / Backdash</li>
+            </ul>
+          </div>
+
+          <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5">
+            <h3 class="font-fight font-bold text-rose-400 mb-2 text-base">JUGADOR 2 (Teclado) &amp; MANDOS</h3>
+            <ul class="space-y-1.5 text-slate-200">
+              <li><span class="font-mono-code text-amber-300">Flechas</span> — Movimiento, Salto, Bloqueo y Dashes (66/44)</li>
+              <li><span class="font-mono-code text-amber-300">Num1 / Num2 / Num3</span> — Puño (P) / Patada (K) / Agarre (T)</li>
+              <li><span class="font-mono-code text-amber-300">Num4 / Num0</span> — Super Art (S) / Dash rápido</li>
+              <li class="pt-1 border-t border-slate-800 text-emerald-300 font-semibold">Mando Xbox / PS / Fightstick (1 o 2 mandos):</li>
+              <li><span class="font-mono-code text-slate-300">D-Pad / Stick Izq</span> — Direcciones (deadzone 0.35)</li>
+              <li><span class="font-mono-code text-slate-300">X/□</span> Puño (P) · <span class="font-mono-code text-slate-300">A/✕</span> Patada (K) · <span class="font-mono-code text-slate-300">B/○</span> Agarre (T)</li>
+              <li><span class="font-mono-code text-slate-300">Y/△</span> Super Art (S) · <span class="font-mono-code text-slate-300">RB/R1</span> Dash · <span class="font-mono-code text-slate-300">Start</span> Reiniciar</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="mt-4 bg-slate-950/70 border border-amber-500/30 rounded-xl p-3.5 text-xs sm:text-sm">
+          <h3 class="font-fight font-bold text-amber-300 mb-2 text-base">COMBINACIONES DE BOTONES Y ESPECIALES CLÁSICOS</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-slate-200">
+            <div>• <strong class="text-amber-300">P + K (Acorde):</strong> <em>Cyber Impact</em> — Golpe pesado con <strong>Super Armor</strong> (1 hit, inspirado en SF4/SF6).</div>
+            <div>• <strong class="text-emerald-300">P + T (Acorde):</strong> <em>Dodge Roll</em> — Voltereta invulnerable que atraviesa al rival (estilo KOF).</div>
+            <div>• <strong class="text-cyan-300">6 + P / 6 + K:</strong> Normales de comando (Ryujin: Overhead / Step Kick · Kaze: Anti-Aéreo / Slide Bajo).</div>
+            <div>• <strong class="text-cyan-300">236 + P / 623 + P / 236 + K:</strong> Proyectil, Uppercut antiaéreo (invuln) y Patada/Blitz Rush.</div>
+            <div>• <strong class="text-rose-300">214 + P / 214 + K:</strong> Ryujin: <em>Denjin Palm</em> (+2 en bloqueo) y <em>Axe Overhead</em> · Kaze: <em>Crescent</em> y <em>Mirage Teleport</em>.</div>
+            <div>• <strong class="text-indigo-300">2-5-2 + P (Down-Down):</strong> Ryujin: <em>Ki Charge</em> (+18% barra) · Kaze: <em>Doble Kunai</em>.</div>
+            <div>• <strong class="text-rose-300">41236 + K (Media Luna):</strong> <em>Breaker Rush / Phantom Flurry</em> multi-hit de alta presión (SNK).</div>
+            <div>• <strong class="text-emerald-300">63214 + T o P (Media Luna Atrás):</strong> <em>Command Grab</em> — Agarre especial imbloqueable e in-techeable.</div>
+            <div>• <strong class="text-amber-300">EX Overdrive (25% barra):</strong> <code class="text-amber-200">236 / 623 / 214 + P+K</code> o <code class="text-amber-200">236 + K+T</code> (versión dorada mejorada).</div>
+            <div>• <strong class="text-sky-300">Especiales Aéreos:</strong> <code class="text-sky-200">j.236 + P</code> (Proyectil aéreo) · <code class="text-sky-200">j.214 + K</code> (<em>Meteor Dive Kick</em>).</div>
+            <div>• <strong class="text-amber-300">Super Art (100% barra):</strong> <code class="text-amber-200">U</code>, <code class="text-amber-200">236 + U</code> o clásico <code class="text-amber-200">236236 + P/K</code>.</div>
+            <div>• <strong class="text-slate-300">Cancelaciones:</strong> Cancela 5P, 2P, 6P, 5K y 6K al conectar hacia cualquier Especial, EX o Super.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL DE FIN DE COMBATE (REVANCHA / CAMBIO) -->
+    <div id="match-end-modal" class="hidden fixed inset-0 z-30 bg-slate-950/70 flex items-center justify-center p-4 pointer-events-auto">
+      <div class="bg-slate-900/95 border-2 border-cyan-400/50 rounded-2xl max-w-md w-full p-6 shadow-2xl text-center">
+        <div class="text-xs font-mono-code tracking-widest text-slate-400 uppercase mb-1">RESULTADO DEL COMBATE</div>
+        <h2 id="match-end-title" class="font-fight font-bold text-3xl sm:text-4xl text-cyan-300 tracking-wide mb-1">¡VICTORIA RYUJIN!</h2>
+        <p id="match-end-subtitle" class="text-xs sm:text-sm text-slate-300 mb-5 font-mono-code">2 - 0 · Shoto Equilibrado</p>
+        <div class="flex flex-col gap-2.5">
+          <button id="btn-rematch" class="game-btn active w-full py-2.5 rounded-xl font-fight font-bold text-base tracking-wide cursor-pointer">↻ REVANCHA INMEDIATA</button>
+          <button id="btn-end-swap" class="game-btn w-full py-2.5 rounded-xl font-fight font-bold text-sm tracking-wide text-cyan-300 cursor-pointer">⇄ CAMBIAR LUCHADOR Y REVANCHA</button>
+          <button id="btn-end-train" class="game-btn w-full py-2.5 rounded-xl font-fight font-bold text-sm tracking-wide text-amber-300 cursor-pointer">⚙ IR A MODO ENTRENAMIENTO</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
