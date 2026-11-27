@@ -21,6 +21,7 @@ import {
 import { InputManager } from './input/InputManager';
 import { TouchControls } from './input/TouchControls';
 import { HudOverlay } from './view/HudOverlay';
+import { CharacterSelectScreen } from './view/CharacterSelectScreen';
 import { LandingScreen, LaunchConfig } from './view/LandingScreen';
 import { SceneView3D } from './view/SceneView3D';
 
@@ -41,6 +42,7 @@ const touchControls = new TouchControls();
 const inputManager = new InputManager(touchControls, aiController);
 const hud = new HudOverlay();
 const landing = new LandingScreen(touchControls.enabled);
+const charSelect = new CharacterSelectScreen();
 
 const uiLayer = document.getElementById('ui-layer')!;
 const controlsModal = document.getElementById('controls-modal')!;
@@ -178,7 +180,15 @@ function returnToMenu(): void {
   );
 }
 
-landing.onStart = startMatch;
+function openCharSelect(cfg: LaunchConfig): void {
+  sfx.unlock();
+  landing.hide();
+  charSelect.show(cfg);
+}
+
+landing.onStart = openCharSelect;
+charSelect.onConfirm = startMatch;
+charSelect.onBack = () => landing.show(landing.config, sfx.muted);
 landing.onOpenControls = () => {
   sfx.unlock();
   controlsModal.classList.remove('hidden');
@@ -208,7 +218,7 @@ window.addEventListener('keydown', (e) => {
     e.code === 'Enter'
   ) {
     e.preventDefault();
-    startMatch({ ...landing.config });
+    openCharSelect({ ...landing.config });
   }
 });
 
