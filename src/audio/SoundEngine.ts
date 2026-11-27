@@ -19,7 +19,27 @@ export type SfxName =
   | 'dodgeRoll'
   | 'ko'
   | 'roundStart'
-  | 'trialClear';
+  | 'trialClear'
+  | 'swing';
+
+/** Líneas del locutor (archivos vo_*.mp3). */
+export type AnnouncerLine = 'round1' | 'round2' | 'final' | 'fight' | 'ko' | 'perfect' | 'timeover' | 'youwin';
+
+// Muestras grabadas (Magnific / ElevenLabs). «hitLight_2.mp3» es la 2.ª variación de «hitLight».
+const SAMPLE_URLS = import.meta.glob('../assets/audio/*.mp3', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
+
+/** Volumen relativo por sonido (los archivos ya vienen igualados en sonoridad). */
+const SAMPLE_GAIN: Partial<Record<string, number>> = {
+  swing: 0.55,
+  dash: 0.7,
+  backdash: 0.7,
+  dodgeRoll: 0.7,
+  trialClear: 0.8,
+};
 
 const BASS_NOTES = [
   73.42, 73.42, 87.31, 73.42, 98.0, 73.42, 110.0, 98.0,
@@ -41,6 +61,12 @@ export class SoundEngine {
 
   public muted = false;
 
+  private sfxBus: GainNode | null = null;
+  private samples = new Map<string, AudioBuffer[]>();
+  private samplesLoading = false;
+  private lastVariant = new Map<string, number>();
+  private voice: AudioBufferSourceNode | null = null;
+
   public unlock(): void {
     try {
       if (!this.ctx) {
@@ -56,8 +82,12 @@ export class SoundEngine {
             this.ctx.currentTime
           );
           this.musicBus.connect(this.ctx.destination);
+          this.sfxBus = this.ctx.createGain();
+          this.sfxBus.gain.setValueAtTime(this.muted ? 0 : 1, this.ctx.currentTime);
+          this.sfxBus.connect(this.ctx.destination);
         }
       }
+      this.loadSamples();
       if (this.ctx && this.ctx.state === 'suspended') {
         void this.ctx.resume();
       }
@@ -66,8 +96,68 @@ export class SoundEngine {
     }
   }
 
+  private loadSamples(): void {
+    if (this.samplesLoading || !this.ctx) return;
+    this.samplesLoading = true;
+    const ctx = this.ctx;
+    for (const [path, url] of Object.entries(SAMPLE_URLS)) {
+      const file = path.split('/').pop()!.replace('.mp3', '');
+      const key = file.replace(/_\d+$/, '');
+      fetch(url)
+        .then((r) => r.arrayBuffer())
+        .then((data) => ctx.decodeAudioData(data))
+        .then((buf) => {
+          const list = this.samples.get(key) ?? [];
+          list.push(buf);
+          this.samples.set(key, list);
+        })
+        .catch(() => {
+          // sin la muestra suena el sintetizador de reserva
+        });
+    }
+  }
+
+  /** Reproduce una muestra; false si aún no está cargada. */
+  private playSample(key: string, rateJitter = 0.04): boolean {
+    const list = this.samples.get(key);
+    if (!list || !list.length || !this.ctx || !this.sfxBus) return false;
+    if (this.muted) return true;
+    // Variación distinta de la anterior para que los golpes seguidos no suenen iguales
+    let i = Math.floor(Math.random() * list.length);
+    if (list.length > 1 && i === this.lastVariant.get(key)) i = (i + 1) % list.length;
+    this.lastVariant.set(key, i);
+    const src = this.ctx.createBufferSource();
+    src.buffer = list[i];
+    src.playbackRate.value = 1 + (Math.random() * 2 - 1) * rateJitter;
+    const g = this.ctx.createGain();
+    g.gain.value = SAMPLE_GAIN[key] ?? 1;
+    src.connect(g);
+    g.connect(this.sfxBus);
+    src.start();
+    return true;
+  }
+
+  /** Locutor: corta la línea anterior para que no se pisen. */
+  public announce(line: AnnouncerLine): void {
+    const list = this.samples.get(`vo_${line}`);
+    if (!list || !this.ctx || !this.sfxBus || this.muted) return;
+    try {
+      this.voice?.stop();
+    } catch {
+      // ya había terminado
+    }
+    const src = this.ctx.createBufferSource();
+    src.buffer = list[0];
+    src.connect(this.sfxBus);
+    src.start();
+    this.voice = src;
+  }
+
   public toggleMute(): boolean {
     this.muted = !this.muted;
+    if (this.sfxBus && this.ctx) {
+      this.sfxBus.gain.setTargetAtTime(this.muted ? 0 : 1, this.ctx.currentTime, 0.02);
+    }
     if (this.musicBus && this.ctx) {
       this.musicBus.gain.setTargetAtTime(
         this.muted ? 0 : 0.18,
@@ -287,7 +377,13 @@ export class SoundEngine {
   }
 
   public play(name: SfxName): void {
+    // Muestra grabada si ya está cargada (sin variación de tono en el locutor ni en los jingles)
+    const jitter = name === 'trialClear' || name === 'roundStart' || name === 'ko' ? 0 : 0.04;
+    if (this.playSample(name, jitter)) return;
     switch (name) {
+      case 'swing':
+        this.playNoise(0.12, 2400, 0.08, 'highpass');
+        break;
       case 'hitLight':
         this.hitLight();
         break;

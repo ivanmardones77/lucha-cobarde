@@ -251,6 +251,9 @@ export function resetTrainingPosition(
   syncAllBoxes(state);
 }
 
+/** Golpes normales: suenan con un «whoosh» al salir (los especiales tienen su propio sonido). */
+const NORMALS_WITH_SWING = new Set<string>(['5P', '2P', '6P', 'jP', '5K', '2K', '6K', 'jK']);
+
 function startMove(
   state: MatchState,
   f: FighterState,
@@ -259,6 +262,7 @@ function startMove(
   const spec = CHARACTERS[f.character];
   const m = spec.moves[moveKey];
   if (!m) return;
+  if (NORMALS_WITH_SWING.has(moveKey)) state.events.push({ type: 'SFX', name: 'swing' });
 
   if (moveKey === 'SUPER') {
     if (f.superMeter < 100) return;
