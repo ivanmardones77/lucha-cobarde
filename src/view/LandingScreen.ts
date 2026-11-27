@@ -151,13 +151,13 @@ export class LandingScreen {
   private enterMenu(): void {
     if (this.state === 'menu') return;
     sfx.unlock();
-    sfx.play('superFlash');
+    sfx.play('uiStart');
     this.root.dataset.state = 'menu';
     this.showMain();
   }
 
   private toAttract(): void {
-    sfx.play('backdash');
+    sfx.play('uiBack');
     this.root.dataset.state = 'attract';
   }
 
@@ -328,7 +328,7 @@ export class LandingScreen {
   private setFocus(i: number, sound = true): void {
     if (i === this.focus) return;
     this.focus = i;
-    if (sound) sfx.play('dash');
+    if (sound) sfx.play('uiMove');
     this.menuEl.querySelectorAll('.ls-item').forEach((el, k) => el.classList.toggle('focus', k === i));
     this.syncInfo();
   }
@@ -346,7 +346,7 @@ export class LandingScreen {
   private select(): void {
     const e = this.entries[this.focus];
     if (!e) return;
-    sfx.play(e.back ? 'backdash' : 'superFlash');
+    sfx.play(e.back ? 'uiBack' : 'uiConfirm');
     e.action();
   }
 
