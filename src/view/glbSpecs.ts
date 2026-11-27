@@ -3,6 +3,7 @@ import type { GlbSpec } from './GlbFighter';
 import titanGlbUrl from '../assets/models/titan.glb?url';
 import ryujinGlbUrl from '../assets/models/ryujin.glb?url';
 import kazeGlbUrl from '../assets/models/kaze.glb?url';
+import valkyrieGlbUrl from '../assets/models/valkyrie.glb?url';
 
 /**
  * Luchadores con modelo 3D (prueba, se activan con ?modelos3d o ?titan3d).
@@ -63,5 +64,30 @@ export const GLB_SPECS: Partial<Record<CharacterId, GlbSpec>> = {
     },
     heavy: { clip: 'PUNCH_CROSS', impact: 19 },
     block: { clip: 'M_BLOCK', hold: 73 },
+  },
+  VALKYRIE: {
+    url: valkyrieGlbUrl,
+    height: 1.8,
+    moves: {
+      '5P': { clip: 'M_JAB', start: 30, impact: 40 },
+      '2P': { clip: 'M_JAB', start: 30, impact: 40 },
+      jP: { clip: 'M_JAB', start: 30, impact: 40 },
+      '5K': { clip: 'M_KICK', start: 26, impact: 41 },
+      '6K': { clip: 'M_KICK', start: 22, impact: 41 },
+      jK: { clip: 'M_KICK', start: 26, impact: 41 },
+      j214K: { clip: 'M_KICK', start: 26, impact: 41 },
+      '2K': { clip: 'M_LOWSWEEP', start: 1, impact: 10 },
+      '6P': { clip: 'M_SLAM', start: 79, impact: 116 },
+      '214P': { clip: 'M_SLAM', start: 79, impact: 116 },
+      '623P': { clip: 'M_UPPERCUT', start: 28, impact: 46 },
+      EX_623P: { clip: 'M_UPPERCUT', start: 28, impact: 46 },
+      '236P': { clip: 'M_CAST', start: 118, impact: 148 },
+      EX_236P: { clip: 'M_CAST', start: 118, impact: 148 },
+      j236P: { clip: 'M_CAST', start: 118, impact: 148 },
+      '22P': { clip: 'M_CAST', start: 106, impact: 148 },
+      SUPER: { clip: 'M_CAST', start: 118, impact: 148 },
+    },
+    heavy: { clip: 'PUNCH_CROSS', impact: 19 },
+    block: { clip: 'M_BLOCK', hold: 69 },
   },
 };
