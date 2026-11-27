@@ -35,9 +35,32 @@ export type PressedButtonKey =
   | 'sPressed'
   | 'dashPressed';
 
+interface HeldButtons {
+  p: boolean;
+  k: boolean;
+  t: boolean;
+  s: boolean;
+  dash: boolean;
+}
+
+/** Copia del estado del buffer para guardar/restaurar (rollback, repeticiones) */
+export interface InputBufferSnapshot {
+  history: BufferedFrame[];
+  prev: HeldButtons;
+}
+
 export class InputBuffer {
   private history: BufferedFrame[] = [];
-  private prev = { p: false, k: false, t: false, s: false, dash: false };
+  private prev: HeldButtons = { p: false, k: false, t: false, s: false, dash: false };
+
+  public snapshot(): InputBufferSnapshot {
+    return { history: this.history.map((f) => ({ ...f })), prev: { ...this.prev } };
+  }
+
+  public restore(snap: InputBufferSnapshot): void {
+    this.history = snap.history.map((f) => ({ ...f }));
+    this.prev = { ...snap.prev };
+  }
 
   public reset(): void {
     this.history = [];
