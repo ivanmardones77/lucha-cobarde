@@ -18,12 +18,41 @@ import {
   TrainingPosition,
   getFighterHudColor,
 } from './core/types';
+import { CampaignMatch, CampaignRunner } from './campaign/CampaignRunner';
+import { CHAPTERS } from './campaign/data/chapters';
 import { InputManager } from './input/InputManager';
 import { TouchControls } from './input/TouchControls';
 import { HudOverlay } from './view/HudOverlay';
+import { CampaignUI } from './view/CampaignUI';
 import { CharacterSelectScreen } from './view/CharacterSelectScreen';
 import { LandingScreen, LaunchConfig } from './view/LandingScreen';
 import { SceneView3D } from './view/SceneView3D';
+
+// Solo en desarrollo: con ?bucle-rapido los bucles siguen aunque la pestaña esté oculta
+// (requestAnimationFrame se congela en segundo plano). Útil para pruebas automáticas.
+if (import.meta.env.DEV && new URLSearchParams(location.search).has('bucle-rapido')) {
+  const ch = new MessageChannel();
+  const queue = new Map<number, FrameRequestCallback>();
+  let nextId = 1;
+  let last = performance.now();
+  ch.port1.onmessage = () => {
+    const now = performance.now();
+    if (now - last >= 16) {
+      last = now;
+      const run = [...queue.values()];
+      queue.clear();
+      for (const cb of run) cb(now);
+    }
+    if (queue.size) ch.port2.postMessage(0);
+  };
+  window.requestAnimationFrame = (cb) => {
+    const id = nextId++;
+    queue.set(id, cb);
+    if (queue.size === 1) ch.port2.postMessage(0);
+    return id;
+  };
+  window.cancelAnimationFrame = (id) => void queue.delete(id);
+}
 
 const MAX_STEPS = 4;
 const CHAR_ORDER: CharacterId[] = ['RYUJIN', 'KAZE', 'TITAN', 'VOLT', 'VALKYRIE'];
@@ -48,6 +77,14 @@ const uiLayer = document.getElementById('ui-layer')!;
 const controlsModal = document.getElementById('controls-modal')!;
 let inMatch = false;
 let slowMoSubTick = 0;
+
+// --- Arcade / Historia ---
+/** Combate lanzado por la campaña (su final lo gestiona CampaignRunner) */
+let campaignMatch = false;
+/** Escenario de fondo de un diálogo: se dibuja sin simular */
+let backdropActive = false;
+let campaignEndReported = false;
+let campaignMaxCombo = 0;
 
 // Ocultar controles táctiles mientras el jugador está en la pantalla de inicio
 touchControls.setOverlayVisible(false);
@@ -121,6 +158,16 @@ function toggleDebugFrames(): void {
   applyShowFrames(hud.framePanel.classList.contains('hidden'));
 }
 
+/** Partida libre desde la selección: sin multiplicadores ni reglas de campaña */
+function startFreeMatch(cfg: LaunchConfig): void {
+  campaignMatch = false;
+  backdropActive = false;
+  document.body.classList.remove('campaign-match');
+  hud.suppressMatchEndModal = false;
+  matchState.hpMult = [1, 1];
+  startMatch(cfg);
+}
+
 function startMatch(cfg: LaunchConfig): void {
   sfx.unlock();
   // Semilla nueva por combate (fuera del núcleo); setGameMode → resetRoundState la aplica.
@@ -155,6 +202,14 @@ function startMatch(cfg: LaunchConfig): void {
 }
 
 function returnToMenu(): void {
+  const wasCampaign = campaignMatch || backdropActive || campaign.isActive;
+  campaign.abort();
+  campaignMatch = false;
+  backdropActive = false;
+  document.body.classList.remove('campaign-match');
+  hud.suppressMatchEndModal = false;
+  matchState.hpMult = [1, 1];
+  refreshCampaignInfo();
   inMatch = false;
   sfx.stopMusic();
   touchControls.clearAll();
@@ -166,6 +221,11 @@ function returnToMenu(): void {
   document.getElementById('speedlines-overlay')?.classList.remove('opacity-100');
   document.getElementById('speedlines-overlay')?.classList.add('opacity-0');
 
+  // Tras la campaña se conservan los ajustes de partida libre que tenía la portada
+  if (wasCampaign) {
+    landing.show({}, sfx.muted);
+    return;
+  }
   landing.show(
     {
       mode: matchState.mode,
@@ -189,8 +249,98 @@ function openCharSelect(cfg: LaunchConfig): void {
   charSelect.show(cfg);
 }
 
+// ===================== Arcade / Historia =====================
+
+const campaignUI = new CampaignUI();
+const campaign = new CampaignRunner(campaignUI, {
+  showBackdrop(stage, p1, p2) {
+    inMatch = false;
+    campaignMatch = false;
+    backdropActive = true;
+    sfx.stopMusic();
+    matchState.p1Character = p1;
+    matchState.p2Character = p2;
+    matchState.p1Palette = 0;
+    matchState.p2Palette = p1 === p2 ? 1 : 0;
+    matchState.stageId = stage;
+    matchState.hpMult = [1, 1];
+    resetRoundState(matchState, true);
+    sceneView.setStage(stage);
+    landing.hide();
+    charSelect.hide();
+    uiLayer.classList.add('hidden');
+    touchControls.clearAll();
+    touchControls.setOverlayVisible(false);
+    hud.suppressMatchEndModal = true;
+  },
+  startCampaignMatch(m: CampaignMatch) {
+    backdropActive = false;
+    campaignMatch = true;
+    campaignEndReported = false;
+    campaignMaxCombo = 0;
+    document.body.classList.add('campaign-match');
+    hud.suppressMatchEndModal = true;
+    matchState.hpMult = [1, m.p2Hp];
+    startMatch({
+      mode: 'AI',
+      stageId: m.stage,
+      aiDifficulty: m.difficulty,
+      p1Character: m.p1,
+      p2Character: m.p2,
+      p1Palette: m.p1Palette,
+      p2Palette: m.p2Palette,
+      showBoxes: false,
+      showFrames: false,
+      touchEnabled: landing.config.touchEnabled,
+    });
+  },
+  pickFighter(onPick, onBack) {
+    sfx.unlock();
+    landing.hide();
+    const prevBack = charSelect.onBack;
+    charSelect.onBack = () => {
+      charSelect.onBack = prevBack;
+      onBack();
+    };
+    charSelect.showSingle(
+      { ...landing.config, mode: 'AI' },
+      'ARCADE · ELIGE TU LUCHADOR',
+      (id, palette) => {
+        charSelect.onBack = prevBack;
+        onPick(id, palette);
+      },
+      (id) => {
+        const best = campaign.save.arcadeBest(id);
+        return best ? `Récord ${best.score.toLocaleString('es-ES')} (${best.rank})` : 'Sin completar';
+      }
+    );
+  },
+  exitToMenu() {
+    returnToMenu();
+  },
+});
+
+function refreshCampaignInfo(): void {
+  const done = CHAPTERS.filter((c) => campaign.save.chapter(c.id).done).length;
+  const cleared = Object.keys(campaign.save.data.arcade).length;
+  landing.setCampaignInfo(
+    cleared ? `Completado con ${cleared} de 5 luchadores` : '5 combates · jefe final',
+    done === CHAPTERS.length ? `✔ Completada (${done} capítulos)` : `${done} de ${CHAPTERS.length} capítulos`
+  );
+}
+refreshCampaignInfo();
+
+landing.onArcade = () => {
+  sfx.unlock();
+  campaign.startArcade();
+};
+landing.onStory = () => {
+  sfx.unlock();
+  campaign.openStory();
+};
+
 landing.onStart = openCharSelect;
-charSelect.onConfirm = startMatch;
+charSelect.onConfirm = startFreeMatch;
 charSelect.onBack = () => landing.show(landing.config, sfx.muted);
 landing.onOpenControls = () => {
   sfx.unlock();
@@ -210,7 +360,8 @@ inputManager.onToggleFrameData = () => {
   if (inMatch) toggleDebugFrames();
 };
 inputManager.onResetMatch = () => {
-  if (inMatch) resetRoundState(matchState, true);
+  // En Arcade/Historia no se puede reiniciar un combate perdido a medias
+  if (inMatch && !campaignMatch) resetRoundState(matchState, true);
 };
 
 window.addEventListener('keydown', (e) => {
@@ -409,12 +560,37 @@ function gameLoop(nowMs: number): void {
       matchState.timerFrames <= 20 * 60;
     sfx.setMusicIntensity(lowHp || lowTime);
 
+    if (campaignMatch) {
+      const [p1, p2] = matchState.fighters;
+      // comboCount cuenta los golpes recibidos: el combo del P1 está en el rival
+      if (p2.comboCount > campaignMaxCombo) campaignMaxCombo = p2.comboCount;
+      if (!campaignEndReported && matchState.phase === 'MATCH_END' && matchState.phaseTimer <= 55) {
+        campaignEndReported = true;
+        uiLayer.classList.add('hidden');
+        touchControls.clearAll();
+        touchControls.setOverlayVisible(false);
+        const w = matchState.winnerId;
+        campaign.onMatchEnd(w, {
+          difficulty: aiController.difficulty,
+          perfect: w === 0 && p1.hp === p1.maxHp,
+          secondsLeft: matchState.timerFrames / 60,
+          maxCombo: campaignMaxCombo,
+        });
+      }
+    }
+
     sceneView.render(matchState);
     hud.update(matchState, buffers, inputManager, touchControls);
     hud.updateComboTrials(trialTracker, matchState.mode);
   } else {
     accumulator = 0;
+    if (backdropActive) sceneView.render(matchState);
   }
 }
 
 requestAnimationFrame(gameLoop);
+
+// Solo en desarrollo: acceso al estado para depurar desde la consola (no va en el build)
+if (import.meta.env.DEV) {
+  (window as unknown as { __cyberdojo: unknown }).__cyberdojo = { matchState, campaign };
+}

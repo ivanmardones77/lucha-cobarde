@@ -104,6 +104,7 @@ export function createMatchState(
     winnerId: -1,
     rngSeed: seed >>> 0,
     rngState: seed >>> 0,
+    hpMult: [1, 1],
     fighters: [
       createFighter(0, p1Character, p1Palette, -2.2, 1),
       createFighter(1, p2Character, effectiveP2Pal, 2.2, -1),
@@ -141,6 +142,15 @@ export function resetRoundState(
 
   state.fighters[0] = createFighter(0, state.p1Character, state.p1Palette, -2.2, 1);
   state.fighters[1] = createFighter(1, state.p2Character, effectiveP2Pal, 2.2, -1);
+  for (const i of [0, 1] as const) {
+    const mult = state.hpMult[i];
+    if (mult !== 1) {
+      const f = state.fighters[i];
+      f.maxHp = Math.round(f.maxHp * mult);
+      f.hp = f.maxHp;
+      f.delayedHp = f.maxHp;
+    }
+  }
   state.fighters[0].roundsWon = r0;
   state.fighters[1].roundsWon = r1;
   state.fighters[0].superMeter = m0;

@@ -72,6 +72,8 @@ export class LandingScreen {
   };
 
   public onStart?: (config: LaunchConfig) => void;
+  public onArcade?: () => void;
+  public onStory?: () => void;
   public onOpenControls?: () => void;
   public onToggleMute?: () => boolean;
 
@@ -134,6 +136,8 @@ export class LandingScreen {
     this.mainStartBtn.addEventListener('click', handleStart);
     this.headerStartBtn.addEventListener('click', handleStart);
     this.showcaseBtn.addEventListener('click', handleStart);
+    document.getElementById('landing-btn-arcade')!.addEventListener('click', () => this.onArcade?.());
+    document.getElementById('landing-btn-story')!.addEventListener('click', () => this.onStory?.());
 
     this.startLineupLoop();
   }
@@ -197,6 +201,12 @@ export class LandingScreen {
       img.classList.add('hidden');
     });
     img.src = src;
+  }
+
+  /** Texto bajo los botones de Arcade e Historia (récord, progreso) */
+  public setCampaignInfo(arcade: string, story: string): void {
+    document.getElementById('landing-arcade-sub')!.textContent = arcade;
+    document.getElementById('landing-story-sub')!.textContent = story;
   }
 
   public syncMuteLabel(muted: boolean): void {

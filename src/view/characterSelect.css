@@ -400,3 +400,8 @@
 #landing-roster-showcase:hover .landing-lineup-fighter {
   filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.7)) brightness(1.08);
 }
+
+/* Modo de un solo luchador (Arcade) */
+#char-select.single .cs-arena { grid-template-columns: 1fr; }
+#char-select.single .cs-side[data-side="1"],
+#char-select.single .cs-vs { display: none; }
