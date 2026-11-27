@@ -1,13 +1,13 @@
 import './characterSelect.css';
 import { sfx } from '../audio/SoundEngine';
-import alleyImg from '../assets/images/alley_skyline_far_1795773803949.jpg';
-import dojoBackdropImg from '../assets/images/dojo_hero_backdrop_1795773106114.jpg';
-import kazePortraitImg from '../assets/images/portrait_kaze_1795773106772.jpg';
-import ryujinPortraitImg from '../assets/images/portrait_ryujin_1795773106942.jpg';
-import titanPortraitImg from '../assets/images/portrait_titan_1795779369938.jpg';
-import valkyriePortraitImg from '../assets/images/portrait_valkyrie_1795782381868.jpg';
-import voltPortraitImg from '../assets/images/portrait_volt_1795782380711.jpg';
-import rooftopImg from '../assets/images/rooftop_skyline_far_1795779368218.jpg';
+import alleyImg from '../assets/images/alley_skyline_far_1795773803949.webp';
+import dojoBackdropImg from '../assets/images/dojo_hero_backdrop_1795773106114.webp';
+import kazePortraitImg from '../assets/images/portrait_kaze_1795773106772.webp';
+import ryujinPortraitImg from '../assets/images/portrait_ryujin_1795773106942.webp';
+import titanPortraitImg from '../assets/images/portrait_titan_1795779369938.webp';
+import valkyriePortraitImg from '../assets/images/portrait_valkyrie_1795782381868.webp';
+import voltPortraitImg from '../assets/images/portrait_volt_1795782380711.webp';
+import rooftopImg from '../assets/images/rooftop_skyline_far_1795779368218.webp';
 import {
   CHARACTERS,
   CharacterId,

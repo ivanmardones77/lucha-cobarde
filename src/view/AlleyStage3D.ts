@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { STAGE_HALF_WIDTH } from '../core/types';
-import asphaltUrl from '../assets/images/alley_asphalt_floor_1795773805435.jpg';
-import billboardUrl from '../assets/images/alley_billboard_art_1795773806321.jpg';
-import midgroundUrl from '../assets/images/alley_midground_walls_1795773805104.jpg';
-import neonSignsUrl from '../assets/images/alley_neon_signs_1795781927107.jpg';
-import skylineUrl from '../assets/images/alley_skyline_far_1795773803949.jpg';
-import vendingFrontUrl from '../assets/images/alley_vending_front_1795781925601.jpg';
+import asphaltUrl from '../assets/images/alley_asphalt_floor_1795773805435.webp';
+import billboardUrl from '../assets/images/alley_billboard_art_1795773806321.webp';
+import midgroundUrl from '../assets/images/alley_midground_walls_1795773805104.webp';
+import neonSignsUrl from '../assets/images/alley_neon_signs_1795781927107.webp';
+import skylineUrl from '../assets/images/alley_skyline_far_1795773803949.webp';
+import vendingFrontUrl from '../assets/images/alley_vending_front_1795781925601.webp';
 
 interface RainDrop {
   x: number;

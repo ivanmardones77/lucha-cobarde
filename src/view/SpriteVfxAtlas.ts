@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import blockShieldSheetImg from '../assets/images/vfx_block_shield_sheet_1795781073207.jpg';
-import energyProjImg from '../assets/images/vfx_energy_proj_sprite_1795781923667.jpg';
-import hitSparkSheetImg from '../assets/images/vfx_hit_spark_sheet_1795781072829.jpg';
-import impactSmokeSheetImg from '../assets/images/vfx_impact_smoke_sheet_1795781076573.jpg';
-import kunaiProjImg from '../assets/images/vfx_kunai_proj_sprite_1795781924501.jpg';
-import slashArcSheetImg from '../assets/images/vfx_slash_arc_sheet_1795781074527.jpg';
-import superBurstSheetImg from '../assets/images/vfx_super_burst_sheet_1795781074872.jpg';
+import blockShieldSheetImg from '../assets/images/vfx_block_shield_sheet_1795781073207.webp';
+import energyProjImg from '../assets/images/vfx_energy_proj_sprite_1795781923667.webp';
+import hitSparkSheetImg from '../assets/images/vfx_hit_spark_sheet_1795781072829.webp';
+import impactSmokeSheetImg from '../assets/images/vfx_impact_smoke_sheet_1795781076573.webp';
+import kunaiProjImg from '../assets/images/vfx_kunai_proj_sprite_1795781924501.webp';
+import slashArcSheetImg from '../assets/images/vfx_slash_arc_sheet_1795781074527.webp';
+import superBurstSheetImg from '../assets/images/vfx_super_burst_sheet_1795781074872.webp';
 
 export type VfxSheetKey =
   | 'hitSpark'
