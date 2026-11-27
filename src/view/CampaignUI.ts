@@ -30,6 +30,8 @@ export interface MenuOptions {
   onBack?: () => void;
   /** Número grande encima (cuenta atrás de continuar) */
   big?: string;
+  /** Opción que queda seleccionada al abrir (por su texto) */
+  focusLabel?: string;
 }
 
 /** Línea extra con nombre libre (tarjetas de VS, puntos, rango…) */
@@ -260,7 +262,8 @@ export class CampaignUI {
   menu(title: string, items: MenuItem[], opts: MenuOptions = {}): void {
     this.items = items;
     this.menuOpts = opts;
-    this.focus = Math.max(0, items.findIndex((i) => !i.disabled));
+    const wanted = opts.focusLabel ? items.findIndex((i) => i.label === opts.focusLabel && !i.disabled) : -1;
+    this.focus = wanted >= 0 ? wanted : Math.max(0, items.findIndex((i) => !i.disabled));
     this.mode = 'menu';
     this.dlg.classList.add('hidden');
     this.menuEl.classList.remove('hidden');

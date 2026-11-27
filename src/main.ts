@@ -16,14 +16,13 @@ import {
   FIXED_DT,
   GameMode,
   TrainingPosition,
-  getFighterHudColor,
 } from './core/types';
 import { CampaignMatch, CampaignRunner } from './campaign/CampaignRunner';
 import { CHAPTERS } from './campaign/data/chapters';
 import { InputManager } from './input/InputManager';
 import { TouchControls } from './input/TouchControls';
 import { HudOverlay } from './view/HudOverlay';
-import { CampaignUI } from './view/CampaignUI';
+import { CampaignUI, MenuItem } from './view/CampaignUI';
 import { CharacterSelectScreen } from './view/CharacterSelectScreen';
 import { LandingScreen, LaunchConfig } from './view/LandingScreen';
 import { SceneView3D } from './view/SceneView3D';
@@ -55,7 +54,6 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has('bucle-rapid
 }
 
 const MAX_STEPS = 4;
-const CHAR_ORDER: CharacterId[] = ['RYUJIN', 'KAZE', 'TITAN', 'VOLT', 'VALKYRIE'];
 
 const matchState = createMatchState('AI', 'RYUJIN', 'KAZE', 'ALLEY');
 const buffers: [InputBuffer, InputBuffer] = [
@@ -89,27 +87,7 @@ let campaignMaxCombo = 0;
 // Ocultar controles táctiles mientras el jugador está en la pantalla de inicio
 touchControls.setOverlayVisible(false);
 
-function syncSwapCharButton(): void {
-  const btn = document.getElementById('btn-swap-chars');
-  const colBtn = document.getElementById('btn-swap-color');
-  const p1Col = getFighterHudColor(matchState.p1Character, matchState.p1Palette);
-  if (btn) {
-    btn.textContent = `⇄ P1: ${matchState.p1Character}`;
-    btn.style.color = p1Col;
-  }
-  if (colBtn) {
-    const spec = CHARACTERS[matchState.p1Character];
-    colBtn.textContent =
-      matchState.p1Palette === 1 ? `🎨 ${spec.altPaletteName}` : '🎨 Original';
-    colBtn.style.color = p1Col;
-  }
-}
-
 function syncMuteButtons(): void {
-  const btn = document.getElementById('btn-mute');
-  if (btn) {
-    btn.textContent = sfx.muted ? '🔇 Silencio' : '🔊 Audio';
-  }
   landing.syncMuteLabel(sfx.muted);
 }
 
@@ -120,15 +98,8 @@ function setGameMode(mode: GameMode): void {
   buffers[1].reset();
   resetRoundState(matchState, true);
 
-  document
-    .getElementById('btn-mode-ai')
-    ?.classList.toggle('active', mode === 'AI');
-  document
-    .getElementById('btn-mode-2p')
-    ?.classList.toggle('active', mode === '2P');
-  document
-    .getElementById('btn-mode-train')
-    ?.classList.toggle('active', mode === 'TRAINING');
+  // En Entrenamiento se ven la vida numérica y la barra de herramientas
+  document.body.classList.toggle('mode-training', mode === 'TRAINING');
   document
     .getElementById('training-controls')
     ?.classList.toggle('hidden', mode !== 'TRAINING');
@@ -163,7 +134,6 @@ function startFreeMatch(cfg: LaunchConfig): void {
   campaignMatch = false;
   backdropActive = false;
   document.body.classList.remove('campaign-match');
-  hud.suppressMatchEndModal = false;
   matchState.hpMult = [1, 1];
   startMatch(cfg);
 }
@@ -185,7 +155,6 @@ function startMatch(cfg: LaunchConfig): void {
       : cfg.p2Palette;
   matchState.stageId = cfg.stageId;
   sceneView.setStage(cfg.stageId);
-  syncSwapCharButton();
 
   applyShowBoxes(cfg.showBoxes);
   applyShowFrames(cfg.showFrames);
@@ -202,12 +171,13 @@ function startMatch(cfg: LaunchConfig): void {
 }
 
 function returnToMenu(): void {
-  const wasCampaign = campaignMatch || backdropActive || campaign.isActive;
+  const wasCampaign = campaignMatch || backdropActive;
   campaign.abort();
+  paused = false;
+  controlsModal.classList.add('hidden');
   campaignMatch = false;
   backdropActive = false;
-  document.body.classList.remove('campaign-match');
-  hud.suppressMatchEndModal = false;
+  document.body.classList.remove('campaign-match', 'mode-training');
   matchState.hpMult = [1, 1];
   refreshCampaignInfo();
   inMatch = false;
@@ -215,7 +185,6 @@ function returnToMenu(): void {
   touchControls.clearAll();
   touchControls.setOverlayVisible(false);
   uiLayer.classList.add('hidden');
-  document.getElementById('match-end-modal')?.classList.add('hidden');
   document.getElementById('intro-bar-top')?.classList.add('-translate-y-full');
   document.getElementById('intro-bar-bottom')?.classList.add('translate-y-full');
   document.getElementById('speedlines-overlay')?.classList.remove('opacity-100');
@@ -235,8 +204,8 @@ function returnToMenu(): void {
       p2Character: matchState.p2Character,
       p1Palette: matchState.p1Palette,
       p2Palette: matchState.p2Palette,
-      showBoxes: sceneView.showDebugBoxes,
-      showFrames: !hud.framePanel.classList.contains('hidden'),
+      showBoxes: false,
+      showFrames: false,
       touchEnabled: touchControls.enabled,
     },
     sfx.muted
@@ -271,7 +240,6 @@ const campaign = new CampaignRunner(campaignUI, {
     uiLayer.classList.add('hidden');
     touchControls.clearAll();
     touchControls.setOverlayVisible(false);
-    hud.suppressMatchEndModal = true;
   },
   startCampaignMatch(m: CampaignMatch) {
     backdropActive = false;
@@ -279,7 +247,6 @@ const campaign = new CampaignRunner(campaignUI, {
     campaignEndReported = false;
     campaignMaxCombo = 0;
     document.body.classList.add('campaign-match');
-    hud.suppressMatchEndModal = true;
     matchState.hpMult = [1, m.p2Hp];
     startMatch({
       mode: 'AI',
@@ -344,7 +311,7 @@ charSelect.onConfirm = startFreeMatch;
 charSelect.onBack = () => landing.show(landing.config, sfx.muted);
 landing.onOpenControls = () => {
   sfx.unlock();
-  controlsModal.classList.remove('hidden');
+  openControls(null);
 };
 landing.onToggleMute = () => {
   sfx.unlock();
@@ -353,68 +320,31 @@ landing.onToggleMute = () => {
   return muted;
 };
 
+// F1 / F2: herramientas de depuración, solo en Entrenamiento
 inputManager.onToggleDebug = () => {
-  if (inMatch) toggleDebugBoxes();
+  if (inMatch && matchState.mode === 'TRAINING') toggleDebugBoxes();
 };
 inputManager.onToggleFrameData = () => {
-  if (inMatch) toggleDebugFrames();
+  if (inMatch && matchState.mode === 'TRAINING') toggleDebugFrames();
 };
 inputManager.onResetMatch = () => {
-  // En Arcade/Historia no se puede reiniciar un combate perdido a medias
-  if (inMatch && !campaignMatch) resetRoundState(matchState, true);
+  // R reinicia solo en Entrenamiento (en combate se hace desde la pausa)
+  if (inMatch && !paused && matchState.mode === 'TRAINING') resetRoundState(matchState, true);
 };
+inputManager.onPause = () => togglePause();
 
 window.addEventListener('keydown', (e) => {
-  if (
-    !inMatch &&
-    landing.isVisible() &&
-    controlsModal.classList.contains('hidden') &&
-    e.code === 'Enter'
-  ) {
+  if (!controlsModal.classList.contains('hidden')) {
+    if (e.code === 'Escape' || e.code === 'Backspace' || e.code === 'Enter') {
+      e.preventDefault();
+      closeControls();
+    }
+    return;
+  }
+  if (inMatch && (e.code === 'Escape' || e.code === 'KeyP')) {
     e.preventDefault();
-    openCharSelect({ ...landing.config });
+    togglePause();
   }
-});
-
-function swapCharacters(): void {
-  const idx = CHAR_ORDER.indexOf(matchState.p1Character);
-  const nextP1 = CHAR_ORDER[(idx + 1) % CHAR_ORDER.length];
-  matchState.p1Character = nextP1;
-  if (
-    nextP1 === matchState.p2Character &&
-    matchState.p1Palette === matchState.p2Palette
-  ) {
-    matchState.p2Palette = matchState.p1Palette === 0 ? 1 : 0;
-  }
-  aiController.reset();
-  buffers[0].reset();
-  buffers[1].reset();
-  resetRoundState(matchState, true);
-  syncSwapCharButton();
-  hud.updateComboTrials(trialTracker, matchState.mode);
-}
-
-function swapP1Color(): void {
-  matchState.p1Palette = matchState.p1Palette === 0 ? 1 : 0;
-  if (
-    matchState.p1Character === matchState.p2Character &&
-    matchState.p1Palette === matchState.p2Palette
-  ) {
-    matchState.p2Palette = matchState.p1Palette === 0 ? 1 : 0;
-  }
-  matchState.fighters[0].palette = matchState.p1Palette;
-  matchState.fighters[1].palette = matchState.p2Palette;
-  syncSwapCharButton();
-}
-
-document.getElementById('btn-swap-chars')?.addEventListener('click', () => {
-  sfx.unlock();
-  swapCharacters();
-});
-
-document.getElementById('btn-swap-color')?.addEventListener('click', () => {
-  sfx.unlock();
-  swapP1Color();
 });
 
 document.getElementById('btn-trial-prev')?.addEventListener('click', () => {
@@ -429,22 +359,6 @@ document.getElementById('btn-trial-next')?.addEventListener('click', () => {
   hud.updateComboTrials(trialTracker, matchState.mode);
 });
 
-document.getElementById('btn-touch-toggle')?.addEventListener('click', () => {
-  sfx.unlock();
-  touchControls.toggle();
-});
-document.getElementById('btn-mode-ai')?.addEventListener('click', () => {
-  sfx.unlock();
-  setGameMode('AI');
-});
-document.getElementById('btn-mode-2p')?.addEventListener('click', () => {
-  sfx.unlock();
-  setGameMode('2P');
-});
-document.getElementById('btn-mode-train')?.addEventListener('click', () => {
-  sfx.unlock();
-  setGameMode('TRAINING');
-});
 document.getElementById('select-dummy')?.addEventListener('change', (e) => {
   matchState.dummyMode = (e.target as HTMLSelectElement).value as DummyMode;
 });
@@ -466,55 +380,176 @@ document
   .getElementById('btn-pos-right')
   ?.addEventListener('click', () => setTrainingPos('CORNER_R'));
 
-document.getElementById('btn-toggle-topbar')?.addEventListener('click', (e) => {
-  const actions = document.getElementById('topbar-actions');
-  if (!actions) return;
-  const collapsed = actions.classList.toggle('hidden');
-  (e.currentTarget as HTMLElement).textContent = collapsed ? '▾' : '▴';
-});
-
-document.getElementById('btn-rematch')?.addEventListener('click', () => {
-  sfx.unlock();
-  aiController.reset();
-  resetRoundState(matchState, true);
-});
-document.getElementById('btn-end-swap')?.addEventListener('click', () => {
-  sfx.unlock();
-  swapCharacters();
-});
-document.getElementById('btn-end-train')?.addEventListener('click', () => {
-  sfx.unlock();
-  setGameMode('TRAINING');
-});
-document.getElementById('btn-end-menu')?.addEventListener('click', () => {
-  sfx.unlock();
-  returnToMenu();
-});
-document.getElementById('btn-return-menu')?.addEventListener('click', () => {
-  sfx.unlock();
-  returnToMenu();
-});
-
 document
   .getElementById('btn-debug-boxes')
   ?.addEventListener('click', toggleDebugBoxes);
 document
   .getElementById('btn-debug-frames')
   ?.addEventListener('click', toggleDebugFrames);
-document.getElementById('btn-reset')?.addEventListener('click', () => {
-  sfx.unlock();
-  resetRoundState(matchState, true);
-});
-document.getElementById('btn-mute')?.addEventListener('click', () => {
-  sfx.unlock();
-  sfx.toggleMute();
-  syncMuteButtons();
-});
-document.getElementById('btn-controls')?.addEventListener('click', () => {
+// ===================== Pausa, fin de combate libre y controles =====================
+
+let paused = false;
+let freeEndShown = false;
+
+function canPause(): boolean {
+  return (
+    inMatch &&
+    matchState.phase !== 'MATCH_END' &&
+    !campaignUI.isVisible() &&
+    controlsModal.classList.contains('hidden')
+  );
+}
+
+function togglePause(): void {
+  if (paused) resumeGame();
+  else if (canPause()) showPauseMenu();
+}
+
+function resumeGame(): void {
+  paused = false;
+  campaignUI.hide();
+  touchControls.setOverlayVisible(true);
+}
+
+function showPauseMenu(focusLabel?: string): void {
+  paused = true;
+  touchControls.clearAll();
+  touchControls.setOverlayVisible(false);
+  const training = matchState.mode === 'TRAINING';
+  const free = !campaignMatch;
+  const onOff = (v: boolean) => (v ? 'Sí' : 'No');
+  const items: MenuItem[] = [{ label: 'Reanudar', primary: true, onSelect: resumeGame }];
+  if (free) {
+    items.push({
+      label: training ? 'Reiniciar posición' : 'Reiniciar combate',
+      onSelect: () => {
+        aiController.reset();
+        buffers[0].reset();
+        buffers[1].reset();
+        resetRoundState(matchState, true);
+        resumeGame();
+      },
+    });
+  }
+  if (training) {
+    items.push(
+      {
+        label: 'Cajas de colisión',
+        value: onOff(sceneView.showDebugBoxes),
+        onSelect: () => {
+          toggleDebugBoxes();
+          showPauseMenu('Cajas de colisión');
+        },
+      },
+      {
+        label: 'Medidor de frames',
+        value: onOff(!hud.framePanel.classList.contains('hidden')),
+        onSelect: () => {
+          toggleDebugFrames();
+          showPauseMenu('Medidor de frames');
+        },
+      }
+    );
+  }
+  if (free) {
+    items.push({ label: 'Cambiar luchador', onSelect: () => leaveMatchTo(() => openCharSelect(currentConfig())) });
+  }
+  items.push(
+    { label: 'Lista de movimientos', onSelect: () => openControls('pause') },
+    {
+      label: 'Sonido',
+      value: sfx.muted ? 'Silenciado' : 'Activado',
+      onSelect: () => {
+        sfx.toggleMute();
+        syncMuteButtons();
+        showPauseMenu('Sonido');
+      },
+    },
+    {
+      label: campaignMatch ? 'Abandonar y salir al menú' : 'Salir al menú principal',
+      onSelect: () => returnToMenu(),
+    }
+  );
+  const sub = campaignMatch
+    ? 'Si abandonas, perderás el progreso de este combate.'
+    : `${CHARACTERS[matchState.p1Character].name} contra ${CHARACTERS[matchState.p2Character].name}`;
+  campaignUI.menu('PAUSA', items, { subtitle: sub, onBack: resumeGame, focusLabel });
+}
+
+/** Configuración actual de la partida libre (para revancha o cambiar luchador) */
+function currentConfig(): LaunchConfig {
+  return {
+    ...landing.config,
+    mode: matchState.mode,
+    stageId: matchState.stageId,
+    aiDifficulty: aiController.difficulty,
+    p1Character: matchState.p1Character,
+    p2Character: matchState.p2Character,
+    p1Palette: matchState.p1Palette,
+    p2Palette: matchState.p2Palette,
+    showBoxes: false,
+    showFrames: false,
+  };
+}
+
+/** Sale del combate sin pasar por la portada (p. ej. a la selección) */
+function leaveMatchTo(next: () => void): void {
+  paused = false;
+  campaignUI.hide();
+  inMatch = false;
+  sfx.stopMusic();
+  touchControls.clearAll();
+  touchControls.setOverlayVisible(false);
+  uiLayer.classList.add('hidden');
+  document.body.classList.remove('mode-training');
+  next();
+}
+
+function showFreeMatchEnd(): void {
+  const w = matchState.winnerId;
+  const [p1, p2] = matchState.fighters;
+  const winner = w === -1 ? null : matchState.fighters[w];
+  uiLayer.classList.add('hidden');
+  touchControls.clearAll();
+  touchControls.setOverlayVisible(false);
+  const title = winner ? `¡VICTORIA DE ${CHARACTERS[winner.character].name}!` : 'EMPATE';
+  const side = w === 0 ? 'Jugador 1' : matchState.mode === 'AI' ? 'CPU' : 'Jugador 2';
+  campaignUI.menu(
+    title,
+    [
+      {
+        label: 'Revancha',
+        primary: true,
+        onSelect: () => {
+          campaignUI.hide();
+          startFreeMatch(currentConfig());
+        },
+      },
+      { label: 'Cambiar luchador', onSelect: () => leaveMatchTo(() => openCharSelect(currentConfig())) },
+      { label: 'Salir al menú principal', onSelect: () => returnToMenu() },
+    ],
+    {
+      subtitle: winner ? `${side} gana ${p1.roundsWon} – ${p2.roundsWon}` : `${p1.roundsWon} – ${p2.roundsWon}`,
+      onBack: () => returnToMenu(),
+    }
+  );
+}
+
+let controlsFrom: 'pause' | null = null;
+function openControls(from: 'pause' | null): void {
+  controlsFrom = from;
+  if (from === 'pause') campaignUI.hide();
   controlsModal.classList.remove('hidden');
-});
-document.getElementById('btn-close-controls')?.addEventListener('click', () => {
+}
+function closeControls(): void {
   controlsModal.classList.add('hidden');
+  if (controlsFrom === 'pause' && inMatch) showPauseMenu('Lista de movimientos');
+  controlsFrom = null;
+}
+document.getElementById('btn-close-controls')?.addEventListener('click', closeControls);
+document.getElementById('btn-pause')?.addEventListener('click', () => {
+  sfx.unlock();
+  togglePause();
 });
 
 resetRoundState(matchState, true);
@@ -529,7 +564,11 @@ function gameLoop(nowMs: number): void {
   accumulator += Math.min(now - lastTime, 0.1);
   lastTime = now;
 
-  if (inMatch) {
+  if (inMatch && paused) {
+    // En pausa: la escena se sigue dibujando, la simulación no avanza
+    accumulator = 0;
+    sceneView.render(matchState);
+  } else if (inMatch) {
     let steps = 0;
     while (accumulator >= FIXED_DT && steps < MAX_STEPS) {
       let shouldStep = true;
@@ -576,6 +615,14 @@ function gameLoop(nowMs: number): void {
           secondsLeft: matchState.timerFrames / 60,
           maxCombo: campaignMaxCombo,
         });
+      }
+    }
+
+    if (!campaignMatch && matchState.mode !== 'TRAINING') {
+      if (matchState.phase !== 'MATCH_END') freeEndShown = false;
+      else if (!freeEndShown && matchState.phaseTimer <= 55) {
+        freeEndShown = true;
+        showFreeMatchEnd();
       }
     }
 

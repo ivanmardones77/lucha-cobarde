@@ -1,3 +1,4 @@
+import './hud.css';
 import { sfx } from '../audio/SoundEngine';
 import { ComboTrialTracker } from '../core/comboTrials';
 import { InputBuffer } from '../core/inputBuffer';
@@ -92,11 +93,6 @@ export class HudOverlay {
   private p1Callout = document.getElementById('p1-callout')!;
   private p2Callout = document.getElementById('p2-callout')!;
   private banner = document.getElementById('center-banner')!;
-  private matchEndModal = document.getElementById('match-end-modal')!;
-  /** En Arcade/Historia la campaña muestra su propio final de combate */
-  public suppressMatchEndModal = false;
-  private matchEndTitle = document.getElementById('match-end-title')!;
-  private matchEndSubtitle = document.getElementById('match-end-subtitle')!;
   public framePanel = document.getElementById('frame-debug-panel')!;
   private dbgP1State = document.getElementById('dbg-p1-state')!;
   private dbgP1Frame = document.getElementById('dbg-p1-frame')!;
@@ -362,29 +358,6 @@ export class HudOverlay {
     if (this.speedlinesOverlay) {
       this.speedlinesOverlay.classList.toggle('opacity-100', speedActive);
       this.speedlinesOverlay.classList.toggle('opacity-0', !speedActive);
-    }
-
-    if (state.phase === 'MATCH_END' && state.phaseTimer <= 55 && !this.suppressMatchEndModal) {
-      if (this.matchEndModal.classList.contains('hidden')) {
-        if (state.winnerId !== -1) {
-          const winner = state.fighters[state.winnerId];
-          const spec = CHARACTERS[winner.character];
-          const sideLabel = state.winnerId === 0 ? 'P1' : 'P2';
-          this.matchEndTitle.textContent = `¡VICTORIA ${spec.name}!`;
-          this.matchEndTitle.style.color = getFighterHudColor(
-            winner.character,
-            winner.palette
-          );
-          this.matchEndSubtitle.textContent = `${sideLabel} GANA (${p1.roundsWon} - ${p2.roundsWon}) · ${spec.archetype}`;
-        } else {
-          this.matchEndTitle.textContent = 'EMPATE TÉCNICO';
-          this.matchEndTitle.style.color = '#facc15';
-          this.matchEndSubtitle.textContent = `${p1.roundsWon} - ${p2.roundsWon}`;
-        }
-        this.matchEndModal.classList.remove('hidden');
-      }
-    } else if (!this.matchEndModal.classList.contains('hidden')) {
-      this.matchEndModal.classList.add('hidden');
     }
 
     if (!this.framePanel.classList.contains('hidden')) {
