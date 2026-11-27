@@ -1,0 +1,387 @@
+/* ---------- Pantalla de selección de personaje ---------- */
+#char-select {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: #05070d;
+  color: #f8fafc;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+#char-select.hidden {
+  display: none;
+}
+
+.cs-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.cs-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.28;
+  filter: saturate(1.2) blur(2px);
+}
+.cs-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 22% 70%, var(--p1c, #22d3ee33), transparent 55%),
+    radial-gradient(ellipse at 78% 70%, var(--p2c, #fb718533), transparent 55%),
+    linear-gradient(to bottom, rgba(5, 7, 13, 0.85), rgba(5, 7, 13, 0.35) 40%, rgba(5, 7, 13, 0.95));
+}
+
+/* Cabecera */
+.cs-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: max(12px, env(safe-area-inset-top)) 16px 8px;
+}
+.cs-title {
+  font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  font-size: clamp(14px, 2.2vw, 22px);
+  text-transform: uppercase;
+  text-align: center;
+  flex: 1;
+}
+.cs-title small {
+  display: block;
+  font-size: 0.55em;
+  letter-spacing: 0.3em;
+  color: #94a3b8;
+  font-weight: 500;
+}
+.cs-btn {
+  font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 10px 14px;
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.85);
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.cs-btn:hover {
+  border-color: rgba(226, 232, 240, 0.8);
+}
+.cs-btn:active {
+  transform: scale(0.96);
+}
+.cs-btn.primary {
+  background: linear-gradient(180deg, var(--accent, #0ea5e9), color-mix(in srgb, var(--accent, #0ea5e9) 60%, #000));
+  border-color: color-mix(in srgb, var(--accent, #0ea5e9) 70%, #fff);
+  color: #fff;
+}
+.cs-btn[disabled] {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* Escenario de luchadores */
+.cs-arena {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+  min-height: 0;
+  padding: 0 2vw;
+}
+.cs-side {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  min-height: 0;
+}
+.cs-fighter {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.cs-fighter::before {
+  /* foco de luz en el suelo */
+  content: '';
+  position: absolute;
+  bottom: 2%;
+  left: 50%;
+  width: min(70%, 420px);
+  height: 9%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, var(--accent, #0ea5e9) 0%, transparent 70%);
+  opacity: 0.55;
+  filter: blur(6px);
+}
+.cs-fighter canvas,
+.cs-fighter .cs-fallback {
+  position: relative;
+  height: 100%;
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+  aspect-ratio: 340 / 330;
+}
+.cs-fighter canvas {
+  filter: drop-shadow(0 0 18px color-mix(in srgb, var(--accent, #0ea5e9) 45%, transparent));
+}
+.cs-fallback {
+  aspect-ratio: 3 / 4 !important;
+  height: 92% !important;
+  border-radius: 18px;
+  object-position: top;
+  object-fit: cover !important;
+  mask-image: linear-gradient(to bottom, #000 70%, transparent);
+  animation: csBreath 2.4s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+.cs-side.locked .cs-fallback {
+  animation: csPowerUp 0.9s ease-out 1, csBreath 2.4s ease-in-out 0.9s infinite;
+}
+@keyframes csBreath {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.015, 1.025); }
+}
+@keyframes csPowerUp {
+  0% { transform: scale(1); filter: brightness(1); }
+  25% { transform: scale(1.06); filter: brightness(1.9) saturate(1.4); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+.cs-info {
+  position: relative;
+  text-align: center;
+  padding: 4px 8px 6px;
+}
+.cs-tag {
+  display: inline-block;
+  font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent, #0ea5e9);
+  color: #05070d;
+}
+.cs-name {
+  font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(26px, 5vw, 56px);
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: var(--accent, #0ea5e9);
+  text-shadow: 0 0 22px color-mix(in srgb, var(--accent, #0ea5e9) 55%, transparent);
+  margin-top: 4px;
+}
+.cs-meta {
+  font-size: 12px;
+  color: #cbd5e1;
+  margin-top: 2px;
+}
+.cs-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+.cs-status {
+  font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: #94a3b8;
+  min-height: 18px;
+  margin-top: 4px;
+}
+.cs-side.locked .cs-status {
+  color: var(--accent, #0ea5e9);
+}
+
+/* VS central */
+.cs-vs {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%) skewX(-10deg);
+  font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(28px, 6vw, 72px);
+  color: #f8fafc;
+  text-shadow: 0 0 20px rgba(244, 63, 94, 0.7), 3px 3px 0 #be123c;
+  pointer-events: none;
+}
+
+/* Rejilla de personajes */
+.cs-roster {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  gap: clamp(6px, 1.2vw, 14px);
+  padding: 10px 16px max(14px, env(safe-area-inset-bottom));
+}
+.cs-tile {
+  position: relative;
+  width: clamp(56px, 9vw, 112px);
+  aspect-ratio: 3 / 4;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  background: #0f172a;
+  cursor: pointer;
+  padding: 0;
+  transform: skewX(-6deg);
+  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.cs-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 12%;
+  transform: skewX(6deg) scale(1.15);
+  pointer-events: none;
+}
+.cs-tile .cs-tile-name {
+  position: absolute;
+  inset: auto 0 0 0;
+  font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(9px, 1.1vw, 12px);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-align: center;
+  padding: 10px 2px 3px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+}
+.cs-tile.p1 {
+  border-color: var(--p1, #22d3ee);
+  box-shadow: 0 0 0 2px var(--p1, #22d3ee), 0 0 18px var(--p1, #22d3ee);
+  transform: skewX(-6deg) translateY(-4px);
+}
+.cs-tile.p2 {
+  border-color: var(--p2, #fb7185);
+  box-shadow: 0 0 0 2px var(--p2, #fb7185), 0 0 18px var(--p2, #fb7185);
+  transform: skewX(-6deg) translateY(-4px);
+}
+.cs-tile.p1.p2 {
+  border-color: #fff;
+  box-shadow: -3px 0 0 2px var(--p1, #22d3ee), 3px 0 0 2px var(--p2, #fb7185);
+}
+.cs-badge {
+  position: absolute;
+  top: 3px;
+  font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 6px;
+  transform: skewX(6deg);
+  display: none;
+  color: #05070d;
+}
+.cs-badge.b1 { left: 3px; background: var(--p1, #22d3ee); }
+.cs-badge.b2 { right: 3px; background: var(--p2, #fb7185); }
+.cs-tile.p1 .b1, .cs-tile.p2 .b2 { display: block; }
+.cs-hint {
+  text-align: center;
+  font-size: 11px;
+  color: #64748b;
+  padding-bottom: 6px;
+}
+
+/* Fase de escenario */
+.cs-stage-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: rgba(5, 7, 13, 0.78);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  padding: 16px;
+}
+#char-select.stage-phase .cs-stage-layer {
+  opacity: 1;
+  pointer-events: auto;
+}
+.cs-stage-layer .cs-title {
+  flex: none;
+}
+.cs-stage-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  width: min(900px, 100%);
+}
+.cs-stage-card {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  cursor: pointer;
+  padding: 0;
+  background: #0f172a;
+  color: #fff;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.cs-stage-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.cs-stage-card span {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 24px 12px 10px;
+  font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  font-size: clamp(13px, 2vw, 20px);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+  text-align: left;
+}
+.cs-stage-card.active {
+  border-color: #f8fafc;
+  box-shadow: 0 0 0 3px #f43f5e, 0 0 28px rgba(244, 63, 94, 0.6);
+  transform: scale(1.03);
+}
+
+#char-select.fade-out {
+  animation: csFadeOut 0.35s ease-in forwards;
+}
+@keyframes csFadeOut {
+  to { opacity: 0; }
+}
+
+@media (max-width: 640px) {
+  .cs-actions .cs-btn { padding: 8px 10px; font-size: 11px; }
+  .cs-hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cs-fallback, .cs-side.locked .cs-fallback { animation: none; }
+}
