@@ -5,9 +5,11 @@ import {
   CHARACTERS,
   CharacterId,
   COMBO_SCALING,
+  CostumePalette,
   FrameMeterCode,
   GameMode,
   MatchState,
+  getFighterHudColor,
 } from '../core/types';
 import { InputManager } from '../input/InputManager';
 import { TouchControls } from '../input/TouchControls';
@@ -24,15 +26,36 @@ const FM_COLORS: Record<FrameMeterCode, string> = {
   D: '#6366f1',
 };
 
-function getHpBarGradient(charId: CharacterId, isLeftSide: boolean): string {
+function getHpBarGradient(
+  charId: CharacterId,
+  palette: CostumePalette,
+  isLeftSide: boolean
+): string {
   const dir = isLeftSide ? '270deg' : '90deg';
   if (charId === 'RYUJIN') {
-    return `linear-gradient(${dir}, #22d3ee, #38bdf8, #34d399)`;
+    return palette === 1
+      ? `linear-gradient(${dir}, #fb7185, #e11d48, #be123c)`
+      : `linear-gradient(${dir}, #22d3ee, #38bdf8, #34d399)`;
+  }
+  if (charId === 'KAZE') {
+    return palette === 1
+      ? `linear-gradient(${dir}, #facc15, #a855f7, #6366f1)`
+      : `linear-gradient(${dir}, #f43f5e, #ec4899, #fb923c)`;
   }
   if (charId === 'TITAN') {
-    return `linear-gradient(${dir}, #f59e0b, #fbbf24, #ea580c)`;
+    return palette === 1
+      ? `linear-gradient(${dir}, #38bdf8, #3b82f6, #1d4ed8)`
+      : `linear-gradient(${dir}, #f59e0b, #fbbf24, #ea580c)`;
   }
-  return `linear-gradient(${dir}, #f43f5e, #ec4899, #fb923c)`;
+  if (charId === 'VOLT') {
+    return palette === 1
+      ? `linear-gradient(${dir}, #a3e635, #10b981, #0f766e)`
+      : `linear-gradient(${dir}, #c084fc, #a855f7, #6366f1)`;
+  }
+  // VALKYRIE
+  return palette === 1
+    ? `linear-gradient(${dir}, #fbbf24, #f43f5e, #9f1239)`
+    : `linear-gradient(${dir}, #34d399, #10b981, #059669)`;
 }
 
 export class HudOverlay {
@@ -213,16 +236,28 @@ export class HudOverlay {
     const [p1, p2] = state.fighters;
     const p1Spec = CHARACTERS[p1.character];
     const p2Spec = CHARACTERS[p2.character];
+    const p1Color = getFighterHudColor(p1.character, p1.palette);
+    const p2Color = getFighterHudColor(p2.character, p2.palette);
 
-    this.p1CharName.textContent = p1Spec.name;
-    this.p1CharName.style.color = p1Spec.hudColor;
-    this.p2CharName.textContent = p2Spec.name;
-    this.p2CharName.style.color = p2Spec.hudColor;
+    this.p1CharName.textContent =
+      p1.palette === 1 ? `${p1Spec.name} · ALT` : p1Spec.name;
+    this.p1CharName.style.color = p1Color;
+    this.p2CharName.textContent =
+      p2.palette === 1 ? `${p2Spec.name} · ALT` : p2Spec.name;
+    this.p2CharName.style.color = p2Color;
 
-    this.p1HpWrap.style.borderColor = p1Spec.hudColor;
-    this.p2HpWrap.style.borderColor = p2Spec.hudColor;
-    this.p1HpFill.style.background = getHpBarGradient(p1.character, true);
-    this.p2HpFill.style.background = getHpBarGradient(p2.character, false);
+    this.p1HpWrap.style.borderColor = p1Color;
+    this.p2HpWrap.style.borderColor = p2Color;
+    this.p1HpFill.style.background = getHpBarGradient(
+      p1.character,
+      p1.palette,
+      true
+    );
+    this.p2HpFill.style.background = getHpBarGradient(
+      p2.character,
+      p2.palette,
+      false
+    );
 
     this.p1HpFill.style.width = `${(p1.hp / p1.maxHp) * 100}%`;
     this.p1HpDel.style.width = `${(p1.delayedHp / p1.maxHp) * 100}%`;
@@ -250,19 +285,19 @@ export class HudOverlay {
     this.roundLabel.textContent =
       state.mode === 'TRAINING' ? 'ENTRENAMIENTO' : `ROUND ${state.round}`;
 
-    this.p1R1.style.borderColor = p1Spec.hudColor;
-    this.p1R2.style.borderColor = p1Spec.hudColor;
-    this.p2R1.style.borderColor = p2Spec.hudColor;
-    this.p2R2.style.borderColor = p2Spec.hudColor;
+    this.p1R1.style.borderColor = p1Color;
+    this.p1R2.style.borderColor = p1Color;
+    this.p2R1.style.borderColor = p2Color;
+    this.p2R2.style.borderColor = p2Color;
 
     this.p1R1.style.backgroundColor =
-      p1.roundsWon >= 1 ? p1Spec.hudColor : 'rgba(15,23,42,0.8)';
+      p1.roundsWon >= 1 ? p1Color : 'rgba(15,23,42,0.8)';
     this.p1R2.style.backgroundColor =
-      p1.roundsWon >= 2 ? p1Spec.hudColor : 'rgba(15,23,42,0.8)';
+      p1.roundsWon >= 2 ? p1Color : 'rgba(15,23,42,0.8)';
     this.p2R1.style.backgroundColor =
-      p2.roundsWon >= 1 ? p2Spec.hudColor : 'rgba(15,23,42,0.8)';
+      p2.roundsWon >= 1 ? p2Color : 'rgba(15,23,42,0.8)';
     this.p2R2.style.backgroundColor =
-      p2.roundsWon >= 2 ? p2Spec.hudColor : 'rgba(15,23,42,0.8)';
+      p2.roundsWon >= 2 ? p2Color : 'rgba(15,23,42,0.8)';
 
     this.p1Badge.textContent = inputMgr.gamepadConnected[0]
       ? '[Mando 1]'
@@ -334,7 +369,10 @@ export class HudOverlay {
           const spec = CHARACTERS[winner.character];
           const sideLabel = state.winnerId === 0 ? 'P1' : 'P2';
           this.matchEndTitle.textContent = `¡VICTORIA ${spec.name}!`;
-          this.matchEndTitle.style.color = spec.hudColor;
+          this.matchEndTitle.style.color = getFighterHudColor(
+            winner.character,
+            winner.palette
+          );
           this.matchEndSubtitle.textContent = `${sideLabel} GANA (${p1.roundsWon} - ${p2.roundsWon}) · ${spec.archetype}`;
         } else {
           this.matchEndTitle.textContent = 'EMPATE TÉCNICO';

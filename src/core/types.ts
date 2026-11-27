@@ -16,7 +16,9 @@ export interface AABB {
   h: number;
 }
 
-export type CharacterId = 'RYUJIN' | 'KAZE' | 'TITAN';
+export type CharacterId = 'RYUJIN' | 'KAZE' | 'TITAN' | 'VOLT' | 'VALKYRIE';
+
+export type CostumePalette = 0 | 1;
 
 export type StageId = 'ALLEY' | 'ROOFTOP';
 
@@ -105,6 +107,10 @@ export interface CharacterSpec {
   primaryColor: number;
   accentColor: number;
   hudColor: string;
+  altPrimaryColor: number;
+  altAccentColor: number;
+  altHudColor: string;
+  altPaletteName: string;
   moves: Record<PlayableMoveId, MoveData>;
 }
 
@@ -134,6 +140,7 @@ export type FrameMeterCode = 'N' | 'S' | 'A' | 'R' | 'H' | 'B' | 'I' | 'D';
 export interface FighterState {
   id: 0 | 1;
   character: CharacterId;
+  palette: CostumePalette;
   x: number;
   y: number;
   vx: number;
@@ -263,6 +270,8 @@ export interface MatchState {
   dummyMode: DummyMode;
   p1Character: CharacterId;
   p2Character: CharacterId;
+  p1Palette: CostumePalette;
+  p2Palette: CostumePalette;
   frame: number;
   hitstop: number;
   slowMoFrames: number;
@@ -1978,6 +1987,57 @@ const TITAN_MOVES: Record<PlayableMoveId, MoveData> = {
   },
 };
 
+function customizeMoves(
+  base: Record<PlayableMoveId, MoveData>,
+  overrides: Partial<Record<PlayableMoveId, Partial<MoveData>>>
+): Record<PlayableMoveId, MoveData> {
+  const out = { ...base };
+  for (const key of Object.keys(overrides) as PlayableMoveId[]) {
+    out[key] = { ...base[key], ...overrides[key] } as MoveData;
+  }
+  return out;
+}
+
+const VOLT_MOVES = customizeMoves(RYUJIN_MOVES, {
+  '5P': { name: 'Spark Jab (5P)', startup: 4, damage: 44, hitbox: { x: 0.96, y: 1.28, w: 1.02, h: 0.34 } },
+  '5K': { name: 'Volt Whip (5K)', startup: 6, damage: 74, hitbox: { x: 1.15, y: 1.08, w: 1.28, h: 0.38 } },
+  '6P': { name: 'Arc Palm (6P)', startup: 11, damage: 85, hitLevel: 'OVERHEAD', hitbox: { x: 1.05, y: 1.32, w: 1.1, h: 0.44 } },
+  '6K': { name: 'Static Slide (6K)', startup: 9, damage: 82, hitLevel: 'LOW', knockdown: false, hitbox: { x: 1.15, y: 0.42, w: 1.25, h: 0.42 } },
+  '236P': { name: 'Volt Sphere (236P)', startup: 10, recovery: 18, damage: 78, spawnsProjectile: true },
+  'EX_236P': { name: 'EX Giga Volt (236+PK)', startup: 9, damage: 64, projectileHits: 2, spawnsProjectile: true },
+  '22P': { name: 'Shock Arc (22P)', startup: 11, active: 6, recovery: 18, damage: 76, chip: 12, hitstun: 18, blockstun: 14, spawnsProjectile: true, projectileVy: 0.14, hitbox: null },
+  '623P': { name: 'Tesla Rising (623P)', startup: 5, damage: 115, invulnUntil: 9 },
+  'EX_623P': { name: 'EX Overcharge Upper', startup: 4, damage: 145, invulnUntil: 12 },
+  '236K': { name: 'Arc Blitz (236K)', startup: 10, active: 14, damage: 95, multiHits: [11, 16, 21] },
+  'EX_236K': { name: 'EX Hyper Blitz', startup: 8, damage: 122, multiHits: [9, 13, 17, 21] },
+  '214P': { name: 'Coil Discharge (214P)', startup: 9, damage: 98, hitbox: { x: 1.28, y: 1.12, w: 1.48, h: 0.65 } },
+  '214K': { name: 'Phase Warp (214K)', startup: 12, active: 6, recovery: 12, damage: 86, invulnUntil: 10, hitbox: { x: 0.85, y: 1.05, w: 1.15, h: 0.72 } },
+  '41236K': { name: 'Thunder Barrage (41236K)', startup: 9, damage: 34, multiHits: [10, 14, 18, 22] },
+  '63214T': { name: 'EMP Overcharge (63214T)', startup: 7, damage: 175 },
+  j236P: { name: 'Air Volt Orb (j.236P)', startup: 9, damage: 74, spawnsProjectile: true, projectileVy: -0.09 },
+  SUPER: { name: 'MEGAVOLT TEMPEST!', startup: 8, damage: 66, multiHits: [9, 14, 19, 24], hitbox: { x: 1.4, y: 1.15, w: 2.15, h: 1.25 } },
+});
+
+const VALKYRIE_MOVES = customizeMoves(KAZE_MOVES, {
+  '5P': { name: 'Sabre Jab (5P)', startup: 4, damage: 48, hitbox: { x: 0.98, y: 1.28, w: 1.05, h: 0.34 } },
+  '5K': { name: 'Photon Lance (5K)', startup: 6, damage: 78, hitbox: { x: 1.18, y: 1.12, w: 1.32, h: 0.4 } },
+  '6P': { name: 'Halberd Overhead (6P)', startup: 12, damage: 88, hitLevel: 'OVERHEAD', hitbox: { x: 1.1, y: 1.32, w: 1.18, h: 0.52 } },
+  '6K': { name: 'Wing Dash Kick (6K)', startup: 9, damage: 86, knockdown: true, hitbox: { x: 1.15, y: 0.88, w: 1.25, h: 0.45 } },
+  '236P': { name: 'Feather Crescent (236P)', startup: 11, recovery: 17, damage: 76, spawnsProjectile: true },
+  'EX_236P': { name: 'EX Twin Crescents', startup: 9, damage: 62, spawnsProjectile: true, projectileHits: 2 },
+  '22P': { name: 'Sky Feather (22P)', startup: 10, active: 6, recovery: 16, damage: 72, chip: 10, spawnsProjectile: true, projectileVy: 0.11, hitbox: null },
+  '623P': { name: 'Skyward Lance (623P)', startup: 5, damage: 118, invulnUntil: 9 },
+  'EX_623P': { name: 'EX Seraph Ascent', startup: 4, damage: 148, invulnUntil: 12 },
+  '236K': { name: 'Jet Thruster (236K)', startup: 9, damage: 96, multiHits: [10, 14, 18] },
+  'EX_236K': { name: 'EX Mach Thrust', startup: 7, damage: 128, multiHits: [8, 12, 16, 20] },
+  '214P': { name: 'Valkyrie Cleave (214P)', startup: 9, damage: 98, hitbox: { x: 1.25, y: 1.15, w: 1.45, h: 0.68 } },
+  '214K': { name: 'Aero Flip Kick (214K)', startup: 11, damage: 102, hitLevel: 'OVERHEAD', knockdown: true, hitbox: { x: 1.05, y: 1.25, w: 1.15, h: 0.82 } },
+  '41236K': { name: 'Seraph Flurry (41236K)', startup: 8, damage: 34, multiHits: [9, 13, 17, 21] },
+  '63214T': { name: "Heaven's Drop (63214T)", startup: 7, damage: 185 },
+  j214K: { name: 'Valkyrie Dive (j.214K)', startup: 7, damage: 92 },
+  SUPER: { name: 'SOLAR VALKYRIE!', startup: 7, damage: 68, multiHits: [8, 13, 18, 23], hitbox: { x: 1.42, y: 1.15, w: 2.15, h: 1.2 } },
+});
+
 export const CHARACTERS: Record<CharacterId, CharacterSpec> = {
   RYUJIN: {
     id: 'RYUJIN',
@@ -2001,6 +2061,10 @@ export const CHARACTERS: Record<CharacterId, CharacterSpec> = {
     primaryColor: 0x0284c7,
     accentColor: 0x38bdf8,
     hudColor: '#38bdf8',
+    altPrimaryColor: 0x991b1b,
+    altAccentColor: 0xf43f5e,
+    altHudColor: '#fb7185',
+    altPaletteName: 'Satsui Carmesí',
     moves: RYUJIN_MOVES,
   },
   KAZE: {
@@ -2025,6 +2089,10 @@ export const CHARACTERS: Record<CharacterId, CharacterSpec> = {
     primaryColor: 0xbe123c,
     accentColor: 0xfb7185,
     hudColor: '#fb7185',
+    altPrimaryColor: 0x3730a3,
+    altAccentColor: 0xfacc15,
+    altHudColor: '#facc15',
+    altPaletteName: 'Oro Fantasma',
     moves: KAZE_MOVES,
   },
   TITAN: {
@@ -2049,7 +2117,67 @@ export const CHARACTERS: Record<CharacterId, CharacterSpec> = {
     primaryColor: 0xd97706,
     accentColor: 0xf59e0b,
     hudColor: '#f59e0b',
+    altPrimaryColor: 0x1d4ed8,
+    altAccentColor: 0x38bdf8,
+    altHudColor: '#38bdf8',
+    altPaletteName: 'Cromo Cobalto',
     moves: TITAN_MOVES,
+  },
+  VOLT: {
+    id: 'VOLT',
+    name: 'VOLT',
+    archetype: 'Electro-Zoner',
+    maxHp: 950,
+    walkForward: 0.084,
+    walkBack: 0.072,
+    jumpVx: 0.106,
+    jumpVy: 0.34,
+    dashForwardVx: 0.24,
+    dashBackVx: 0.23,
+    dpVx: 0.08,
+    dpVy: 0.245,
+    rushVx: 0.185,
+    rushType: 'BLITZ',
+    projectileVx: 0.23,
+    projectileKind: 'ORB',
+    projectileSize: { w: 0.68, h: 0.56 },
+    superName: 'MEGAVOLT TEMPEST!',
+    primaryColor: 0x6d28d9,
+    accentColor: 0xa855f7,
+    hudColor: '#c084fc',
+    altPrimaryColor: 0x0f766e,
+    altAccentColor: 0x84cc16,
+    altHudColor: '#a3e635',
+    altPaletteName: 'Voltaje Lima',
+    moves: VOLT_MOVES,
+  },
+  VALKYRIE: {
+    id: 'VALKYRIE',
+    name: 'VALKYRIE',
+    archetype: 'Aero-Duelista',
+    maxHp: 980,
+    walkForward: 0.098,
+    walkBack: 0.078,
+    jumpVx: 0.122,
+    jumpVy: 0.355,
+    dashForwardVx: 0.265,
+    dashBackVx: 0.235,
+    dpVx: 0.105,
+    dpVy: 0.245,
+    rushVx: 0.205,
+    rushType: 'BLITZ',
+    projectileVx: 0.265,
+    projectileKind: 'KUNAI',
+    projectileSize: { w: 0.78, h: 0.34 },
+    superName: 'SOLAR VALKYRIE!',
+    primaryColor: 0x059669,
+    accentColor: 0x34d399,
+    hudColor: '#34d399',
+    altPrimaryColor: 0x9f1239,
+    altAccentColor: 0xfbbf24,
+    altHudColor: '#fbbf24',
+    altPaletteName: 'Serafín Dorado',
+    moves: VALKYRIE_MOVES,
   },
 };
 
@@ -2057,4 +2185,20 @@ export const MOVES = RYUJIN_MOVES;
 
 export function getFighterMove(f: FighterState): MoveData | null {
   return f.moveId ? CHARACTERS[f.character].moves[f.moveId] : null;
+}
+
+export function getFighterAccentColor(
+  character: CharacterId,
+  palette: CostumePalette = 0
+): number {
+  const spec = CHARACTERS[character];
+  return palette === 1 ? spec.altAccentColor : spec.accentColor;
+}
+
+export function getFighterHudColor(
+  character: CharacterId,
+  palette: CostumePalette = 0
+): string {
+  const spec = CHARACTERS[character];
+  return palette === 1 ? spec.altHudColor : spec.hudColor;
 }

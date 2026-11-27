@@ -287,14 +287,17 @@
           <div id="landing-roster-panel" class="lg:col-span-6 relative">
             <div class="grid grid-cols-2 gap-4 sm:gap-5 items-stretch">
               <!-- Tarjeta Jugador 1 -->
-              <div class="flex flex-col gap-2.5">
-                <div class="relative aspect-[3/4] rounded-2xl overflow-hidden border border-cyan-500/50 bg-gradient-to-b from-slate-900 to-slate-950 shadow-2xl">
+              <div class="flex flex-col gap-2">
+                <div
+                  id="landing-p1-card"
+                  class="relative aspect-[3/4] rounded-2xl overflow-hidden border border-cyan-500/50 bg-gradient-to-b from-slate-900 to-slate-950 shadow-2xl"
+                >
                   <img
                     id="landing-p1-img"
                     src=""
                     alt="Retrato de combate del Jugador 1"
                     referrerpolicy="no-referrer"
-                    class="w-full h-full object-cover object-top"
+                    class="w-full h-full object-cover object-top transition-all duration-200"
                   />
                   <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-transparent"></div>
                   <div class="absolute inset-x-0 bottom-0 p-3.5 sm:p-4">
@@ -315,40 +318,65 @@
                     </div>
                   </div>
                 </div>
-                <div class="grid grid-cols-3 gap-1.5">
+                <div class="grid grid-cols-3 sm:grid-cols-5 gap-1">
                   <button
                     type="button"
                     data-landing-p1="RYUJIN"
-                    class="game-btn active py-1.5 px-1.5 rounded-lg text-[11px] sm:text-xs font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap"
+                    class="game-btn active py-1.5 px-1 rounded-lg text-[10px] sm:text-[11px] font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap truncate"
                   >
                     RYUJIN
                   </button>
                   <button
                     type="button"
                     data-landing-p1="KAZE"
-                    class="game-btn py-1.5 px-1.5 rounded-lg text-[11px] sm:text-xs font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap"
+                    class="game-btn py-1.5 px-1 rounded-lg text-[10px] sm:text-[11px] font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap truncate"
                   >
                     KAZE
                   </button>
                   <button
                     type="button"
                     data-landing-p1="TITAN"
-                    class="game-btn py-1.5 px-1.5 rounded-lg text-[11px] sm:text-xs font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap"
+                    class="game-btn py-1.5 px-1 rounded-lg text-[10px] sm:text-[11px] font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap truncate"
                   >
                     TITAN
                   </button>
+                  <button
+                    type="button"
+                    data-landing-p1="VOLT"
+                    class="game-btn py-1.5 px-1 rounded-lg text-[10px] sm:text-[11px] font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap truncate"
+                  >
+                    VOLT
+                  </button>
+                  <button
+                    type="button"
+                    data-landing-p1="VALKYRIE"
+                    class="game-btn py-1.5 px-1 rounded-lg text-[10px] sm:text-[11px] font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap truncate col-span-3 sm:col-span-1"
+                  >
+                    VALKYRIE
+                  </button>
                 </div>
+                <button
+                  id="landing-p1-color"
+                  type="button"
+                  class="game-btn py-1.5 px-2.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span id="landing-p1-swatch" class="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0"></span>
+                  <span id="landing-p1-color-label">Traje: Original</span>
+                </button>
               </div>
 
               <!-- Tarjeta Jugador 2 / Rival -->
-              <div class="flex flex-col gap-2.5">
-                <div class="relative aspect-[3/4] rounded-2xl overflow-hidden border border-rose-500/50 bg-gradient-to-b from-slate-900 to-slate-950 shadow-2xl">
+              <div class="flex flex-col gap-2">
+                <div
+                  id="landing-p2-card"
+                  class="relative aspect-[3/4] rounded-2xl overflow-hidden border border-rose-500/50 bg-gradient-to-b from-slate-900 to-slate-950 shadow-2xl"
+                >
                   <img
                     id="landing-p2-img"
                     src=""
                     alt="Retrato de combate del Jugador 2"
                     referrerpolicy="no-referrer"
-                    class="w-full h-full object-cover object-top"
+                    class="w-full h-full object-cover object-top transition-all duration-200"
                   />
                   <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-transparent"></div>
                   <div class="absolute inset-x-0 bottom-0 p-3.5 sm:p-4 text-right">
@@ -369,29 +397,51 @@
                     </div>
                   </div>
                 </div>
-                <div class="grid grid-cols-3 gap-1.5">
+                <div class="grid grid-cols-3 sm:grid-cols-5 gap-1">
                   <button
                     type="button"
                     data-landing-p2="RYUJIN"
-                    class="game-btn py-1.5 px-1.5 rounded-lg text-[11px] sm:text-xs font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap"
+                    class="game-btn py-1.5 px-1 rounded-lg text-[10px] sm:text-[11px] font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap truncate"
                   >
                     RYUJIN
                   </button>
                   <button
                     type="button"
                     data-landing-p2="KAZE"
-                    class="game-btn active py-1.5 px-1.5 rounded-lg text-[11px] sm:text-xs font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap"
+                    class="game-btn active py-1.5 px-1 rounded-lg text-[10px] sm:text-[11px] font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap truncate"
                   >
                     KAZE
                   </button>
                   <button
                     type="button"
                     data-landing-p2="TITAN"
-                    class="game-btn py-1.5 px-1.5 rounded-lg text-[11px] sm:text-xs font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap"
+                    class="game-btn py-1.5 px-1 rounded-lg text-[10px] sm:text-[11px] font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap truncate"
                   >
                     TITAN
                   </button>
+                  <button
+                    type="button"
+                    data-landing-p2="VOLT"
+                    class="game-btn py-1.5 px-1 rounded-lg text-[10px] sm:text-[11px] font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap truncate"
+                  >
+                    VOLT
+                  </button>
+                  <button
+                    type="button"
+                    data-landing-p2="VALKYRIE"
+                    class="game-btn py-1.5 px-1 rounded-lg text-[10px] sm:text-[11px] font-fight font-bold tracking-wide cursor-pointer whitespace-nowrap truncate col-span-3 sm:col-span-1"
+                  >
+                    VALKYRIE
+                  </button>
                 </div>
+                <button
+                  id="landing-p2-color"
+                  type="button"
+                  class="game-btn py-1.5 px-2.5 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span id="landing-p2-swatch" class="w-2.5 h-2.5 rounded-full bg-rose-400 shrink-0"></span>
+                  <span id="landing-p2-color-label">Traje: Original</span>
+                </button>
               </div>
             </div>
 
@@ -466,7 +516,8 @@
 
         <div class="flex items-center gap-1.5 flex-wrap">
           <div id="topbar-actions" class="flex items-center gap-1.5 flex-wrap">
-            <button id="btn-swap-chars" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer text-cyan-300" title="Cambiar personaje de P1 (RYUJIN / KAZE / TITAN)">⇄ P1: RYUJIN</button>
+            <button id="btn-swap-chars" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer text-cyan-300" title="Cambiar personaje de P1 (RYUJIN / KAZE / TITAN / VOLT / VALKYRIE)">⇄ P1: RYUJIN</button>
+            <button id="btn-swap-color" class="game-btn text-xs font-semibold px-2 py-1.5 rounded-lg cursor-pointer text-slate-200" title="Cambiar color de traje de P1">Color</button>
             <button id="btn-touch-toggle" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Activar/Desactivar Controles Táctiles">📱 TOUCH</button>
             <button id="btn-debug-boxes" class="game-btn active text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Mostrar/Ocultar Cajas 2D (F1)">Cajas (F1)</button>
             <button id="btn-debug-frames" class="game-btn active text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Mostrar/Ocultar Frame Meter y Datos (F2)">Frames (F2)</button>
@@ -728,11 +779,11 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-slate-200">
             <div>• <strong class="text-amber-300">P + K (Acorde):</strong> <em>Cyber Impact</em> — Golpe pesado con <strong>Super Armor</strong> (1 hit, inspirado en SF4/SF6).</div>
             <div>• <strong class="text-emerald-300">P + T (Acorde):</strong> <em>Dodge Roll</em> — Voltereta invulnerable que atraviesa al rival (estilo KOF).</div>
-            <div>• <strong class="text-cyan-300">6 + P / 6 + K:</strong> Normales de comando (Ryujin: Overhead / Step Kick · Kaze: Anti-Aéreo / Slide · Titan: Hammer / Knee).</div>
-            <div>• <strong class="text-cyan-300">236 + P / 623 + P / 236 + K:</strong> Proyectil, Uppercut antiaéreo y Blitz Rush (Titan: Armored Lariat con Super Armor).</div>
-            <div>• <strong class="text-rose-300">214 + P / 214 + K:</strong> Ryujin: <em>Denjin / Axe</em> · Kaze: <em>Crescent / Mirage</em> · Titan: <em>Shoulder Charge</em> con Armor.</div>
-            <div>• <strong class="text-indigo-300">2-5-2 + P (Down-Down):</strong> Ryujin: <em>Ki Charge</em> · Kaze: <em>Doble Kunai</em> · Titan: <em>Seismic Stomp</em> (Onda de choque).</div>
-            <div>• <strong class="text-rose-300">41236 + K (Media Luna):</strong> <em>Breaker Rush / Phantom Flurry / Colossus Beatdown</em> multi-hit.</div>
+            <div>• <strong class="text-cyan-300">6 + P / 6 + K:</strong> Normales de comando (Ryujin: Overhead / Step Kick · Kaze &amp; Volt: Anti-Aéreo / Slide · Titan: Hammer / Knee · Valkyrie: Lunge / High Kick).</div>
+            <div>• <strong class="text-cyan-300">236 + P / 623 + P / 236 + K:</strong> Proyectil, Uppercut antiaéreo y Blitz Rush (Titan: Armored Lariat · Volt: Volt Sphere &amp; Tesla Rising · Valkyrie: Photon Lance).</div>
+            <div>• <strong class="text-rose-300">214 + P / 214 + K:</strong> Ryujin: <em>Denjin / Axe</em> · Kaze: <em>Crescent / Mirage</em> · Titan: <em>Shoulder Charge</em> · Volt: <em>Shock Arc / Phase Warp</em> · Valkyrie: <em>Feather / Aero Flip</em>.</div>
+            <div>• <strong class="text-indigo-300">2-5-2 + P (Down-Down):</strong> Ryujin: <em>Ki Charge</em> · Kaze: <em>Doble Kunai</em> · Titan: <em>Seismic Stomp</em> · Volt: <em>Tesla Field</em> · Valkyrie: <em>Sky Feather</em>.</div>
+            <div>• <strong class="text-rose-300">41236 + K (Media Luna):</strong> Rush multi-hit único de cada luchador (<em>Breaker Rush / Phantom Flurry / Colossus / Surge / Valkyrie Blitz</em>).</div>
             <div>• <strong class="text-emerald-300">63214 + T o P (Media Luna Atrás):</strong> <em>Command Grab</em> cinemático (Titan: <em>Giga Powerbomb</em>) imbloqueable.</div>
             <div>• <strong class="text-amber-300">EX Overdrive (25% barra):</strong> <code class="text-amber-200">236 / 623 / 214 + P+K</code> o <code class="text-amber-200">236 + K+T</code> (versión dorada mejorada).</div>
             <div>• <strong class="text-sky-300">Especiales Aéreos:</strong> <code class="text-sky-200">j.236 + P</code> (Proyectil aéreo) · <code class="text-sky-200">j.214 + K</code> (<em>Meteor Dive Kick / Meteor Press</em>).</div>

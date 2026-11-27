@@ -6,6 +6,7 @@ import {
   SparkKind,
   VfxEffectKind,
 } from '../core/types';
+import { SpriteVfxAtlas, VfxSheetKey } from './SpriteVfxAtlas';
 
 interface Particle {
   active: boolean;
@@ -28,36 +29,25 @@ interface Particle {
   colorEnd: THREE.Color;
 }
 
-interface SlashSlot {
+interface AnimatedSpriteSlot {
   mesh: THREE.Mesh;
   mat: THREE.MeshBasicMaterial;
   active: boolean;
+  sheet: VfxSheetKey;
+  lastFrameIdx: number;
   life: number;
   maxLife: number;
-  grow: number;
-  spin: number;
-}
-
-interface ShockwaveSlot {
-  mesh: THREE.Mesh;
-  mat: THREE.MeshBasicMaterial;
-  active: boolean;
-  life: number;
-  maxLife: number;
-  growSpeed: number;
-  horizontal: boolean;
-}
-
-interface StreakSlot {
-  mesh: THREE.Mesh;
-  mat: THREE.MeshBasicMaterial;
-  active: boolean;
+  startScaleX: number;
+  startScaleY: number;
+  endScaleX: number;
+  endScaleY: number;
   vx: number;
   vy: number;
   vz: number;
-  life: number;
-  maxLife: number;
-  baseLen: number;
+  spin: number;
+  startOpacity: number;
+  colorStart: THREE.Color;
+  colorEnd: THREE.Color;
 }
 
 const MAX_PARTICLES = 450;
@@ -69,33 +59,41 @@ const _col = new THREE.Color();
 
 export class ParticleSystem3D {
   public group = new THREE.Group();
+  private atlas = new SpriteVfxAtlas();
 
-  // 1) GPU InstancedMesh para 450 chispas/motas aditivas orientadas por velocidad
-  private particleGeo = new THREE.OctahedronGeometry(0.085, 0);
-  private particleMat = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: 0.95,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  });
+  public getProjectileTextures(): {
+    energy: THREE.CanvasTexture;
+    kunai: THREE.CanvasTexture;
+  } {
+    return {
+      energy: this.atlas.projEnergyTex,
+      kunai: this.atlas.projKunaiTex,
+    };
+  }
+
+  // 1) GPU InstancedMesh de 450 partículas sprite luminosas orientadas por velocidad
+  private particleGeo = new THREE.PlaneGeometry(0.18, 0.18);
+  private particleMat: THREE.MeshBasicMaterial;
   private instancedParticles: THREE.InstancedMesh;
   private particles: Particle[] = [];
   private cursor = 0;
 
-  // 2) Pool de arcos de tajo/ráfaga (Slash Arcs)
-  private slashGeo = new THREE.RingGeometry(0.58, 0.98, 28, 1, -0.95, 1.9);
-  private slashPool: SlashSlot[] = [];
-
-  // 3) Pool de ondas de choque (verticales y en el suelo)
-  private ringGeo = new THREE.RingGeometry(0.28, 0.44, 32);
-  private ringPool: ShockwaveSlot[] = [];
-
-  // 4) Pool de estelas/rayos direccionales de impacto
-  private streakGeo = new THREE.ConeGeometry(0.065, 0.85, 4);
-  private streakPool: StreakSlot[] = [];
+  // 2) Pool unificado de sprites 2D animados por frames (2x2 sheets)
+  private spriteQuadGeo = new THREE.PlaneGeometry(1, 1);
+  private spritePool: AnimatedSpriteSlot[] = [];
 
   constructor() {
+    this.particleMat = new THREE.MeshBasicMaterial({
+      map: this.atlas.sparkSpriteTex,
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.96,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false,
+    });
+
     this.instancedParticles = new THREE.InstancedMesh(
       this.particleGeo,
       this.particleMat,
@@ -136,85 +134,105 @@ export class ParticleSystem3D {
     }
     this.group.add(this.instancedParticles);
 
-    for (let i = 0; i < 16; i++) this.createSlashSlot();
-    for (let i = 0; i < 14; i++) this.createRingSlot();
-    for (let i = 0; i < 42; i++) this.createStreakSlot();
+    for (let i = 0; i < 40; i++) this.createSpriteSlot();
   }
 
-  private createSlashSlot(): SlashSlot {
+  private createSpriteSlot(): AnimatedSpriteSlot {
     const mat = new THREE.MeshBasicMaterial({
-      color: 0x38bdf8,
+      map: this.atlas.sheets.hitSpark[0],
+      color: 0xffffff,
       transparent: true,
-      opacity: 0.9,
+      opacity: 1,
       side: THREE.DoubleSide,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
+      toneMapped: false,
     });
-    const mesh = new THREE.Mesh(this.slashGeo, mat);
+    const mesh = new THREE.Mesh(this.spriteQuadGeo, mat);
     mesh.visible = false;
+    mesh.renderOrder = 12;
     this.group.add(mesh);
-    const slot: SlashSlot = {
-      mesh,
-      mat,
-      active: false,
-      life: 0,
-      maxLife: 12,
-      grow: 0.08,
-      spin: 0.14,
-    };
-    this.slashPool.push(slot);
-    return slot;
-  }
 
-  private createRingSlot(): ShockwaveSlot {
-    const mat = new THREE.MeshBasicMaterial({
-      color: 0xfacc15,
-      transparent: true,
-      opacity: 0.9,
-      side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    });
-    const mesh = new THREE.Mesh(this.ringGeo, mat);
-    mesh.visible = false;
-    this.group.add(mesh);
-    const slot: ShockwaveSlot = {
+    const slot: AnimatedSpriteSlot = {
       mesh,
       mat,
       active: false,
+      sheet: 'hitSpark',
+      lastFrameIdx: -1,
       life: 0,
-      maxLife: 18,
-      growSpeed: 0.25,
-      horizontal: false,
-    };
-    this.ringPool.push(slot);
-    return slot;
-  }
-
-  private createStreakSlot(): StreakSlot {
-    const mat = new THREE.MeshBasicMaterial({
-      color: 0xfacc15,
-      transparent: true,
-      opacity: 0.95,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    });
-    const mesh = new THREE.Mesh(this.streakGeo, mat);
-    mesh.visible = false;
-    this.group.add(mesh);
-    const slot: StreakSlot = {
-      mesh,
-      mat,
-      active: false,
+      maxLife: 14,
+      startScaleX: 1,
+      startScaleY: 1,
+      endScaleX: 1.5,
+      endScaleY: 1.5,
       vx: 0,
       vy: 0,
       vz: 0,
-      life: 0,
-      maxLife: 12,
-      baseLen: 1,
+      spin: 0,
+      startOpacity: 1,
+      colorStart: new THREE.Color(0xffffff),
+      colorEnd: new THREE.Color(0xffffff),
     };
-    this.streakPool.push(slot);
+    this.spritePool.push(slot);
     return slot;
+  }
+
+  private spawnAnimatedSprite(opts: {
+    sheet: VfxSheetKey;
+    x: number;
+    y: number;
+    z?: number;
+    life: number;
+    startScale: number;
+    endScale: number;
+    flipX?: boolean;
+    rotX?: number;
+    rotY?: number;
+    rotZ?: number;
+    spin?: number;
+    vx?: number;
+    vy?: number;
+    vz?: number;
+    colorStart?: number;
+    colorEnd?: number;
+    opacity?: number;
+    additive?: boolean;
+    renderOrder?: number;
+  }): void {
+    let slot = this.spritePool.find((s) => !s.active);
+    if (!slot) slot = this.createSpriteSlot();
+
+    const additive = opts.additive ?? opts.sheet !== 'impactSmoke';
+    slot.active = true;
+    slot.sheet = opts.sheet;
+    slot.lastFrameIdx = 0;
+    slot.life = opts.life;
+    slot.maxLife = opts.life;
+    const signX = opts.flipX ? -1 : 1;
+    slot.startScaleX = opts.startScale * signX;
+    slot.startScaleY = opts.startScale;
+    slot.endScaleX = opts.endScale * signX;
+    slot.endScaleY = opts.endScale;
+    slot.vx = opts.vx ?? 0;
+    slot.vy = opts.vy ?? 0;
+    slot.vz = opts.vz ?? 0;
+    slot.spin = opts.spin ?? 0;
+    slot.startOpacity = opts.opacity ?? 1;
+    slot.colorStart.setHex(opts.colorStart ?? 0xffffff);
+    slot.colorEnd.setHex(opts.colorEnd ?? opts.colorStart ?? 0xffffff);
+
+    slot.mat.map = this.atlas.sheets[opts.sheet][0];
+    slot.mat.blending = additive
+      ? THREE.AdditiveBlending
+      : THREE.NormalBlending;
+    slot.mat.color.copy(slot.colorStart);
+    slot.mat.opacity = slot.startOpacity;
+
+    slot.mesh.renderOrder = opts.renderOrder ?? (additive ? 14 : 10);
+    slot.mesh.position.set(opts.x, opts.y, opts.z ?? 0.34);
+    slot.mesh.rotation.set(opts.rotX ?? 0, opts.rotY ?? 0, opts.rotZ ?? 0);
+    slot.mesh.scale.set(slot.startScaleX, slot.startScaleY, 1);
+    slot.mesh.visible = true;
   }
 
   private allocParticle(opts: {
@@ -259,8 +277,126 @@ export class ParticleSystem3D {
   }
 
   public spawnSparks(x: number, y: number, kind: SparkKind): void {
+    if (kind === 'HIT') {
+      this.spawnAnimatedSprite({
+        sheet: 'impactSmoke',
+        x,
+        y,
+        z: 0.24,
+        life: 14,
+        startScale: 0.95,
+        endScale: 1.95,
+        rotZ: Math.random() * Math.PI * 2,
+        colorStart: 0xfef3c7,
+        colorEnd: 0x94a3b8,
+        opacity: 0.78,
+        additive: false,
+      });
+      this.spawnAnimatedSprite({
+        sheet: 'hitSpark',
+        x,
+        y,
+        z: 0.36,
+        life: 14,
+        startScale: 1.45,
+        endScale: 2.35,
+        rotZ: (Math.random() - 0.5) * 0.9,
+        spin: (Math.random() - 0.5) * 0.03,
+        colorStart: 0xffffff,
+        colorEnd: 0xffedd5,
+        opacity: 1,
+      });
+    } else if (kind === 'GOLD') {
+      this.spawnAnimatedSprite({
+        sheet: 'impactSmoke',
+        x,
+        y,
+        z: 0.24,
+        life: 17,
+        startScale: 1.3,
+        endScale: 2.6,
+        rotZ: Math.random() * Math.PI * 2,
+        colorStart: 0xfef08a,
+        colorEnd: 0x64748b,
+        opacity: 0.85,
+        additive: false,
+      });
+      this.spawnAnimatedSprite({
+        sheet: 'superBurst',
+        x,
+        y,
+        z: 0.35,
+        life: 18,
+        startScale: 1.75,
+        endScale: 3.15,
+        rotZ: Math.random() * Math.PI * 2,
+        spin: 0.04,
+        colorStart: 0xffffff,
+        colorEnd: 0xfacc15,
+        opacity: 1,
+      });
+      this.spawnAnimatedSprite({
+        sheet: 'hitSpark',
+        x,
+        y,
+        z: 0.4,
+        life: 15,
+        startScale: 1.65,
+        endScale: 2.65,
+        rotZ: (Math.random() - 0.5) * 1.2,
+        colorStart: 0xffffff,
+        colorEnd: 0xfde047,
+        opacity: 1,
+      });
+    } else if (kind === 'BLOCK') {
+      this.spawnAnimatedSprite({
+        sheet: 'impactSmoke',
+        x,
+        y,
+        z: 0.24,
+        life: 13,
+        startScale: 0.85,
+        endScale: 1.7,
+        rotZ: Math.random() * Math.PI * 2,
+        colorStart: 0xe0f2fe,
+        colorEnd: 0x64748b,
+        opacity: 0.65,
+        additive: false,
+      });
+      this.spawnAnimatedSprite({
+        sheet: 'blockShield',
+        x,
+        y,
+        z: 0.38,
+        life: 16,
+        startScale: 1.35,
+        endScale: 2.3,
+        rotZ: (Math.random() - 0.5) * 0.4,
+        colorStart: 0xe0f2fe,
+        colorEnd: 0x0284c7,
+        opacity: 1,
+      });
+    } else if (kind === 'DASH' || kind === 'BACKDASH') {
+      this.spawnAnimatedSprite({
+        sheet: 'impactSmoke',
+        x,
+        y: Math.max(0.32, y * 0.35),
+        z: 0.2,
+        life: 14,
+        startScale: 0.75,
+        endScale: 1.55,
+        rotZ: Math.random() * Math.PI,
+        vx: kind === 'DASH' ? -0.025 : 0.025,
+        vy: 0.015,
+        colorStart: 0xe0f2fe,
+        colorEnd: 0x475569,
+        opacity: 0.72,
+        additive: false,
+      });
+    }
+
     const count =
-      kind === 'GOLD' ? 24 : kind === 'DASH' || kind === 'BACKDASH' ? 10 : 14;
+      kind === 'GOLD' ? 22 : kind === 'DASH' || kind === 'BACKDASH' ? 8 : 12;
     const palette: Record<SparkKind, [number, number]> = {
       HIT: [0xfffbeb, 0xf97316],
       BLOCK: [0xe0f2fe, 0x0284c7],
@@ -275,26 +411,21 @@ export class ParticleSystem3D {
       const spd =
         kind === 'DASH' || kind === 'BACKDASH'
           ? 0.05 + Math.random() * 0.09
-          : 0.08 + Math.random() * 0.22;
+          : 0.09 + Math.random() * 0.22;
       this.allocParticle({
         x,
         y,
-        z: 0.22 + (Math.random() - 0.5) * 0.2,
+        z: 0.28 + (Math.random() - 0.5) * 0.16,
         vx: Math.cos(ang) * spd,
         vy: Math.sin(ang) * spd,
-        vz: (Math.random() - 0.5) * 0.1,
-        life: 13 + Math.floor(Math.random() * 10),
-        size: kind === 'GOLD' ? 1.35 : 1.0,
+        vz: (Math.random() - 0.5) * 0.08,
+        life: 12 + Math.floor(Math.random() * 9),
+        size: kind === 'GOLD' ? 1.45 : 1.1,
         stretch: kind === 'GOLD' ? 3.2 : 2.3,
         gravity: kind === 'HIT' || kind === 'GOLD' ? -0.004 : 0,
         colorStart: cStart,
         colorEnd: cEnd,
       });
-    }
-
-    if (kind === 'GOLD') {
-      this.spawnShockwave(x, y, 0xfacc15, 0.25, 16, false);
-      this.spawnImpactBurst(x, y, 0xfacc15, 8, 1.3);
     }
   }
 
@@ -306,20 +437,22 @@ export class ParticleSystem3D {
     maxLife = 18,
     horizontal = false
   ): void {
-    let slot = this.ringPool.find((r) => !r.active);
-    if (!slot) slot = this.createRingSlot();
-
-    slot.active = true;
-    slot.life = maxLife;
-    slot.maxLife = maxLife;
-    slot.growSpeed = growSpeed;
-    slot.horizontal = horizontal;
-    slot.mat.color.setHex(colorHex);
-    slot.mat.opacity = 0.95;
-    slot.mesh.position.set(x, horizontal ? Math.max(0.04, y) : y, horizontal ? 0 : 0.35);
-    slot.mesh.rotation.set(horizontal ? -Math.PI / 2 : 0, 0, 0);
-    slot.mesh.scale.set(0.55, 0.55, 1);
-    slot.mesh.visible = true;
+    const endSize = 1.6 + growSpeed * 5.2;
+    this.spawnAnimatedSprite({
+      sheet: horizontal ? 'impactSmoke' : 'superBurst',
+      x,
+      y: horizontal ? Math.max(0.05, y) : y,
+      z: horizontal ? 0 : 0.34,
+      life: maxLife,
+      startScale: 0.85,
+      endScale: endSize,
+      rotX: horizontal ? -Math.PI / 2 : 0,
+      rotZ: Math.random() * Math.PI * 2,
+      colorStart: 0xffffff,
+      colorEnd: colorHex,
+      opacity: horizontal ? 0.85 : 0.95,
+      additive: !horizontal,
+    });
   }
 
   public spawnSlashArc(
@@ -330,49 +463,22 @@ export class ParticleSystem3D {
     angle = 0,
     scale = 1.15
   ): void {
-    let slot = this.slashPool.find((s) => !s.active);
-    if (!slot) slot = this.createSlashSlot();
-
-    slot.active = true;
-    slot.life = 13;
-    slot.maxLife = 13;
-    slot.grow = 0.075 * scale;
-    slot.spin = facing * 0.16;
-    slot.mat.color.setHex(colorHex);
-    slot.mat.opacity = 0.92;
-    slot.mesh.position.set(x + facing * 0.45, y, 0.28);
-    slot.mesh.rotation.set(0, facing === 1 ? 0 : Math.PI, angle);
-    slot.mesh.scale.set(scale, scale, 1);
-    slot.mesh.visible = true;
-  }
-
-  private spawnImpactBurst(
-    x: number,
-    y: number,
-    colorHex: number,
-    count = 8,
-    scale = 1.0
-  ): void {
-    for (let i = 0; i < count; i++) {
-      let slot = this.streakPool.find((s) => !s.active);
-      if (!slot) slot = this.createStreakSlot();
-
-      const ang = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
-      const spd = (0.14 + Math.random() * 0.14) * scale;
-      slot.active = true;
-      slot.vx = Math.cos(ang) * spd;
-      slot.vy = Math.sin(ang) * spd;
-      slot.vz = (Math.random() - 0.5) * 0.05;
-      slot.life = 10 + Math.floor(Math.random() * 5);
-      slot.maxLife = slot.life;
-      slot.baseLen = (0.9 + Math.random() * 0.65) * scale;
-      slot.mat.color.setHex(colorHex);
-      slot.mat.opacity = 0.95;
-      slot.mesh.position.set(x, y, 0.32);
-      slot.mesh.rotation.set(0, 0, Math.atan2(slot.vy, slot.vx) - Math.PI / 2);
-      slot.mesh.scale.set(0.85 * scale, slot.baseLen, 0.85 * scale);
-      slot.mesh.visible = true;
-    }
+    this.spawnAnimatedSprite({
+      sheet: 'slashArc',
+      x: x + facing * 0.52,
+      y,
+      z: 0.38,
+      life: 13,
+      startScale: 1.65 * scale,
+      endScale: 2.35 * scale,
+      flipX: facing === -1,
+      rotZ: facing * angle,
+      spin: facing * 0.045,
+      colorStart: 0xffffff,
+      colorEnd: colorHex,
+      opacity: 1,
+      additive: true,
+    });
   }
 
   public spawnSpecialBurst(
@@ -383,11 +489,21 @@ export class ParticleSystem3D {
     colorHex: number
   ): void {
     if (effect === 'EX_CHARGE') {
-      this.spawnShockwave(x, y, 0xfacc15, 0.24, 16, false);
-      this.spawnShockwave(x, 0.04, 0xfef08a, 0.22, 16, true);
-      this.spawnImpactBurst(x, y, 0xfacc15, 10, 1.2);
-      for (let i = 0; i < 24; i++) {
-        const ang = (i / 24) * Math.PI * 2;
+      this.spawnAnimatedSprite({
+        sheet: 'superBurst',
+        x,
+        y,
+        z: 0.36,
+        life: 18,
+        startScale: 1.6,
+        endScale: 3.1,
+        spin: 0.05 * facing,
+        colorStart: 0xffffff,
+        colorEnd: 0xfacc15,
+      });
+      this.spawnShockwave(x, 0.05, 0xfef08a, 0.24, 16, true);
+      for (let i = 0; i < 20; i++) {
+        const ang = (i / 20) * Math.PI * 2;
         this.allocParticle({
           x: x + Math.cos(ang) * 0.25,
           y: y + Math.sin(ang) * 0.25,
@@ -395,7 +511,7 @@ export class ParticleSystem3D {
           vx: Math.cos(ang) * (0.1 + Math.random() * 0.14),
           vy: 0.04 + Math.random() * 0.16,
           vz: Math.sin(ang) * 0.08,
-          life: 18 + Math.floor(Math.random() * 8),
+          life: 16 + Math.floor(Math.random() * 8),
           size: 1.4,
           stretch: 3.0,
           swirl: 0.14 * facing,
@@ -406,9 +522,19 @@ export class ParticleSystem3D {
         });
       }
     } else if (effect === 'FOCUS_CHARGE') {
-      // Partículas convergiendo hacia el puño (implosión de energía)
-      this.spawnShockwave(x, y, 0xfbbf24, 0.12, 14, false);
-      for (let i = 0; i < 22; i++) {
+      this.spawnAnimatedSprite({
+        sheet: 'superBurst',
+        x,
+        y,
+        z: 0.34,
+        life: 14,
+        startScale: 2.1,
+        endScale: 0.75,
+        spin: -0.08 * facing,
+        colorStart: 0xfef08a,
+        colorEnd: 0xf97316,
+      });
+      for (let i = 0; i < 18; i++) {
         const ang = Math.random() * Math.PI * 2;
         const r = 1.15 + Math.random() * 0.5;
         this.allocParticle({
@@ -428,110 +554,151 @@ export class ParticleSystem3D {
         });
       }
     } else if (effect === 'ARMOR_ABSORB') {
-      this.spawnShockwave(x, y, 0xfacc15, 0.3, 15, false);
-      this.spawnImpactBurst(x, y, 0xffffff, 10, 1.35);
-      for (let i = 0; i < 20; i++) {
-        const ang = Math.random() * Math.PI * 2;
-        this.allocParticle({
-          x,
-          y,
-          z: 0.25,
-          vx: Math.cos(ang) * (0.12 + Math.random() * 0.15),
-          vy: Math.sin(ang) * (0.12 + Math.random() * 0.15),
-          vz: (Math.random() - 0.5) * 0.1,
-          life: 16,
-          size: 1.45,
-          stretch: 3.4,
-          colorStart: 0xffffff,
-          colorEnd: 0xf59e0b,
-        });
-      }
+      this.spawnAnimatedSprite({
+        sheet: 'blockShield',
+        x,
+        y,
+        z: 0.38,
+        life: 16,
+        startScale: 1.5,
+        endScale: 2.55,
+        colorStart: 0xffffff,
+        colorEnd: 0xfacc15,
+      });
+      this.spawnAnimatedSprite({
+        sheet: 'hitSpark',
+        x,
+        y,
+        z: 0.42,
+        life: 14,
+        startScale: 1.35,
+        endScale: 2.25,
+        colorStart: 0xffffff,
+        colorEnd: 0xf59e0b,
+      });
     } else if (effect === 'COMMAND_GRAB') {
-      this.spawnShockwave(x, 0.05, colorHex, 0.34, 22, true);
-      this.spawnShockwave(x, y, 0xfacc15, 0.28, 18, false);
-      this.spawnImpactBurst(x, y, colorHex, 14, 1.55);
-      for (let i = 0; i < 32; i++) {
-        const ang = Math.random() * Math.PI * 2;
-        this.allocParticle({
-          x: x + Math.cos(ang) * 0.3,
-          y: 0.2 + Math.random() * 0.4,
-          z: Math.sin(ang) * 0.3,
-          vx: Math.cos(ang) * (0.1 + Math.random() * 0.18),
-          vy: 0.08 + Math.random() * 0.24,
-          vz: Math.sin(ang) * 0.12,
-          life: 20 + Math.floor(Math.random() * 8),
-          size: 1.5,
-          stretch: 3.2,
-          gravity: -0.006,
-          colorStart: 0xfef08a,
-          colorEnd: colorHex,
-        });
-      }
+      this.spawnShockwave(x, 0.05, colorHex, 0.36, 22, true);
+      this.spawnAnimatedSprite({
+        sheet: 'superBurst',
+        x,
+        y,
+        z: 0.38,
+        life: 20,
+        startScale: 1.9,
+        endScale: 3.6,
+        spin: 0.04,
+        colorStart: 0xffffff,
+        colorEnd: colorHex,
+      });
+      this.spawnAnimatedSprite({
+        sheet: 'hitSpark',
+        x,
+        y,
+        z: 0.42,
+        life: 16,
+        startScale: 1.8,
+        endScale: 3.0,
+        colorStart: 0xffffff,
+        colorEnd: 0xfacc15,
+      });
     } else if (effect === 'TELEPORT') {
-      this.spawnShockwave(x, y, colorHex, 0.2, 14, false);
-      for (let i = 0; i < 26; i++) {
-        this.allocParticle({
-          x: x + (Math.random() - 0.5) * 0.5,
-          y: 0.2 + Math.random() * 1.6,
-          z: (Math.random() - 0.5) * 0.4,
-          vx: -facing * (0.04 + Math.random() * 0.12),
-          vy: (Math.random() - 0.3) * 0.12,
-          vz: (Math.random() - 0.5) * 0.08,
-          life: 16 + Math.floor(Math.random() * 6),
-          size: 1.25,
-          stretch: 3.6,
-          colorStart: 0xffffff,
-          colorEnd: colorHex,
-        });
-      }
+      this.spawnAnimatedSprite({
+        sheet: 'impactSmoke',
+        x,
+        y,
+        z: 0.25,
+        life: 16,
+        startScale: 1.15,
+        endScale: 2.25,
+        colorStart: colorHex,
+        colorEnd: 0x1e293b,
+        opacity: 0.85,
+        additive: false,
+      });
+      this.spawnSlashArc(x, y, facing, colorHex, 0.35, 1.05);
     } else if (effect === 'KI_CHARGE') {
       this.spawnShockwave(x, 0.05, colorHex, 0.25, 20, true);
-      for (let i = 0; i < 28; i++) {
-        const ang = (i / 28) * Math.PI * 2;
-        this.allocParticle({
-          x: x + Math.cos(ang) * 0.55,
-          y: 0.15 + Math.random() * 0.6,
-          z: Math.sin(ang) * 0.55,
-          vx: 0,
-          vy: 0.1 + Math.random() * 0.14,
-          vz: 0,
-          life: 20,
-          size: 1.3,
-          stretch: 3.2,
-          swirl: 0.22,
-          cx: x,
-          cz: 0,
-          gravity: 0,
-          colorStart: 0xffffff,
-          colorEnd: colorHex,
-        });
-      }
+      this.spawnAnimatedSprite({
+        sheet: 'superBurst',
+        x,
+        y: y + 0.2,
+        z: 0.32,
+        life: 18,
+        startScale: 1.1,
+        endScale: 2.4,
+        vy: 0.025,
+        spin: 0.06,
+        colorStart: 0xffffff,
+        colorEnd: colorHex,
+      });
     } else if (effect === 'HEAVY_IMPACT') {
-      this.spawnShockwave(x, y, colorHex, 0.32, 18, false);
-      this.spawnImpactBurst(x, y, colorHex, 12, 1.45);
-      for (let i = 0; i < 26; i++) {
-        const ang = Math.random() * Math.PI * 2;
-        const spd = 0.1 + Math.random() * 0.24;
-        this.allocParticle({
-          x,
-          y,
-          z: 0.22,
-          vx: Math.cos(ang) * spd,
-          vy: Math.sin(ang) * spd,
-          vz: (Math.random() - 0.5) * 0.12,
-          life: 16 + Math.floor(Math.random() * 8),
-          size: 1.4,
-          stretch: 3.4,
-          gravity: -0.004,
-          colorStart: 0xffffff,
-          colorEnd: colorHex,
-        });
-      }
+      this.spawnAnimatedSprite({
+        sheet: 'impactSmoke',
+        x,
+        y,
+        z: 0.26,
+        life: 16,
+        startScale: 1.25,
+        endScale: 2.55,
+        rotZ: Math.random() * Math.PI * 2,
+        colorStart: 0xf8fafc,
+        colorEnd: 0x64748b,
+        opacity: 0.85,
+        additive: false,
+      });
+      this.spawnAnimatedSprite({
+        sheet: 'hitSpark',
+        x,
+        y,
+        z: 0.38,
+        life: 16,
+        startScale: 1.85,
+        endScale: 3.15,
+        rotZ: (Math.random() - 0.5) * 0.8,
+        colorStart: 0xffffff,
+        colorEnd: colorHex,
+      });
+      this.spawnAnimatedSprite({
+        sheet: 'superBurst',
+        x,
+        y,
+        z: 0.34,
+        life: 16,
+        startScale: 1.35,
+        endScale: 2.6,
+        rotZ: Math.random() * Math.PI,
+        colorStart: 0xffffff,
+        colorEnd: colorHex,
+        opacity: 0.85,
+      });
     } else if (effect === 'SUPER_BURST') {
-      this.spawnShockwave(x, y, 0xfacc15, 0.38, 24, false);
-      this.spawnShockwave(x, 0.05, colorHex, 0.35, 24, true);
-      this.spawnImpactBurst(x, y, 0xfacc15, 16, 1.75);
-      for (let i = 0; i < 42; i++) {
+      this.spawnShockwave(x, 0.05, colorHex, 0.38, 22, true);
+      this.spawnAnimatedSprite({
+        sheet: 'superBurst',
+        x,
+        y,
+        z: 0.38,
+        life: 24,
+        startScale: 2.2,
+        endScale: 4.5,
+        spin: 0.05,
+        colorStart: 0xffffff,
+        colorEnd: 0xfacc15,
+      });
+      this.spawnAnimatedSprite({
+        sheet: 'hitSpark',
+        x,
+        y,
+        z: 0.43,
+        life: 20,
+        startScale: 2.1,
+        endScale: 3.8,
+        rotZ: 0.45,
+        spin: -0.04,
+        colorStart: 0xffffff,
+        colorEnd: colorHex,
+      });
+      for (let i = 0; i < 32; i++) {
         const ang = Math.random() * Math.PI * 2;
         const spd = 0.12 + Math.random() * 0.28;
         this.allocParticle({
@@ -541,7 +708,7 @@ export class ParticleSystem3D {
           vx: Math.cos(ang) * spd,
           vy: Math.sin(ang) * spd,
           vz: (Math.random() - 0.5) * 0.14,
-          life: 22 + Math.floor(Math.random() * 10),
+          life: 20 + Math.floor(Math.random() * 10),
           size: 1.65,
           stretch: 3.8,
           swirl: 0.08 * facing,
@@ -555,7 +722,7 @@ export class ParticleSystem3D {
   }
 
   public emitContinuousTrails(state: MatchState): void {
-    // 1) Estelas de proyectiles (Hadouken, Kunai, EX dorados, Air Hadouken)
+    // 1) Estelas de proyectiles
     for (const p of state.projectiles) {
       if (!p.active) continue;
       const spec = CHARACTERS[state.fighters[p.owner].character];
@@ -579,7 +746,7 @@ export class ParticleSystem3D {
       }
     }
 
-    // 2) Estelas de ataques especiales activos y combinaciones avanzadas
+    // 2) Estelas de ataques especiales activos
     for (const f of state.fighters) {
       const spec = CHARACTERS[f.character];
       if (f.state === 'DASH_F' || f.state === 'DASH_B') {
@@ -652,7 +819,11 @@ export class ParticleSystem3D {
           colorStart: 0xffffff,
           colorEnd: color,
         });
-      } else if (m.id === 'j214K' || m.id === 'ROLL' || (m.id === '6K' && f.character === 'KAZE')) {
+      } else if (
+        m.id === 'j214K' ||
+        m.id === 'ROLL' ||
+        (m.id === '6K' && f.character === 'KAZE')
+      ) {
         this.allocParticle({
           x: f.x - f.facing * 0.2,
           y: f.y + (m.id === 'j214K' ? 0.55 : 0.28),
@@ -667,7 +838,10 @@ export class ParticleSystem3D {
           colorStart: 0xffffff,
           colorEnd: spec.accentColor,
         });
-      } else if (isActive && (m.id === '214P' || m.id === 'EX_214P' || m.id === 'FOCUS')) {
+      } else if (
+        isActive &&
+        (m.id === '214P' || m.id === 'EX_214P' || m.id === 'FOCUS')
+      ) {
         this.allocParticle({
           x: f.x + f.facing * 0.9,
           y: f.y + 1.1 + (Math.random() - 0.5) * 0.35,
@@ -692,19 +866,39 @@ export class ParticleSystem3D {
     intensity: number,
     ground = false
   ): void {
-    const count = Math.round(10 + intensity * 14);
+    const count = Math.round(10 + intensity * 12);
     const startCol = isWaterStage ? 0xe0f2fe : 0xfef3c7;
     const endCol = isWaterStage ? 0x38bdf8 : 0xf59e0b;
 
     if (ground) {
-      this.spawnShockwave(
+      this.spawnAnimatedSprite({
+        sheet: 'impactSmoke',
         x,
-        0.06,
-        isWaterStage ? 0x7dd3fc : 0xf59e0b,
-        0.22 + intensity * 0.16,
-        16,
-        true
-      );
+        y: 0.08,
+        z: 0.05,
+        life: 18,
+        startScale: 1.0,
+        endScale: 2.5 + intensity * 1.4,
+        rotX: -Math.PI / 2,
+        rotZ: Math.random() * Math.PI * 2,
+        colorStart: startCol,
+        colorEnd: endCol,
+        opacity: 0.88,
+        additive: false,
+      });
+      if (intensity >= 0.75) {
+        this.spawnAnimatedSprite({
+          sheet: 'hitSpark',
+          x,
+          y: 0.35,
+          z: 0.35,
+          life: 14,
+          startScale: 1.25,
+          endScale: 2.4,
+          colorStart: 0xffffff,
+          colorEnd: endCol,
+        });
+      }
     }
 
     for (let i = 0; i < count; i++) {
@@ -717,8 +911,8 @@ export class ParticleSystem3D {
         vy: 0.08 + Math.random() * 0.18 * intensity,
         vz: (Math.random() - 0.5) * 0.12,
         life: 14 + Math.floor(Math.random() * 10),
-        size: isWaterStage ? 0.9 : 1.1,
-        stretch: isWaterStage ? 2.4 : 1.8,
+        size: isWaterStage ? 1.0 : 1.2,
+        stretch: isWaterStage ? 2.4 : 1.9,
         gravity: -0.012,
         colorStart: startCol,
         colorEnd: endCol,
@@ -727,7 +921,7 @@ export class ParticleSystem3D {
   }
 
   public update(): void {
-    // 1) Actualizar InstancedMesh de partículas
+    // 1) Actualizar InstancedMesh de micro-partículas sprite
     let hasMatrixUpdates = false;
     for (let i = 0; i < MAX_PARTICLES; i++) {
       const p = this.particles[i];
@@ -765,10 +959,14 @@ export class ParticleSystem3D {
 
       _obj.position.set(p.x, p.y, p.z);
       if (speed > 0.002) {
-        _dir.set(p.vx, p.vy, p.vz).normalize();
-        _quat.setFromUnitVectors(_up, _dir);
-        _obj.quaternion.copy(_quat);
-        const stretchFactor = Math.min(4.5, 1 + speed * 14 * p.stretch);
+        _dir.set(p.vx, p.vy, 0).normalize();
+        if (_dir.lengthSq() > 0.01) {
+          _quat.setFromUnitVectors(_up, _dir);
+          _obj.quaternion.copy(_quat);
+        } else {
+          _obj.quaternion.identity();
+        }
+        const stretchFactor = Math.min(4.2, 1 + speed * 14 * p.stretch);
         _obj.scale.set(alphaScale, alphaScale * stretchFactor, alphaScale);
       } else {
         _obj.quaternion.identity();
@@ -788,63 +986,46 @@ export class ParticleSystem3D {
       }
     }
 
-    // 2) Actualizar arcos de tajo
-    for (let i = 0; i < this.slashPool.length; i++) {
-      const s = this.slashPool[i];
+    // 2) Actualizar sprites 2D animados frame-por-frame (4 frames por sheet)
+    for (let i = 0; i < this.spritePool.length; i++) {
+      const s = this.spritePool[i];
       if (!s.active) continue;
+
       s.life--;
-      s.mesh.scale.x += s.grow;
-      s.mesh.scale.y += s.grow;
-      s.mesh.rotation.z += s.spin;
-      s.mat.opacity = Math.max(0, (s.life / s.maxLife) * 0.9);
       if (s.life <= 0) {
         s.active = false;
         s.mesh.visible = false;
+        continue;
       }
-    }
 
-    // 3) Actualizar ondas de choque
-    for (let i = 0; i < this.ringPool.length; i++) {
-      const r = this.ringPool[i];
-      if (!r.active) continue;
-      r.life--;
-      r.mesh.scale.x += r.growSpeed;
-      r.mesh.scale.y += r.growSpeed;
-      r.mat.opacity = Math.max(0, (r.life / r.maxLife) * 0.88);
-      if (r.life <= 0) {
-        r.active = false;
-        r.mesh.visible = false;
+      const t = 1 - s.life / s.maxLife;
+      const frameIdx = Math.min(3, Math.floor(t * 4));
+      if (frameIdx !== s.lastFrameIdx) {
+        s.lastFrameIdx = frameIdx;
+        s.mat.map = this.atlas.sheets[s.sheet][frameIdx];
       }
-    }
 
-    // 4) Actualizar estelas direccionales
-    for (let i = 0; i < this.streakPool.length; i++) {
-      const st = this.streakPool[i];
-      if (!st.active) continue;
-      st.life--;
-      st.mesh.position.x += st.vx;
-      st.mesh.position.y += st.vy;
-      st.mesh.position.z += st.vz;
-      st.vx *= 0.9;
-      st.vy *= 0.9;
-      const ratio = Math.max(0, st.life / st.maxLife);
-      st.mat.opacity = ratio;
-      st.mesh.scale.y = st.baseLen * (0.4 + ratio * 0.8);
-      if (st.life <= 0) {
-        st.active = false;
-        st.mesh.visible = false;
-      }
+      s.mesh.position.x += s.vx;
+      s.mesh.position.y += s.vy;
+      s.mesh.position.z += s.vz;
+      s.mesh.rotation.z += s.spin;
+
+      const easeOut = 1 - Math.pow(1 - t, 2);
+      const sx = s.startScaleX + (s.endScaleX - s.startScaleX) * easeOut;
+      const sy = s.startScaleY + (s.endScaleY - s.startScaleY) * easeOut;
+      s.mesh.scale.set(sx, sy, 1);
+
+      s.mat.color.copy(s.colorStart).lerp(s.colorEnd, t);
+      const fadeOut = t < 0.72 ? 1 : 1 - (t - 0.72) / 0.28;
+      s.mat.opacity = Math.max(0, s.startOpacity * fadeOut);
     }
   }
 
   public dispose(): void {
     this.particleGeo.dispose();
     this.particleMat.dispose();
-    this.slashGeo.dispose();
-    this.ringGeo.dispose();
-    this.streakGeo.dispose();
-    for (const s of this.slashPool) s.mat.dispose();
-    for (const r of this.ringPool) r.mat.dispose();
-    for (const st of this.streakPool) st.mat.dispose();
+    this.spriteQuadGeo.dispose();
+    for (const s of this.spritePool) s.mat.dispose();
+    this.atlas.dispose();
   }
 }

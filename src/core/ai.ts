@@ -217,8 +217,9 @@ export class FightingAI {
 
     if (this.planTimer <= 0) {
       const r = Math.random();
-      const isKaze = ai.character === 'KAZE';
+      const isKaze = ai.character === 'KAZE' || ai.character === 'VALKYRIE';
       const isTitan = ai.character === 'TITAN';
+      const isVolt = ai.character === 'VOLT';
       if (delayed.dist > 4.2) {
         if (isTitan) {
           if (r < 0.25) {
@@ -233,6 +234,20 @@ export class FightingAI {
           } else {
             this.currentPlan = 'DASH_IN';
             this.planTimer = 16;
+          }
+        } else if (isVolt) {
+          if (r < 0.44) {
+            this.queueMotion([2, 3, 6], 'p');
+            this.planTimer = 26;
+          } else if (r < 0.68) {
+            this.queueMotion([2, 5, 2], 'p');
+            this.planTimer = 24;
+          } else if (r < 0.84) {
+            this.queueMotion([2, 1, 4], 'k');
+            this.planTimer = 20;
+          } else {
+            this.currentPlan = 'APPROACH';
+            this.planTimer = 20;
           }
         } else if (r < (isKaze ? 0.34 : 0.3)) {
           this.queueMotion([2, 3, 6], 'p');
@@ -257,6 +272,9 @@ export class FightingAI {
         } else if (isTitan && r < 0.52) {
           this.queueMotion([2, 3, 6], 'k');
           this.planTimer = 26;
+        } else if (isVolt && r < 0.32) {
+          this.queueMotion([2, 3, 6], 'p');
+          this.planTimer = 24;
         } else if (r < 0.18) {
           this.currentPlan = 'APPROACH';
           this.planTimer = 14;

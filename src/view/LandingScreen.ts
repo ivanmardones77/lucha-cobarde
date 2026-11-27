@@ -2,8 +2,17 @@ import dojoBackdropImg from '../assets/images/dojo_hero_backdrop_1795773106114.j
 import kazePortraitImg from '../assets/images/portrait_kaze_1795773106772.jpg';
 import ryujinPortraitImg from '../assets/images/portrait_ryujin_1795773106942.jpg';
 import titanPortraitImg from '../assets/images/portrait_titan_1795779369938.jpg';
+import valkyriePortraitImg from '../assets/images/portrait_valkyrie_1795782381868.jpg';
+import voltPortraitImg from '../assets/images/portrait_volt_1795782380711.jpg';
 import { AiDifficulty } from '../core/ai';
-import { CHARACTERS, CharacterId, GameMode, StageId } from '../core/types';
+import {
+  CHARACTERS,
+  CharacterId,
+  CostumePalette,
+  GameMode,
+  StageId,
+  getFighterHudColor,
+} from '../core/types';
 
 export interface LaunchConfig {
   mode: GameMode;
@@ -11,6 +20,8 @@ export interface LaunchConfig {
   aiDifficulty: AiDifficulty;
   p1Character: CharacterId;
   p2Character: CharacterId;
+  p1Palette: CostumePalette;
+  p2Palette: CostumePalette;
   showBoxes: boolean;
   showFrames: boolean;
   touchEnabled: boolean;
@@ -20,11 +31,15 @@ const PORTRAIT_MAP: Record<CharacterId, string> = {
   RYUJIN: ryujinPortraitImg,
   KAZE: kazePortraitImg,
   TITAN: titanPortraitImg,
+  VOLT: voltPortraitImg,
+  VALKYRIE: valkyriePortraitImg,
 };
 
 export class LandingScreen {
   private root = document.getElementById('landing-screen')!;
   private bgImg = document.getElementById('landing-bg-img') as HTMLImageElement;
+  private p1Card = document.getElementById('landing-p1-card')!;
+  private p2Card = document.getElementById('landing-p2-card')!;
   private p1Img = document.getElementById(
     'landing-p1-img'
   ) as HTMLImageElement;
@@ -36,6 +51,12 @@ export class LandingScreen {
   private p1MetaEl = document.getElementById('landing-p1-meta')!;
   private p2NameEl = document.getElementById('landing-p2-name')!;
   private p2MetaEl = document.getElementById('landing-p2-meta')!;
+  private p1ColorBtn = document.getElementById('landing-p1-color')!;
+  private p1SwatchEl = document.getElementById('landing-p1-swatch')!;
+  private p1ColorLabel = document.getElementById('landing-p1-color-label')!;
+  private p2ColorBtn = document.getElementById('landing-p2-color')!;
+  private p2SwatchEl = document.getElementById('landing-p2-swatch')!;
+  private p2ColorLabel = document.getElementById('landing-p2-color-label')!;
   private diffRow = document.getElementById('landing-diff-row')!;
 
   private modeBtns = Array.from(
@@ -70,6 +91,8 @@ export class LandingScreen {
     aiDifficulty: 'HARD',
     p1Character: 'RYUJIN',
     p2Character: 'KAZE',
+    p1Palette: 0,
+    p2Palette: 0,
     showBoxes: true,
     showFrames: true,
     touchEnabled: false,
@@ -82,7 +105,6 @@ export class LandingScreen {
   constructor(initialTouchEnabled: boolean) {
     this.config.touchEnabled = initialTouchEnabled;
 
-    // Vincular arte generado con fallback seguro
     this.setupImage(this.bgImg, dojoBackdropImg);
     this.syncUI();
 
@@ -111,6 +133,12 @@ export class LandingScreen {
     for (const btn of this.p1Btns) {
       btn.addEventListener('click', () => {
         this.config.p1Character = btn.dataset.landingP1 as CharacterId;
+        if (
+          this.config.p1Character === this.config.p2Character &&
+          this.config.p1Palette === this.config.p2Palette
+        ) {
+          this.config.p2Palette = this.config.p1Palette === 0 ? 1 : 0;
+        }
         this.syncUI();
       });
     }
@@ -118,9 +146,37 @@ export class LandingScreen {
     for (const btn of this.p2Btns) {
       btn.addEventListener('click', () => {
         this.config.p2Character = btn.dataset.landingP2 as CharacterId;
+        if (
+          this.config.p1Character === this.config.p2Character &&
+          this.config.p1Palette === this.config.p2Palette
+        ) {
+          this.config.p2Palette = this.config.p1Palette === 0 ? 1 : 0;
+        }
         this.syncUI();
       });
     }
+
+    this.p1ColorBtn.addEventListener('click', () => {
+      this.config.p1Palette = this.config.p1Palette === 0 ? 1 : 0;
+      if (
+        this.config.p1Character === this.config.p2Character &&
+        this.config.p1Palette === this.config.p2Palette
+      ) {
+        this.config.p2Palette = this.config.p1Palette === 0 ? 1 : 0;
+      }
+      this.syncUI();
+    });
+
+    this.p2ColorBtn.addEventListener('click', () => {
+      this.config.p2Palette = this.config.p2Palette === 0 ? 1 : 0;
+      if (
+        this.config.p1Character === this.config.p2Character &&
+        this.config.p1Palette === this.config.p2Palette
+      ) {
+        this.config.p1Palette = this.config.p2Palette === 0 ? 1 : 0;
+      }
+      this.syncUI();
+    });
 
     this.optBoxesBtn.addEventListener('click', () => {
       this.config.showBoxes = !this.config.showBoxes;
@@ -175,12 +231,23 @@ export class LandingScreen {
       this.config.p1Character = current.p1Character;
     if (current.p2Character !== undefined)
       this.config.p2Character = current.p2Character;
+    if (current.p1Palette !== undefined)
+      this.config.p1Palette = current.p1Palette;
+    if (current.p2Palette !== undefined)
+      this.config.p2Palette = current.p2Palette;
     if (current.showBoxes !== undefined)
       this.config.showBoxes = current.showBoxes;
     if (current.showFrames !== undefined)
       this.config.showFrames = current.showFrames;
     if (current.touchEnabled !== undefined)
       this.config.touchEnabled = current.touchEnabled;
+
+    if (
+      this.config.p1Character === this.config.p2Character &&
+      this.config.p1Palette === this.config.p2Palette
+    ) {
+      this.config.p2Palette = this.config.p1Palette === 0 ? 1 : 0;
+    }
 
     this.syncMuteLabel(muted);
     this.syncUI();
@@ -232,20 +299,50 @@ export class LandingScreen {
 
     const p1Spec = CHARACTERS[this.config.p1Character];
     const p2Spec = CHARACTERS[this.config.p2Character];
+    const p1Color = getFighterHudColor(
+      this.config.p1Character,
+      this.config.p1Palette
+    );
+    const p2Color = getFighterHudColor(
+      this.config.p2Character,
+      this.config.p2Palette
+    );
 
     this.p1Img.classList.remove('hidden');
     this.p1Img.src = PORTRAIT_MAP[this.config.p1Character];
     this.p1Img.alt = `Retrato de combate de ${p1Spec.name}`;
+    this.p1Img.style.filter =
+      this.config.p1Palette === 1
+        ? 'hue-rotate(155deg) saturate(1.12)'
+        : 'none';
+    this.p1Card.style.borderColor = p1Color;
     this.p1NameEl.textContent = p1Spec.name;
-    this.p1NameEl.style.color = p1Spec.hudColor;
+    this.p1NameEl.style.color = p1Color;
     this.p1MetaEl.textContent = `${p1Spec.archetype} · ${p1Spec.maxHp} HP`;
+    this.p1SwatchEl.style.backgroundColor = p1Color;
+    this.p1ColorLabel.textContent =
+      this.config.p1Palette === 1
+        ? `Traje: ${p1Spec.altPaletteName}`
+        : 'Traje: Original';
+    this.p1ColorBtn.classList.toggle('active', this.config.p1Palette === 1);
 
     this.p2Img.classList.remove('hidden');
     this.p2Img.src = PORTRAIT_MAP[this.config.p2Character];
     this.p2Img.alt = `Retrato de combate de ${p2Spec.name}`;
+    this.p2Img.style.filter =
+      this.config.p2Palette === 1
+        ? 'hue-rotate(155deg) saturate(1.12)'
+        : 'none';
+    this.p2Card.style.borderColor = p2Color;
     this.p2NameEl.textContent = p2Spec.name;
-    this.p2NameEl.style.color = p2Spec.hudColor;
+    this.p2NameEl.style.color = p2Color;
     this.p2MetaEl.textContent = `${p2Spec.archetype} · ${p2Spec.maxHp} HP`;
+    this.p2SwatchEl.style.backgroundColor = p2Color;
+    this.p2ColorLabel.textContent =
+      this.config.p2Palette === 1
+        ? `Traje: ${p2Spec.altPaletteName}`
+        : 'Traje: Original';
+    this.p2ColorBtn.classList.toggle('active', this.config.p2Palette === 1);
 
     this.optBoxesBtn.textContent = this.config.showBoxes
       ? 'Cajas 2D: Activas'

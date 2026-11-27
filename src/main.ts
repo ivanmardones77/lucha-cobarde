@@ -16,6 +16,7 @@ import {
   FIXED_DT,
   GameMode,
   TrainingPosition,
+  getFighterHudColor,
 } from './core/types';
 import { InputManager } from './input/InputManager';
 import { TouchControls } from './input/TouchControls';
@@ -24,7 +25,7 @@ import { LandingScreen, LaunchConfig } from './view/LandingScreen';
 import { SceneView3D } from './view/SceneView3D';
 
 const MAX_STEPS = 4;
-const CHAR_ORDER: CharacterId[] = ['RYUJIN', 'KAZE', 'TITAN'];
+const CHAR_ORDER: CharacterId[] = ['RYUJIN', 'KAZE', 'TITAN', 'VOLT', 'VALKYRIE'];
 
 const matchState = createMatchState('AI', 'RYUJIN', 'KAZE', 'ALLEY');
 const buffers: [InputBuffer, InputBuffer] = [
@@ -51,9 +52,18 @@ touchControls.setOverlayVisible(false);
 
 function syncSwapCharButton(): void {
   const btn = document.getElementById('btn-swap-chars');
-  if (!btn) return;
-  btn.textContent = `⇄ P1: ${matchState.p1Character}`;
-  btn.style.color = CHARACTERS[matchState.p1Character].hudColor;
+  const colBtn = document.getElementById('btn-swap-color');
+  const p1Col = getFighterHudColor(matchState.p1Character, matchState.p1Palette);
+  if (btn) {
+    btn.textContent = `⇄ P1: ${matchState.p1Character}`;
+    btn.style.color = p1Col;
+  }
+  if (colBtn) {
+    const spec = CHARACTERS[matchState.p1Character];
+    colBtn.textContent =
+      matchState.p1Palette === 1 ? `🎨 ${spec.altPaletteName}` : '🎨 Original';
+    colBtn.style.color = p1Col;
+  }
 }
 
 function syncMuteButtons(): void {
@@ -114,6 +124,13 @@ function startMatch(cfg: LaunchConfig): void {
   aiController.setDifficulty(cfg.aiDifficulty);
   matchState.p1Character = cfg.p1Character;
   matchState.p2Character = cfg.p2Character;
+  matchState.p1Palette = cfg.p1Palette;
+  matchState.p2Palette =
+    cfg.p1Character === cfg.p2Character && cfg.p1Palette === cfg.p2Palette
+      ? cfg.p1Palette === 0
+        ? 1
+        : 0
+      : cfg.p2Palette;
   matchState.stageId = cfg.stageId;
   sceneView.setStage(cfg.stageId);
   syncSwapCharButton();
@@ -151,6 +168,8 @@ function returnToMenu(): void {
       aiDifficulty: aiController.difficulty,
       p1Character: matchState.p1Character,
       p2Character: matchState.p2Character,
+      p1Palette: matchState.p1Palette,
+      p2Palette: matchState.p2Palette,
       showBoxes: sceneView.showDebugBoxes,
       showFrames: !hud.framePanel.classList.contains('hidden'),
       touchEnabled: touchControls.enabled,
@@ -197,6 +216,12 @@ function swapCharacters(): void {
   const idx = CHAR_ORDER.indexOf(matchState.p1Character);
   const nextP1 = CHAR_ORDER[(idx + 1) % CHAR_ORDER.length];
   matchState.p1Character = nextP1;
+  if (
+    nextP1 === matchState.p2Character &&
+    matchState.p1Palette === matchState.p2Palette
+  ) {
+    matchState.p2Palette = matchState.p1Palette === 0 ? 1 : 0;
+  }
   aiController.reset();
   buffers[0].reset();
   buffers[1].reset();
@@ -205,9 +230,27 @@ function swapCharacters(): void {
   hud.updateComboTrials(trialTracker, matchState.mode);
 }
 
+function swapP1Color(): void {
+  matchState.p1Palette = matchState.p1Palette === 0 ? 1 : 0;
+  if (
+    matchState.p1Character === matchState.p2Character &&
+    matchState.p1Palette === matchState.p2Palette
+  ) {
+    matchState.p2Palette = matchState.p1Palette === 0 ? 1 : 0;
+  }
+  matchState.fighters[0].palette = matchState.p1Palette;
+  matchState.fighters[1].palette = matchState.p2Palette;
+  syncSwapCharButton();
+}
+
 document.getElementById('btn-swap-chars')?.addEventListener('click', () => {
   sfx.unlock();
   swapCharacters();
+});
+
+document.getElementById('btn-swap-color')?.addEventListener('click', () => {
+  sfx.unlock();
+  swapP1Color();
 });
 
 document.getElementById('btn-trial-prev')?.addEventListener('click', () => {

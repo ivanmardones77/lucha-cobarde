@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CharacterId } from '../core/types';
+import { CharacterId, CostumePalette } from '../core/types';
 
 export interface CharacterTextureSet {
   fabricMap: THREE.CanvasTexture;
@@ -12,16 +12,16 @@ export interface CharacterTextureSet {
 }
 
 let sharedGradientMap: THREE.DataTexture | null = null;
-const textureSetCache = new Map<CharacterId, CharacterTextureSet>();
+const textureSetCache = new Map<string, CharacterTextureSet>();
 
 export function getAnimeGradientMap(): THREE.DataTexture {
   if (sharedGradientMap) return sharedGradientMap;
-  // 4-step stylized cel ramp for crisp dark core shadow, mid-shadow, midtone, bright cel lit zone
+  // 4-step stylized cel ramp capped below 255 so white fabrics retain shaded form without blowing out
   const data = new Uint8Array([
-    38, 38, 38, 255,
-    96, 96, 96, 255,
-    182, 182, 182, 255,
-    255, 255, 255, 255,
+    36, 36, 36, 255,
+    92, 92, 92, 255,
+    174, 174, 174, 255,
+    224, 224, 224, 255,
   ]);
   const tex = new THREE.DataTexture(data, 4, 1, THREE.RGBAFormat);
   tex.minFilter = THREE.NearestFilter;
@@ -84,7 +84,10 @@ function createHeightToNormalMap(
   return tex;
 }
 
-function buildFabricTextures(character: CharacterId): {
+function buildFabricTextures(
+  character: CharacterId,
+  palette: CostumePalette
+): {
   map: THREE.CanvasTexture;
   normal: THREE.CanvasTexture;
 } {
@@ -99,17 +102,15 @@ function buildFabricTextures(character: CharacterId): {
   heightCanvas.height = size;
   const hctx = heightCanvas.getContext('2d')!;
 
-  const isKaze = character === 'KAZE';
-  const isTitan = character === 'TITAN';
+  const alt = palette === 1;
 
-  if (isTitan) {
-    // TITAN: Heavy dark titanium armor plating + amber hazard stripes & power seams
-    cctx.fillStyle = '#334155';
+  if (character === 'TITAN') {
+    // TITAN: Heavy titanium armor plating + hazard stripes & reactor seams
+    cctx.fillStyle = alt ? '#1e3a5f' : '#334155';
     cctx.fillRect(0, 0, size, size);
     hctx.fillStyle = '#808080';
     hctx.fillRect(0, 0, size, size);
 
-    // Reinforced armor grid panels
     for (let y = 0; y < size; y += 32) {
       for (let x = 0; x < size; x += 32) {
         cctx.strokeStyle = 'rgba(15, 23, 42, 0.55)';
@@ -121,8 +122,7 @@ function buildFabricTextures(character: CharacterId): {
       }
     }
 
-    // Amber hazard stripe band across armor seam
-    cctx.fillStyle = '#d97706';
+    cctx.fillStyle = alt ? '#0284c7' : '#d97706';
     for (let x = -64; x < size + 64; x += 28) {
       cctx.beginPath();
       cctx.moveTo(x, 112);
@@ -133,8 +133,9 @@ function buildFabricTextures(character: CharacterId): {
       cctx.fill();
     }
 
-    // Glowing reactor conduit lines
-    cctx.strokeStyle = 'rgba(245, 158, 11, 0.72)';
+    cctx.strokeStyle = alt
+      ? 'rgba(56, 189, 248, 0.72)'
+      : 'rgba(245, 158, 11, 0.72)';
     cctx.lineWidth = 4;
     cctx.beginPath();
     cctx.moveTo(0, 108);
@@ -151,27 +152,131 @@ function buildFabricTextures(character: CharacterId): {
     hctx.moveTo(0, 148);
     hctx.lineTo(size, 148);
     hctx.stroke();
-  } else if (!isKaze) {
+  } else if (character === 'VOLT') {
+    // VOLT: Conductive cyber-tech mesh with circuit lines
+    cctx.fillStyle = alt ? '#0f5132' : '#4c1d95';
+    cctx.fillRect(0, 0, size, size);
+    hctx.fillStyle = '#7c7c7c';
+    hctx.fillRect(0, 0, size, size);
+
+    for (let y = 0; y < size; y += 16) {
+      for (let x = 0; x < size; x += 16) {
+        cctx.strokeStyle = 'rgba(15, 23, 42, 0.35)';
+        cctx.lineWidth = 2;
+        cctx.strokeRect(x + 1, y + 1, 14, 14);
+        hctx.fillStyle = (x + y) % 32 === 0 ? '#9c9c9c' : '#686868';
+        hctx.fillRect(x + 2, y + 2, 12, 12);
+      }
+    }
+
+    cctx.strokeStyle = alt
+      ? 'rgba(163, 230, 53, 0.65)'
+      : 'rgba(192, 132, 252, 0.65)';
+    cctx.lineWidth = 3;
+    for (let y = 32; y < size; y += 64) {
+      cctx.beginPath();
+      cctx.moveTo(0, y);
+      cctx.lineTo(84, y);
+      cctx.lineTo(108, y - 22);
+      cctx.lineTo(176, y - 22);
+      cctx.lineTo(200, y);
+      cctx.lineTo(size, y);
+      cctx.stroke();
+
+      hctx.strokeStyle = '#d8d8d8';
+      hctx.lineWidth = 3;
+      hctx.stroke();
+    }
+  } else if (character === 'VALKYRIE') {
+    // VALKYRIE: Feather-scale aero weave & metallic piping
+    cctx.fillStyle = alt ? '#881337' : '#065f46';
+    cctx.fillRect(0, 0, size, size);
+    hctx.fillStyle = '#7e7e7e';
+    hctx.fillRect(0, 0, size, size);
+
+    for (let y = 0; y < size; y += 16) {
+      const offset = (y / 16) % 2 === 0 ? 0 : 12;
+      for (let x = -12; x < size + 12; x += 24) {
+        cctx.strokeStyle = alt
+          ? 'rgba(251, 191, 36, 0.28)'
+          : 'rgba(110, 231, 183, 0.28)';
+        cctx.lineWidth = 2;
+        cctx.beginPath();
+        cctx.arc(x + offset, y, 12, 0, Math.PI);
+        cctx.stroke();
+
+        hctx.strokeStyle = '#b4b4b4';
+        hctx.lineWidth = 2;
+        hctx.beginPath();
+        hctx.arc(x + offset, y, 12, 0, Math.PI);
+        hctx.stroke();
+      }
+    }
+
+    cctx.strokeStyle = alt
+      ? 'rgba(251, 191, 36, 0.7)'
+      : 'rgba(52, 211, 153, 0.65)';
+    cctx.lineWidth = 4;
+    cctx.beginPath();
+    cctx.moveTo(128, 0);
+    cctx.lineTo(128, size);
+    cctx.stroke();
+  } else if (character === 'KAZE') {
+    // KAZE: Sleek tactical stealth hex carbon-fiber weave + piping
+    cctx.fillStyle = alt ? '#312e81' : '#9f1239';
+    cctx.fillRect(0, 0, size, size);
+    hctx.fillStyle = '#787878';
+    hctx.fillRect(0, 0, size, size);
+
+    for (let y = 0; y < size; y += 8) {
+      for (let x = 0; x < size; x += 8) {
+        const offset = (y / 8) % 2 === 0 ? 0 : 4;
+        cctx.fillStyle = 'rgba(15, 23, 42, 0.34)';
+        cctx.fillRect((x + offset) % size, y, 5, 5);
+        hctx.fillStyle = '#a8a8a8';
+        hctx.fillRect((x + offset) % size, y, 4, 4);
+      }
+    }
+
+    cctx.strokeStyle = alt
+      ? 'rgba(250, 204, 21, 0.55)'
+      : 'rgba(251, 113, 133, 0.45)';
+    cctx.lineWidth = 3;
+    cctx.beginPath();
+    cctx.moveTo(0, 32);
+    cctx.lineTo(size, 96);
+    cctx.moveTo(0, 224);
+    cctx.lineTo(size, 160);
+    cctx.stroke();
+
+    hctx.strokeStyle = '#dadada';
+    hctx.lineWidth = 4;
+    hctx.beginPath();
+    cctx.moveTo(0, 32);
+    hctx.moveTo(0, 32);
+    hctx.lineTo(size, 96);
+    hctx.moveTo(0, 224);
+    hctx.lineTo(size, 160);
+    hctx.stroke();
+  } else {
     // RYUJIN: Heavy woven martial arts gi with stitched seams & wear
-    cctx.fillStyle = '#0c7bb3';
+    cctx.fillStyle = alt ? '#7f1d1d' : '#0c7bb3';
     cctx.fillRect(0, 0, size, size);
     hctx.fillStyle = '#808080';
     hctx.fillRect(0, 0, size, size);
 
-    // Sashiko / cotton diamond weave
     for (let y = 0; y < size; y += 6) {
       for (let x = 0; x < size; x += 6) {
-        const alt = ((x + y) / 6) % 2 === 0;
-        cctx.fillStyle = alt
+        const isEven = ((x + y) / 6) % 2 === 0;
+        cctx.fillStyle = isEven
           ? 'rgba(255,255,255,0.06)'
           : 'rgba(6, 24, 48, 0.14)';
         cctx.fillRect(x, y, 4, 4);
-        hctx.fillStyle = alt ? '#a2a2a2' : '#646464';
+        hctx.fillStyle = isEven ? '#a2a2a2' : '#646464';
         hctx.fillRect(x, y, 4, 4);
       }
     }
 
-    // Diagonal reinforced seam lines
     cctx.strokeStyle = 'rgba(224, 242, 254, 0.25)';
     cctx.lineWidth = 3;
     cctx.beginPath();
@@ -190,8 +295,9 @@ function buildFabricTextures(character: CharacterId): {
     hctx.lineTo(size, 206);
     hctx.stroke();
 
-    // Subtle back crest motif
-    cctx.strokeStyle = 'rgba(56, 189, 248, 0.42)';
+    cctx.strokeStyle = alt
+      ? 'rgba(251, 113, 133, 0.45)'
+      : 'rgba(56, 189, 248, 0.42)';
     cctx.lineWidth = 5;
     cctx.beginPath();
     cctx.arc(128, 128, 34, 0, Math.PI * 2);
@@ -200,42 +306,6 @@ function buildFabricTextures(character: CharacterId): {
     cctx.moveTo(128, 102);
     cctx.lineTo(128, 154);
     cctx.stroke();
-  } else {
-    // KAZE: Sleek tactical stealth hex carbon-fiber weave + crimson piping
-    cctx.fillStyle = '#9f1239';
-    cctx.fillRect(0, 0, size, size);
-    hctx.fillStyle = '#787878';
-    hctx.fillRect(0, 0, size, size);
-
-    // Tactical hex micro-weave
-    for (let y = 0; y < size; y += 8) {
-      for (let x = 0; x < size; x += 8) {
-        const offset = (y / 8) % 2 === 0 ? 0 : 4;
-        cctx.fillStyle = 'rgba(15, 23, 42, 0.34)';
-        cctx.fillRect((x + offset) % size, y, 5, 5);
-        hctx.fillStyle = '#a8a8a8';
-        hctx.fillRect((x + offset) % size, y, 4, 4);
-      }
-    }
-
-    // Cyber stealth seam piping
-    cctx.strokeStyle = 'rgba(251, 113, 133, 0.45)';
-    cctx.lineWidth = 3;
-    cctx.beginPath();
-    cctx.moveTo(0, 32);
-    cctx.lineTo(size, 96);
-    cctx.moveTo(0, 224);
-    cctx.lineTo(size, 160);
-    cctx.stroke();
-
-    hctx.strokeStyle = '#dadada';
-    hctx.lineWidth = 4;
-    hctx.beginPath();
-    hctx.moveTo(0, 32);
-    hctx.lineTo(size, 96);
-    hctx.moveTo(0, 224);
-    hctx.lineTo(size, 160);
-    hctx.stroke();
   }
 
   const map = new THREE.CanvasTexture(colorCanvas);
@@ -268,7 +338,6 @@ function buildArmorTextures(): {
   hctx.fillStyle = '#808080';
   hctx.fillRect(0, 0, size, size);
 
-  // Brushed anisotropic metal grain & panel lines
   for (let y = 0; y < size; y += 2) {
     const shade = (Math.sin(y * 0.7) + 1) * 0.5;
     cctx.fillStyle = `rgba(15, 23, 42, ${0.03 + shade * 0.05})`;
@@ -277,7 +346,6 @@ function buildArmorTextures(): {
     hctx.fillRect(0, y, size, 1);
   }
 
-  // Tech bevel grooves & rivets
   cctx.strokeStyle = 'rgba(15, 23, 42, 0.35)';
   cctx.lineWidth = 4;
   cctx.strokeRect(14, 14, size - 28, size - 28);
@@ -327,21 +395,20 @@ function buildWrapTextures(): {
   hCanvas.height = size;
   const hctx = hCanvas.getContext('2d')!;
 
-  cctx.fillStyle = '#e2e8f0';
+  cctx.fillStyle = '#cbd5e1';
   cctx.fillRect(0, 0, size, size);
   hctx.fillStyle = '#888888';
   hctx.fillRect(0, 0, size, size);
 
-  // Diagonal overlapping athletic wrap strips
   for (let i = -size; i < size * 2; i += 24) {
-    cctx.strokeStyle = 'rgba(30, 41, 59, 0.28)';
+    cctx.strokeStyle = 'rgba(30, 41, 59, 0.32)';
     cctx.lineWidth = 4;
     cctx.beginPath();
     cctx.moveTo(i, 0);
     cctx.lineTo(i + size, size);
     cctx.stroke();
 
-    cctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+    cctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
     cctx.beginPath();
     cctx.moveTo(i + 4, 0);
     cctx.lineTo(i + 14, 0);
@@ -376,13 +443,12 @@ function buildSkinTexture(): THREE.CanvasTexture {
   const ctx = canvas.getContext('2d')!;
 
   const grad = ctx.createLinearGradient(0, 0, 0, size);
-  grad.addColorStop(0, '#ffd8be');
-  grad.addColorStop(0.55, '#f4c1a0');
-  grad.addColorStop(1, '#dfa27f');
+  grad.addColorStop(0, '#f3c6a8');
+  grad.addColorStop(0.55, '#e6b18f');
+  grad.addColorStop(1, '#d1926f');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, size, size);
 
-  // Subtle muscle contour shading
   ctx.fillStyle = 'rgba(180, 95, 70, 0.1)';
   ctx.fillRect(0, 56, size, 12);
 
@@ -393,12 +459,14 @@ function buildSkinTexture(): THREE.CanvasTexture {
 }
 
 export function getCharacterTextures(
-  character: CharacterId
+  character: CharacterId,
+  palette: CostumePalette = 0
 ): CharacterTextureSet {
-  const cached = textureSetCache.get(character);
+  const key = `${character}_${palette}`;
+  const cached = textureSetCache.get(key);
   if (cached) return cached;
 
-  const fabric = buildFabricTextures(character);
+  const fabric = buildFabricTextures(character, palette);
   const armor = buildArmorTextures();
   const wrap = buildWrapTextures();
   const skinMap = buildSkinTexture();
@@ -412,7 +480,7 @@ export function getCharacterTextures(
     wrapNormal: wrap.normal,
     skinMap,
   };
-  textureSetCache.set(character, set);
+  textureSetCache.set(key, set);
   return set;
 }
 
@@ -442,10 +510,10 @@ export function createAnimeToonMaterial(opts: AnimeToonOptions): {
 } {
   const uniforms: AnimeMaterialUniforms = {
     uRimColor: { value: new THREE.Color(opts.rimColor) },
-    uRimStrength: { value: opts.rimStrength ?? 0.68 },
-    uRimPower: { value: opts.rimPower ?? 2.6 },
+    uRimStrength: { value: opts.rimStrength ?? 0.38 },
+    uRimPower: { value: opts.rimPower ?? 2.8 },
     uShadowTint: { value: new THREE.Color(opts.shadowTint ?? 0x1e1b4b) },
-    uSpecStrength: { value: opts.specStrength ?? 0.25 },
+    uSpecStrength: { value: opts.specStrength ?? 0.16 },
   };
 
   const material = new THREE.MeshToonMaterial({
@@ -458,7 +526,7 @@ export function createAnimeToonMaterial(opts: AnimeToonOptions): {
       : undefined,
   });
 
-  material.customProgramCacheKey = () => 'anime-cel-rim-v1';
+  material.customProgramCacheKey = () => 'anime-cel-rim-v2';
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uRimColor = uniforms.uRimColor;
     shader.uniforms.uRimStrength = uniforms.uRimStrength;
@@ -481,15 +549,16 @@ uniform float uSpecStrength;`
         `vec3 viewDirAnime = normalize(vViewPosition);
 vec3 normAnime = normalize(normal);
 float ndotvAnime = clamp(dot(normAnime, viewDirAnime), 0.0, 1.0);
-float rimFactor = pow(1.0 - ndotvAnime, uRimPower) * smoothstep(-0.35, 0.75, normAnime.y);
-vec3 animeRim = uRimColor * rimFactor * uRimStrength;
-
 float litLuma = clamp(dot(reflectedLight.directDiffuse, vec3(0.3, 0.59, 0.11)), 0.0, 1.0);
+float rimFactor = pow(1.0 - ndotvAnime, uRimPower) * smoothstep(-0.35, 0.75, normAnime.y);
+// Mask rim on bright lit whites so light outfits never clip into glow
+vec3 animeRim = uRimColor * rimFactor * uRimStrength * (1.0 - litLuma * 0.58);
+
 vec3 coloredShadow = mix(uShadowTint * diffuseColor.rgb * 0.42, vec3(0.0), smoothstep(0.08, 0.52, litLuma));
 
 vec3 halfVecAnime = normalize(normalize(vec3(0.35, 0.78, 0.52)) + viewDirAnime);
 float specAngle = clamp(dot(normAnime, halfVecAnime), 0.0, 1.0);
-float animeSpec = smoothstep(0.92, 0.945, specAngle) * uSpecStrength * smoothstep(0.2, 0.6, litLuma);
+float animeSpec = smoothstep(0.93, 0.955, specAngle) * uSpecStrength * smoothstep(0.25, 0.65, litLuma);
 
 vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + coloredShadow + animeRim + vec3(animeSpec) + totalEmissiveRadiance;`
       );

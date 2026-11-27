@@ -4,9 +4,12 @@ import {
   CHARACTERS,
   CharacterId,
   COMBO_SCALING,
+  CostumePalette,
   FighterState,
   FrameMeterCode,
   GameMode,
+  getFighterAccentColor,
+  getFighterHudColor,
   getFighterMove,
   GRAVITY,
   HitLevel,
@@ -23,6 +26,7 @@ import {
 function createFighter(
   id: 0 | 1,
   character: CharacterId,
+  palette: CostumePalette,
   x: number,
   facing: 1 | -1
 ): FighterState {
@@ -30,6 +34,7 @@ function createFighter(
   return {
     id,
     character,
+    palette,
     x,
     y: 0,
     vx: 0,
@@ -66,14 +71,24 @@ export function createMatchState(
   mode: GameMode = 'AI',
   p1Character: CharacterId = 'RYUJIN',
   p2Character: CharacterId = 'KAZE',
-  stageId: StageId = 'ALLEY'
+  stageId: StageId = 'ALLEY',
+  p1Palette: CostumePalette = 0,
+  p2Palette: CostumePalette = 0
 ): MatchState {
+  const effectiveP2Pal: CostumePalette =
+    p1Character === p2Character && p1Palette === p2Palette
+      ? p1Palette === 0
+        ? 1
+        : 0
+      : p2Palette;
   return {
     mode,
     stageId,
     dummyMode: 'NEUTRAL',
     p1Character,
     p2Character,
+    p1Palette,
+    p2Palette: effectiveP2Pal,
     frame: 0,
     hitstop: 0,
     slowMoFrames: 0,
@@ -86,8 +101,8 @@ export function createMatchState(
     phaseTimer: INTRO_DURATION_FRAMES,
     winnerId: -1,
     fighters: [
-      createFighter(0, p1Character, -2.2, 1),
-      createFighter(1, p2Character, 2.2, -1),
+      createFighter(0, p1Character, p1Palette, -2.2, 1),
+      createFighter(1, p2Character, effectiveP2Pal, 2.2, -1),
     ],
     projectiles: [],
     events: [],
@@ -111,8 +126,15 @@ export function resetRoundState(
       : 0
     : state.fighters[1].superMeter;
 
-  state.fighters[0] = createFighter(0, state.p1Character, -2.2, 1);
-  state.fighters[1] = createFighter(1, state.p2Character, 2.2, -1);
+  const effectiveP2Pal: CostumePalette =
+    state.p1Character === state.p2Character && state.p1Palette === state.p2Palette
+      ? state.p1Palette === 0
+        ? 1
+        : 0
+      : state.p2Palette;
+
+  state.fighters[0] = createFighter(0, state.p1Character, state.p1Palette, -2.2, 1);
+  state.fighters[1] = createFighter(1, state.p2Character, effectiveP2Pal, 2.2, -1);
   state.fighters[0].roundsWon = r0;
   state.fighters[1].roundsWon = r1;
   state.fighters[0].superMeter = m0;
@@ -140,7 +162,7 @@ export function resetRoundState(
     state.phaseTimer = INTRO_DURATION_FRAMES;
     for (const f of state.fighters) {
       const homeX = f.id === 0 ? -2.2 : 2.2;
-      if (f.character === 'RYUJIN') {
+      if (f.character === 'RYUJIN' || f.character === 'VOLT') {
         f.x = homeX - f.facing * 1.9;
         f.y = 0;
         f.state = 'WALK_F';
@@ -238,7 +260,7 @@ function startMove(
       y: f.y + 1.1,
       effect: 'SUPER_BURST',
       facing: f.facing,
-      color: spec.accentColor,
+      color: getFighterAccentColor(f.character, f.palette),
     });
   } else if (m.meterCost) {
     if (f.superMeter < m.meterCost) return;
@@ -307,13 +329,13 @@ function startMove(
         y: f.y + 1.0,
         effect: 'KI_CHARGE',
         facing: f.facing,
-        color: spec.accentColor,
+        color: getFighterAccentColor(f.character, f.palette),
       });
       state.events.push({
         type: 'CALLOUT',
         side: f.id,
         text: 'KI CHARGE +18%',
-        color: '#38bdf8',
+        color: getFighterHudColor(f.character, f.palette),
       });
     } else if (f.character === 'TITAN') {
       state.events.push({ type: 'SFX', name: 'dash' });
@@ -324,7 +346,7 @@ function startMove(
     f.vx = f.facing * (moveKey === 'EX_214P' ? 0.16 : 0.11);
     state.events.push({ type: 'SFX', name: 'dash' });
   } else if (moveKey === '214K') {
-    if (f.character === 'RYUJIN') {
+    if (f.character === 'RYUJIN' || f.character === 'VALKYRIE') {
       f.vy = 0.16;
       f.vx = f.facing * 0.13;
       state.events.push({ type: 'SFX', name: 'dash' });
@@ -345,7 +367,7 @@ function startMove(
         y: f.y + 1.0,
         effect: 'TELEPORT',
         facing: f.facing,
-        color: spec.accentColor,
+        color: getFighterAccentColor(f.character, f.palette),
       });
     }
   } else if (moveKey === '41236K') {
@@ -376,7 +398,13 @@ function startMove(
     f.vx = f.facing * 0.22;
     state.events.push({ type: 'SFX', name: 'diveKick' });
   } else if (moveKey === '6K') {
-    f.vx = f.facing * (f.character === 'KAZE' ? 0.24 : 0.14);
+    f.vx =
+      f.facing *
+      (f.character === 'KAZE'
+        ? 0.24
+        : f.character === 'VOLT' || f.character === 'VALKYRIE'
+          ? 0.2
+          : 0.14);
   } else if (moveKey === '6P' && f.character === 'RYUJIN') {
     f.vx = f.facing * 0.09;
   }
@@ -426,7 +454,8 @@ export function stepSimulation(
 
     for (const f of state.fighters) {
       const homeX = f.id === 0 ? -2.2 : 2.2;
-      if (f.character === 'RYUJIN') {
+      const accentCol = getFighterAccentColor(f.character, f.palette);
+      if (f.character === 'RYUJIN' || f.character === 'VOLT') {
         if (elapsed <= 42) {
           const p = elapsed / 42;
           f.x = homeX - f.facing * 1.9 * (1 - p);
@@ -450,7 +479,7 @@ export function stepSimulation(
               y: 1.05,
               effect: 'KI_CHARGE',
               facing: f.facing,
-              color: CHARACTERS.RYUJIN.accentColor,
+              color: accentCol,
             });
           }
         } else {
@@ -496,7 +525,7 @@ export function stepSimulation(
               y: 0.25,
               effect: 'HEAVY_IMPACT',
               facing: f.facing,
-              color: CHARACTERS.TITAN.accentColor,
+              color: accentCol,
             });
             state.events.push({
               type: 'STAGE_IMPACT',
@@ -514,7 +543,7 @@ export function stepSimulation(
           f.stateFrame = elapsed - 94;
         }
       } else {
-        // KAZE: Drop down from the shadows above the alley + blade draw pose
+        // KAZE & VALKYRIE: Drop down from above + weapon draw pose
         if (elapsed <= 28) {
           const p = elapsed / 28;
           f.x = homeX - f.facing * 1.1 * (1 - p);
@@ -546,7 +575,7 @@ export function stepSimulation(
               x: f.x + f.facing * 0.35,
               y: 1.18,
               facing: f.facing,
-              color: CHARACTERS.KAZE.accentColor,
+              color: accentCol,
               angle: 0.48,
               scale: 1.15,
             });
@@ -637,11 +666,12 @@ export function stepSimulation(
     if (state.phaseTimer > 0) {
       state.phaseTimer--;
       if (state.phaseTimer === 107 && state.winnerId !== -1) {
-        const winnerSpec = CHARACTERS[state.fighters[state.winnerId].character];
+        const winner = state.fighters[state.winnerId];
+        const winnerSpec = CHARACTERS[winner.character];
         state.events.push({
           type: 'BANNER',
           text: `¡VICTORIA ${winnerSpec.name}!`,
-          color: winnerSpec.hudColor,
+          color: getFighterHudColor(winner.character, winner.palette),
         });
       }
     }
@@ -764,7 +794,7 @@ function updateFighter(
         y: 0.25,
         effect: 'COMMAND_GRAB',
         facing: opp.facing,
-        color: CHARACTERS[opp.character].accentColor,
+        color: getFighterAccentColor(opp.character, opp.palette),
       });
       state.events.push({
         type: 'STAGE_IMPACT',
@@ -1003,7 +1033,7 @@ function updateFighter(
 
     if (
       m.id === '214K' &&
-      f.character === 'KAZE' &&
+      (f.character === 'KAZE' || f.character === 'VOLT') &&
       f.stateFrame === m.startup
     ) {
       const behindX = opp.x + opp.facing * 1.15;
@@ -1026,11 +1056,12 @@ function updateFighter(
         y: f.y + 1.0,
         effect: 'TELEPORT',
         facing: f.facing,
-        color: spec.accentColor,
+        color: getFighterAccentColor(f.character, f.palette),
       });
     }
 
-    const slashColor = m.isEx || m.isSuper ? 0xfacc15 : spec.accentColor;
+    const activeAccent = getFighterAccentColor(f.character, f.palette);
+    const slashColor = m.isEx || m.isSuper ? 0xfacc15 : activeAccent;
     if (f.stateFrame === m.startup) {
       if (m.id === '623P' || m.id === 'EX_623P') {
         state.events.push({
@@ -1053,7 +1084,8 @@ function updateFighter(
           scale: m.isEx || m.id === 'FOCUS' ? 1.38 : 1.12,
         });
       } else if (
-        (m.id === '214K' && f.character === 'RYUJIN') ||
+        (m.id === '214K' &&
+          (f.character === 'RYUJIN' || f.character === 'VALKYRIE')) ||
         m.id === '6P'
       ) {
         state.events.push({
@@ -1105,7 +1137,7 @@ function updateFighter(
         y: 0.2,
         effect: 'HEAVY_IMPACT',
         facing: f.facing,
-        color: CHARACTERS.TITAN.accentColor,
+        color: getFighterAccentColor(f.character, f.palette),
       });
       state.events.push({
         type: 'STAGE_IMPACT',
@@ -1118,12 +1150,13 @@ function updateFighter(
     if (
       m.spawnsProjectile &&
       (f.stateFrame === m.startup ||
-        (f.character === 'KAZE' &&
+        ((f.character === 'KAZE' || f.character === 'VALKYRIE') &&
           (m.id === 'EX_236P' || m.id === '22P') &&
           f.stateFrame === m.startup + 3))
     ) {
       const isSecondBurst = f.stateFrame === m.startup + 3;
-      const isMultiOrb = f.character !== 'KAZE' && m.id === 'EX_236P';
+      const isMultiOrb =
+        f.character !== 'KAZE' && f.character !== 'VALKYRIE' && m.id === 'EX_236P';
       const speedMult = m.isEx ? 1.32 : m.id === '22P' ? 1.18 : 1;
       state.projectiles.push({
         id: `${state.frame}_${f.id}_${isSecondBurst ? 2 : 1}`,
@@ -1453,7 +1486,7 @@ function syncAllBoxes(state: MatchState): void {
       f.moveId === '2P' ||
       f.moveId === '2K' ||
       f.moveId === 'ROLL' ||
-      (f.moveId === '6K' && f.character === 'KAZE');
+      (f.moveId === '6K' && (f.character === 'KAZE' || f.character === 'VOLT'));
     const h = isCrouch ? 1.25 : 1.85;
     f.pushbox = { x: f.x, y: f.y + h * 0.5, w: 0.78, h: h * 0.95 };
     f.hurtbox =

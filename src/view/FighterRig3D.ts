@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import {
   CHARACTERS,
   CharacterId,
+  CostumePalette,
   FighterState,
+  getFighterAccentColor,
   getFighterMove,
 } from '../core/types';
 import {
@@ -12,8 +14,10 @@ import {
   getCharacterTextures,
 } from './AnimeFighterShader';
 import { RibbonChannel } from './RibbonTrail3D';
+import { createSparkParticleTexture } from './SpriteVfxAtlas';
 
 let sharedShadowTexture: THREE.CanvasTexture | null = null;
+let sharedChargeTexture: THREE.CanvasTexture | null = null;
 
 function getContactShadowTexture(): THREE.CanvasTexture {
   if (sharedShadowTexture) return sharedShadowTexture;
@@ -33,6 +37,78 @@ function getContactShadowTexture(): THREE.CanvasTexture {
   tex.needsUpdate = true;
   sharedShadowTexture = tex;
   return tex;
+}
+
+function getChargeFlareTexture(): THREE.CanvasTexture {
+  if (!sharedChargeTexture) {
+    sharedChargeTexture = createSparkParticleTexture();
+  }
+  return sharedChargeTexture;
+}
+
+function createPlasmaAuraMaterial(colorHex: number): {
+  material: THREE.ShaderMaterial;
+  uniforms: {
+    uTime: { value: number };
+    uColor: { value: THREE.Color };
+    uIntensity: { value: number };
+  };
+} {
+  const uniforms = {
+    uTime: { value: 0 },
+    uColor: { value: new THREE.Color(colorHex) },
+    uIntensity: { value: 0 },
+  };
+  const material = new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: /* glsl */ `
+      varying vec2 vUv;
+      varying vec3 vNormalView;
+      varying vec3 vViewPos;
+      uniform float uTime;
+
+      void main() {
+        vUv = uv;
+        vec3 pos = position;
+        float wave = sin(uv.y * 9.0 - uTime * 3.8 + uv.x * 12.56637) * 0.045;
+        pos.xz += normal.xz * (wave * smoothstep(0.0, 0.65, uv.y));
+        vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
+        vViewPos = -mvPos.xyz;
+        vNormalView = normalize(normalMatrix * normal);
+        gl_Position = projectionMatrix * mvPos;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      varying vec2 vUv;
+      varying vec3 vNormalView;
+      varying vec3 vViewPos;
+      uniform float uTime;
+      uniform vec3 uColor;
+      uniform float uIntensity;
+
+      void main() {
+        if (uIntensity <= 0.005) discard;
+        vec3 viewDir = normalize(vViewPos);
+        float ndotv = abs(dot(normalize(vNormalView), viewDir));
+        float fresnel = pow(1.0 - clamp(ndotv, 0.0, 1.0), 1.65);
+
+        float scroll1 = sin(vUv.x * 25.1327 + vUv.y * 6.5 - uTime * 4.5);
+        float scroll2 = sin(vUv.x * 43.9822 - vUv.y * 11.0 - uTime * 6.8);
+        float flames = smoothstep(-0.3, 0.85, scroll1 * 0.6 + scroll2 * 0.4 + (1.0 - vUv.y) * 0.45);
+
+        float verticalMask = smoothstep(0.0, 0.16, vUv.y) * (1.0 - smoothstep(0.45, 1.0, vUv.y));
+        float alpha = (fresnel * 0.72 + 0.22) * flames * verticalMask * uIntensity * 0.65;
+
+        vec3 coreCol = mix(uColor, vec3(0.95, 0.96, 1.0), clamp(fresnel * 0.35 + (1.0 - vUv.y) * 0.15, 0.0, 1.0));
+        gl_FragColor = vec4(coreCol * 0.95, clamp(alpha, 0.0, 0.75));
+      }
+    `,
+    transparent: true,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  return { material, uniforms };
 }
 
 const _vTip = new THREE.Vector3();
@@ -57,6 +133,7 @@ export class FighterRig3D {
   public trailGroup = new THREE.Group();
 
   private character: CharacterId;
+  private palette: CostumePalette;
   private hips = new THREE.Group();
   private chest = new THREE.Group();
   private head = new THREE.Group();
@@ -107,6 +184,11 @@ export class FighterRig3D {
 
   private contactShadow!: THREE.Mesh;
   private aura!: THREE.Mesh;
+  private auraUniforms!: {
+    uTime: { value: number };
+    uColor: { value: THREE.Color };
+    uIntensity: { value: number };
+  };
 
   private matBody!: THREE.MeshToonMaterial;
   private bodyUniforms!: AnimeMaterialUniforms;
@@ -125,9 +207,10 @@ export class FighterRig3D {
   private lastAnimFrame = -1;
   private accentHex: number;
 
-  constructor(character: CharacterId) {
+  constructor(character: CharacterId, palette: CostumePalette = 0) {
     this.character = character;
-    this.accentHex = CHARACTERS[character].accentColor;
+    this.palette = palette;
+    this.accentHex = getFighterAccentColor(character, palette);
 
     this.ribbons = {
       handF: new RibbonChannel(this.accentHex),
@@ -142,14 +225,15 @@ export class FighterRig3D {
       this.ribbons.footB.mesh
     );
 
-    this.buildRig(character);
+    this.buildRig(character, palette);
     this.initGhostPool();
   }
 
-  public setCharacter(character: CharacterId): void {
-    if (this.character === character) return;
+  public setCharacter(character: CharacterId, palette: CostumePalette = 0): void {
+    if (this.character === character && this.palette === palette) return;
     this.character = character;
-    this.accentHex = CHARACTERS[character].accentColor;
+    this.palette = palette;
+    this.accentHex = getFighterAccentColor(character, palette);
     this.disposeGroup(this.root);
     this.hips = new THREE.Group();
     this.chest = new THREE.Group();
@@ -160,7 +244,7 @@ export class FighterRig3D {
     this.skirtFlaps = [];
     this.skirtAngles = [0, 0];
     this.skirtVels = [0, 0];
-    this.buildRig(character);
+    this.buildRig(character, palette);
     this.resetTrails();
   }
 
@@ -316,91 +400,180 @@ export class FighterRig3D {
     return geo;
   }
 
-  private buildRig(character: CharacterId): void {
-    const spec = CHARACTERS[character];
+  private buildRig(character: CharacterId, palette: CostumePalette): void {
     const isKaze = character === 'KAZE';
     const isTitan = character === 'TITAN';
-    const tex = getCharacterTextures(character);
+    const isVolt = character === 'VOLT';
+    const isValkyrie = character === 'VALKYRIE';
+    const alt = palette === 1;
+    const accentHex = getFighterAccentColor(character, palette);
+    const tex = getCharacterTextures(character, palette);
 
     this.matOutline = createInkOutlineMaterial(isTitan ? 0.017 : 0.014, 0x05070c);
+
+    const shadowTint = isTitan
+      ? alt
+        ? 0x0f172a
+        : 0x271705
+      : isVolt
+        ? alt
+          ? 0x064e3b
+          : 0x2e1065
+        : isValkyrie
+          ? alt
+            ? 0x4c0519
+            : 0x064e3b
+          : isKaze
+            ? 0x2e1065
+            : 0x172554;
 
     const bodyBuilt = createAnimeToonMaterial({
       color: 0xffffff,
       map: tex.fabricMap,
       normalMap: tex.fabricNormal,
       normalScale: isTitan ? 0.8 : 0.55,
-      rimColor: spec.accentColor,
-      rimStrength: isTitan ? 0.85 : 0.72,
-      rimPower: 2.5,
-      shadowTint: isTitan ? 0x271705 : isKaze ? 0x2e1065 : 0x172554,
-      specStrength: isTitan ? 0.48 : isKaze ? 0.34 : 0.14,
+      rimColor: accentHex,
+      rimStrength: isTitan ? 0.44 : 0.36,
+      rimPower: 2.8,
+      shadowTint,
+      specStrength: isTitan ? 0.28 : isKaze || isValkyrie ? 0.22 : 0.12,
     });
     this.matBody = bodyBuilt.material;
     this.bodyUniforms = bodyBuilt.uniforms;
 
+    const armorColor = isTitan
+      ? alt
+        ? 0x64748b
+        : 0x94a3b8
+      : isValkyrie
+        ? alt
+          ? 0xd4af37
+          : 0xcbd5e1
+        : isVolt
+          ? alt
+            ? 0x334155
+            : 0x475569
+          : isKaze
+            ? alt
+              ? 0x475569
+              : 0x64748b
+            : alt
+              ? 0x334155
+              : 0xcbd5e1;
+
     const armorBuilt = createAnimeToonMaterial({
-      color: isTitan ? 0x94a3b8 : isKaze ? 0x64748b : 0xf1f5f9,
+      color: armorColor,
       map: tex.armorMap,
       normalMap: tex.armorNormal,
       normalScale: 0.75,
-      rimColor: spec.accentColor,
-      rimStrength: 0.88,
-      rimPower: 2.3,
+      rimColor: accentHex,
+      rimStrength: 0.45,
+      rimPower: 2.6,
       shadowTint: 0x1e293b,
-      specStrength: 0.52,
+      specStrength: 0.3,
     });
     this.matArmor = armorBuilt.material;
     this.armorUniforms = armorBuilt.uniforms;
 
+    const darkColor = isTitan
+      ? 0x0f172a
+      : isValkyrie
+        ? alt
+          ? 0x4c0519
+          : 0x064e3b
+        : isVolt
+          ? alt
+            ? 0x111827
+            : 0x1e1b4b
+          : isKaze
+            ? alt
+              ? 0x1e1b4b
+              : 0x1e293b
+            : alt
+              ? 0x18181b
+              : 0x273549;
+
     this.matDark = createAnimeToonMaterial({
-      color: isTitan ? 0x0f172a : isKaze ? 0x1e293b : 0x273549,
+      color: darkColor,
       normalMap: tex.fabricNormal,
       normalScale: 0.35,
-      rimColor: spec.accentColor,
-      rimStrength: 0.48,
-      rimPower: 2.8,
+      rimColor: accentHex,
+      rimStrength: 0.3,
+      rimPower: 2.9,
       shadowTint: 0x0f172a,
-      specStrength: 0.22,
+      specStrength: 0.16,
     }).material;
 
+    const wrapColor = isTitan
+      ? alt
+        ? 0x0369a1
+        : 0xb45309
+      : isVolt
+        ? alt
+          ? 0x3f6212
+          : 0x581c87
+        : isValkyrie
+          ? alt
+            ? 0x9f1239
+            : 0x059669
+          : alt
+            ? 0x64748b
+            : 0xcbd5e1;
+
     this.matWrap = createAnimeToonMaterial({
-      color: isTitan ? 0xb45309 : 0xffffff,
+      color: wrapColor,
       map: tex.wrapMap,
       normalMap: tex.wrapNormal,
       normalScale: 0.7,
-      rimColor: spec.accentColor,
-      rimStrength: 0.45,
-      rimPower: 3.0,
+      rimColor: accentHex,
+      rimStrength: 0.28,
+      rimPower: 3.1,
       shadowTint: 0x334155,
-      specStrength: 0.14,
+      specStrength: 0.1,
     }).material;
 
     this.matSkin = createAnimeToonMaterial({
       color: 0xffffff,
       map: tex.skinMap,
-      rimColor: spec.accentColor,
-      rimStrength: 0.42,
-      rimPower: 3.1,
+      rimColor: accentHex,
+      rimStrength: 0.26,
+      rimPower: 3.2,
       shadowTint: 0x7c2d12,
-      specStrength: 0.12,
+      specStrength: 0.08,
     }).material;
+
+    const hairColor = isVolt
+      ? alt
+        ? 0xd9f99d
+        : 0xcbd5e1
+      : isValkyrie
+        ? alt
+          ? 0xfde68a
+          : 0x6ee7b7
+        : isKaze
+          ? alt
+            ? 0xcbd5e1
+            : 0x0f172a
+          : alt
+            ? 0x2a0f18
+            : 0x1e1b2e;
 
     this.matHair = createAnimeToonMaterial({
-      color: isKaze ? 0x0f172a : 0x1e1b2e,
-      rimColor: spec.accentColor,
-      rimStrength: 0.7,
-      rimPower: 2.4,
+      color: hairColor,
+      rimColor: accentHex,
+      rimStrength: 0.38,
+      rimPower: 2.6,
       shadowTint: 0x090d16,
-      specStrength: 0.55,
+      specStrength: 0.32,
     }).material;
 
+    // Controlled emissive glow (no HDR unclipped toneMapped: false blowout)
     this.matGlow = new THREE.MeshStandardMaterial({
-      color: spec.accentColor,
-      emissive: spec.accentColor,
-      emissiveIntensity: 1.6,
-      roughness: 0.18,
-      metalness: 0.15,
-      toneMapped: false,
+      color: accentHex,
+      emissive: accentHex,
+      emissiveIntensity: 0.52,
+      roughness: 0.25,
+      metalness: 0.1,
     });
 
     // Soft radial contact shadow on floor
@@ -418,14 +591,14 @@ export class FighterRig3D {
     this.root.add(this.contactShadow);
 
     // Hips / Pelvis Root
-    this.hips.position.y = isTitan ? 1.02 : 0.94;
+    this.hips.position.y = isTitan ? 1.02 : isValkyrie ? 0.97 : 0.94;
     this.root.add(this.hips);
 
     const pelvisGeo = this.createLatheLimb(
       [
         [0.09, -0.06],
-        [isTitan ? 0.215 : isKaze ? 0.155 : 0.175, 0.02],
-        [isTitan ? 0.205 : isKaze ? 0.145 : 0.165, 0.13],
+        [isTitan ? 0.215 : isKaze || isValkyrie ? 0.152 : 0.175, 0.02],
+        [isTitan ? 0.205 : isKaze || isValkyrie ? 0.142 : 0.165, 0.13],
         [isTitan ? 0.145 : 0.11, 0.17],
       ],
       12,
@@ -438,21 +611,21 @@ export class FighterRig3D {
     const belt = this.addAnimeMesh(
       this.hips,
       new THREE.CylinderGeometry(
-        isTitan ? 0.24 : isKaze ? 0.175 : 0.2,
-        isTitan ? 0.25 : isKaze ? 0.18 : 0.21,
+        isTitan ? 0.24 : isKaze || isValkyrie ? 0.175 : 0.2,
+        isTitan ? 0.25 : isKaze || isValkyrie ? 0.18 : 0.21,
         isTitan ? 0.095 : 0.075,
         12
       ),
-      isKaze || isTitan ? this.matDark : this.matBody
+      isKaze || isTitan || isVolt ? this.matDark : this.matBody
     );
     belt.scale.set(0.88, 1, isTitan ? 1.28 : 1.18);
     belt.position.y = 0.12;
 
     const beltGlow = new THREE.Mesh(
       new THREE.CylinderGeometry(
-        isTitan ? 0.246 : isKaze ? 0.182 : 0.208,
-        isTitan ? 0.246 : isKaze ? 0.182 : 0.208,
-        0.032,
+        isTitan ? 0.246 : isKaze || isValkyrie ? 0.182 : 0.208,
+        isTitan ? 0.246 : isKaze || isValkyrie ? 0.182 : 0.208,
+        0.028,
         12
       ),
       this.matGlow
@@ -461,18 +634,27 @@ export class FighterRig3D {
     beltGlow.position.y = 0.12;
     this.hips.add(beltGlow);
 
-    // Front & Back Spring-Physics Garment Flaps (Gi skirt / Shinobi sash / Titan armor tassets)
-    const flapGeo = this.createBevelPlate(isTitan ? 0.24 : 0.18, 0.28, 0.038, 1.18);
+    // Front & Back Spring-Physics Garment Flaps (Gi skirt / Coat tails / Paladin tassets)
+    const flapGeo = this.createBevelPlate(
+      isTitan ? 0.24 : isVolt ? 0.2 : 0.18,
+      isVolt ? 0.36 : 0.28,
+      0.038,
+      1.18
+    );
     flapGeo.rotateY(Math.PI / 2);
     for (let i = 0; i < 2; i++) {
       const pivot = new THREE.Group();
-      pivot.position.set(i === 0 ? (isTitan ? 0.18 : 0.14) : (isTitan ? -0.18 : -0.14), 0.09, 0);
+      pivot.position.set(
+        i === 0 ? (isTitan ? 0.18 : 0.14) : isTitan ? -0.18 : -0.14,
+        0.09,
+        0
+      );
       const flap = this.addAnimeMesh(
         pivot,
         flapGeo,
-        isTitan ? this.matArmor : isKaze ? this.matDark : this.matBody
+        isTitan || isValkyrie ? this.matArmor : isKaze ? this.matDark : this.matBody
       );
-      flap.position.y = -0.14;
+      flap.position.y = isVolt ? -0.18 : -0.14;
       this.hips.add(pivot);
       this.skirtFlaps.push(pivot);
     }
@@ -483,10 +665,10 @@ export class FighterRig3D {
 
     const torsoGeo = this.createLatheLimb(
       [
-        [isTitan ? 0.175 : isKaze ? 0.125 : 0.145, 0.0],
-        [isTitan ? 0.215 : isKaze ? 0.142 : 0.165, 0.15],
-        [isTitan ? 0.285 : isKaze ? 0.185 : 0.218, 0.36],
-        [isTitan ? 0.295 : isKaze ? 0.19 : 0.224, 0.48],
+        [isTitan ? 0.175 : isKaze || isValkyrie ? 0.125 : 0.145, 0.0],
+        [isTitan ? 0.215 : isKaze || isValkyrie ? 0.142 : 0.165, 0.15],
+        [isTitan ? 0.285 : isKaze || isValkyrie ? 0.185 : 0.218, 0.36],
+        [isTitan ? 0.295 : isKaze || isValkyrie ? 0.19 : 0.224, 0.48],
         [isTitan ? 0.14 : 0.105, isTitan ? 0.56 : 0.51],
       ],
       14,
@@ -496,11 +678,11 @@ export class FighterRig3D {
     this.addAnimeMesh(
       this.chest,
       torsoGeo,
-      isKaze || isTitan ? this.matBody : this.matSkin
+      isKaze || isTitan || isVolt || isValkyrie ? this.matBody : this.matSkin
     );
 
     if (isTitan) {
-      // TITAN: Massive beveled chest cuirass + amber reactor core + hydraulic thruster pauldrons
+      // TITAN: Massive beveled chest cuirass + reactor core + hydraulic thruster pauldrons
       const cuirassGeo = this.createBevelPlate(0.38, 0.36, 0.2, 0.72);
       cuirassGeo.rotateY(Math.PI / 2);
       const cuirass = this.addAnimeMesh(this.chest, cuirassGeo, this.matArmor);
@@ -515,19 +697,150 @@ export class FighterRig3D {
       this.chest.add(reactorCore);
 
       const heavyPauldron = this.createBevelPlate(0.34, 0.24, 0.32, 1.3);
+      const ventGeo = this.createBevelPlate(0.22, 0.036, 0.2, 0.85);
       for (const side of [-1, 1] as const) {
         const p = this.addAnimeMesh(this.chest, heavyPauldron, this.matArmor);
         p.position.set(0, 0.5, side * 0.38);
         p.rotation.x = side * 0.22;
-        const vent = new THREE.Mesh(
-          new THREE.BoxGeometry(0.24, 0.042, 0.24),
-          this.matGlow
-        );
-        vent.position.set(0.02, 0.55, side * 0.4);
+        const vent = new THREE.Mesh(ventGeo, this.matGlow);
+        vent.position.set(0.02, 0.56, side * 0.4);
         vent.rotation.x = side * 0.22;
         this.chest.add(vent);
       }
-    } else if (!isKaze) {
+    } else if (isVolt) {
+      // VOLT: High-collar cyber trench vest + chest arc core + twin shoulder Tesla coils + floating halo
+      const trenchGeo = this.createBevelPlate(0.29, 0.34, 0.14, 0.75);
+      trenchGeo.rotateY(Math.PI / 2);
+      const vest = this.addAnimeMesh(this.chest, trenchGeo, this.matDark);
+      vest.position.set(0.1, 0.31, 0);
+
+      const arcCore = new THREE.Mesh(
+        new THREE.TorusGeometry(0.055, 0.015, 6, 14),
+        this.matGlow
+      );
+      arcCore.rotation.y = Math.PI / 2;
+      arcCore.position.set(0.18, 0.34, 0);
+      this.chest.add(arcCore);
+
+      // High tech trench collar
+      const collar = this.addAnimeMesh(
+        this.chest,
+        new THREE.CylinderGeometry(0.175, 0.195, 0.13, 12),
+        this.matDark
+      );
+      collar.position.set(-0.02, 0.5, 0);
+
+      // Twin Shoulder Tesla Capacitor Coils
+      const coilGeo = this.createLatheLimb(
+        [
+          [0.04, 0.0],
+          [0.068, 0.05],
+          [0.046, 0.11],
+          [0.072, 0.17],
+          [0.035, 0.22],
+        ],
+        10
+      );
+      for (const side of [-1, 1] as const) {
+        const coil = this.addAnimeMesh(this.chest, coilGeo, this.matArmor);
+        coil.position.set(-0.04, 0.44, side * 0.26);
+        coil.rotation.z = 0.22;
+        coil.rotation.x = side * 0.28;
+
+        const coilRing = new THREE.Mesh(
+          new THREE.TorusGeometry(0.064, 0.014, 6, 12),
+          this.matGlow
+        );
+        coilRing.rotation.x = Math.PI / 2;
+        coilRing.position.set(0, 0.17, 0);
+        coil.add(coilRing);
+      }
+
+      // Floating capacitor ring on upper back
+      const haloRing = new THREE.Mesh(
+        new THREE.TorusGeometry(0.28, 0.016, 6, 20),
+        this.matGlow
+      );
+      haloRing.rotation.y = Math.PI / 2;
+      haloRing.position.set(-0.19, 0.44, 0);
+      this.chest.add(haloRing);
+    } else if (isValkyrie) {
+      // VALKYRIE: Paladin breastplate + diamond crest + twin sculpted photon back wings
+      const plateGeo = this.createBevelPlate(0.28, 0.34, 0.14, 0.65);
+      plateGeo.rotateY(Math.PI / 2);
+      const plate = this.addAnimeMesh(this.chest, plateGeo, this.matArmor);
+      plate.position.set(0.11, 0.33, 0);
+
+      const crest = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.055, 0),
+        this.matGlow
+      );
+      crest.scale.set(0.6, 1.35, 1.0);
+      crest.position.set(0.19, 0.37, 0);
+      this.chest.add(crest);
+
+      const wingBladeGeo = this.createBevelPlate(0.16, 0.64, 0.025, 0.34);
+      const wingSubGeo = this.createBevelPlate(0.11, 0.46, 0.02, 0.3);
+      for (const side of [-1, 1] as const) {
+        const wing = new THREE.Group();
+        wing.position.set(-0.15, 0.42, side * 0.14);
+        wing.rotation.y = side * -0.45;
+        wing.rotation.z = 0.38;
+
+        const mainFeather = new THREE.Mesh(wingBladeGeo, this.matGlow);
+        mainFeather.position.set(-0.1, 0.18, 0);
+        mainFeather.rotation.z = 0.25;
+        wing.add(mainFeather);
+
+        const subFeather = this.addAnimeMesh(wing, wingSubGeo, this.matArmor);
+        subFeather.position.set(-0.04, 0.04, side * 0.03);
+        subFeather.rotation.z = 0.55;
+
+        const pauldron = this.addAnimeMesh(
+          this.chest,
+          this.createBevelPlate(0.2, 0.12, 0.18, 1.2),
+          this.matArmor
+        );
+        pauldron.position.set(0, 0.46, side * 0.25);
+        pauldron.rotation.x = side * 0.28;
+
+        this.chest.add(wing);
+      }
+    } else if (isKaze) {
+      // KAZE: Sleek armored tactical chest harness + glowing shinobi core V
+      const vestPlateGeo = this.createBevelPlate(0.27, 0.32, 0.12, 0.68);
+      vestPlateGeo.rotateY(Math.PI / 2);
+      const vest = this.addAnimeMesh(this.chest, vestPlateGeo, this.matDark);
+      vest.position.set(0.11, 0.31, 0);
+
+      const coreV = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.055, 0),
+        this.matGlow
+      );
+      coreV.position.set(0.18, 0.36, 0);
+      this.chest.add(coreV);
+
+      const padGeo = this.createBevelPlate(0.2, 0.11, 0.17, 1.15);
+      for (const side of [-1, 1] as const) {
+        const p = this.addAnimeMesh(this.chest, padGeo, this.matArmor);
+        p.position.set(0, 0.45, side * 0.24);
+        p.rotation.x = side * 0.32;
+      }
+
+      const collar = this.addAnimeMesh(
+        this.chest,
+        new THREE.CylinderGeometry(0.165, 0.185, 0.11, 12),
+        this.matDark
+      );
+      collar.position.set(-0.01, 0.49, 0);
+      const collarRing = new THREE.Mesh(
+        new THREE.TorusGeometry(0.17, 0.016, 6, 16),
+        this.matGlow
+      );
+      collarRing.rotation.x = Math.PI / 2;
+      collarRing.position.set(-0.01, 0.54, 0);
+      this.chest.add(collarRing);
+    } else {
       // RYUJIN: Sculpted sleeveless Martial Arts Gi vest + crossed V-lapels + Cyber Pauldrons
       const giVestGeo = this.createLatheLimb(
         [
@@ -544,7 +857,6 @@ export class FighterRig3D {
       const giVest = this.addAnimeMesh(this.chest, giVestGeo, this.matBody);
       giVest.position.set(-0.015, 0, 0);
 
-      // Crossed Gi Lapel Collar framing bare chest
       const lapelL = this.addAnimeMesh(
         this.chest,
         this.createTaperedHairStrand(
@@ -574,55 +886,17 @@ export class FighterRig3D {
       lapelL.castShadow = false;
       lapelR.castShadow = false;
 
-      // Titanium Shoulder Pauldrons with glowing trim
       const pauldronGeo = this.createBevelPlate(0.24, 0.16, 0.22, 1.25);
+      const pTrimGeo = this.createBevelPlate(0.15, 0.024, 0.16, 0.85);
       for (const side of [-1, 1] as const) {
         const p = this.addAnimeMesh(this.chest, pauldronGeo, this.matArmor);
         p.position.set(0, 0.46, side * 0.28);
         p.rotation.x = side * 0.26;
-        const pTrim = new THREE.Mesh(
-          new THREE.BoxGeometry(0.16, 0.028, 0.18),
-          this.matGlow
-        );
-        pTrim.position.set(0.02, 0.49, side * 0.29);
+        const pTrim = new THREE.Mesh(pTrimGeo, this.matGlow);
+        pTrim.position.set(0.02, 0.495, side * 0.29);
         pTrim.rotation.x = side * 0.26;
         this.chest.add(pTrim);
       }
-    } else {
-      // KAZE: Sleek armored tactical chest harness + glowing shinobi core V
-      const vestPlateGeo = this.createBevelPlate(0.27, 0.32, 0.12, 0.68);
-      vestPlateGeo.rotateY(Math.PI / 2);
-      const vest = this.addAnimeMesh(this.chest, vestPlateGeo, this.matDark);
-      vest.position.set(0.11, 0.31, 0);
-
-      const coreV = new THREE.Mesh(
-        new THREE.OctahedronGeometry(0.055, 0),
-        this.matGlow
-      );
-      coreV.position.set(0.18, 0.36, 0);
-      this.chest.add(coreV);
-
-      const padGeo = this.createBevelPlate(0.2, 0.11, 0.17, 1.15);
-      for (const side of [-1, 1] as const) {
-        const p = this.addAnimeMesh(this.chest, padGeo, this.matArmor);
-        p.position.set(0, 0.45, side * 0.24);
-        p.rotation.x = side * 0.32;
-      }
-
-      // High glowing cyber collar
-      const collar = this.addAnimeMesh(
-        this.chest,
-        new THREE.CylinderGeometry(0.165, 0.185, 0.11, 12),
-        this.matDark
-      );
-      collar.position.set(-0.01, 0.49, 0);
-      const collarRing = new THREE.Mesh(
-        new THREE.TorusGeometry(0.17, 0.016, 6, 16),
-        this.matGlow
-      );
-      collarRing.rotation.x = Math.PI / 2;
-      collarRing.position.set(-0.01, 0.54, 0);
-      this.chest.add(collarRing);
     }
 
     // Sculpted Neck & Clavicles
@@ -636,7 +910,7 @@ export class FighterRig3D {
         ],
         10
       ),
-      isKaze || isTitan ? this.matDark : this.matSkin
+      isKaze || isTitan || isVolt ? this.matDark : this.matSkin
     );
     neck.position.y = isTitan ? 0.54 : 0.49;
 
@@ -664,25 +938,34 @@ export class FighterRig3D {
       isKaze ? this.matDark : this.matSkin
     );
 
-    // Expressive glowing anime visor / eyes slit
-    const visorGeo = new THREE.BoxGeometry(
-      isTitan ? 0.19 : 0.17,
-      isTitan ? 0.068 : isKaze ? 0.052 : 0.062,
-      isTitan ? 0.28 : 0.25
+    // Expressive curved wrap-around anime visor & sculpted brow ridge
+    const visorRadius = isTitan ? 0.154 : 0.14;
+    const visorGeo = new THREE.CylinderGeometry(
+      visorRadius,
+      visorRadius * 0.96,
+      isTitan ? 0.066 : isKaze ? 0.05 : 0.056,
+      14,
+      1,
+      false,
+      -Math.PI * 0.36,
+      Math.PI * 0.72
     );
     const visor = new THREE.Mesh(visorGeo, this.matGlow);
-    visor.position.set(0.075, 0.025, 0);
-    visor.rotation.z = -0.08;
+    visor.rotation.y = Math.PI / 2;
+    visor.rotation.z = -0.06;
+    visor.scale.set(1.06, 1, 1.08);
+    visor.position.set(0.015, 0.025, 0);
     this.head.add(visor);
 
-    // Brow ridge for fierce fighting-game glare
+    const browGeo = this.createBevelPlate(isTitan ? 0.26 : 0.22, 0.036, 0.14, 0.75);
+    browGeo.rotateY(Math.PI / 2);
     const brow = this.addAnimeMesh(
       this.head,
-      new THREE.BoxGeometry(0.18, 0.036, isTitan ? 0.285 : 0.255),
-      isKaze || isTitan ? this.matArmor : this.matHair
+      browGeo,
+      isKaze || isTitan || isValkyrie ? this.matArmor : this.matHair
     );
-    brow.position.set(0.065, 0.065, 0);
-    brow.rotation.z = -0.12;
+    brow.position.set(0.075, 0.064, 0);
+    brow.rotation.z = -0.14;
 
     if (isTitan) {
       // TITAN: Armored cyber-helmet shell + horned brow crest + chin guard
@@ -719,6 +1002,73 @@ export class FighterRig3D {
         fin.position.set(0.04, 0.18, side * 0.13);
         fin.rotation.z = -0.25;
       }
+    } else if (isVolt) {
+      // VOLT: Cyber earpiece headset + wild lightning-spiked hair
+      for (const side of [-1, 1] as const) {
+        const ear = this.addAnimeMesh(
+          this.head,
+          new THREE.CylinderGeometry(0.055, 0.055, 0.032, 10),
+          this.matArmor
+        );
+        ear.rotation.x = Math.PI / 2;
+        ear.position.set(0.01, 0.02, side * 0.14);
+      }
+      const voltLocks: Array<Array<[number, number, number]>> = [
+        [[0.02, 0.13, 0], [0.12, 0.28, 0], [0.22, 0.34, 0]],
+        [[0.0, 0.13, 0.06], [0.06, 0.27, 0.14], [0.14, 0.34, 0.2]],
+        [[0.0, 0.13, -0.06], [0.06, 0.27, -0.14], [0.14, 0.34, -0.2]],
+        [[-0.04, 0.14, 0], [-0.15, 0.29, 0], [-0.29, 0.32, 0]],
+        [[-0.06, 0.12, 0.08], [-0.18, 0.22, 0.15], [-0.31, 0.21, 0.19]],
+        [[-0.06, 0.12, -0.08], [-0.18, 0.22, -0.15], [-0.31, 0.21, -0.19]],
+      ];
+      for (const pts of voltLocks) {
+        this.addAnimeMesh(
+          this.head,
+          this.createTaperedHairStrand(pts, 0.045, 0.007),
+          this.matHair
+        );
+      }
+    } else if (isValkyrie) {
+      // VALKYRIE: Winged paladin helm crest + flowing braided plume
+      const helm = this.addAnimeMesh(
+        this.head,
+        this.createLatheLimb(
+          [
+            [0.145, 0.05],
+            [0.15, 0.13],
+            [0.095, 0.185],
+            [0.0, 0.2],
+          ],
+          12,
+          1.12,
+          0.98
+        ),
+        this.matArmor
+      );
+      helm.position.set(-0.01, 0, 0);
+
+      for (const side of [-1, 1] as const) {
+        const earWing = this.addAnimeMesh(
+          this.head,
+          this.createBevelPlate(0.11, 0.22, 0.025, 0.32),
+          this.matGlow
+        );
+        earWing.position.set(-0.04, 0.14, side * 0.145);
+        earWing.rotation.z = 0.55;
+        earWing.rotation.y = side * -0.25;
+      }
+
+      const plumePts: Array<[number, number, number]> = [
+        [-0.1, 0.12, 0],
+        [-0.25, 0.2, 0],
+        [-0.4, 0.06, 0],
+        [-0.48, -0.14, 0],
+      ];
+      this.addAnimeMesh(
+        this.head,
+        this.createTaperedHairStrand(plumePts, 0.055, 0.009),
+        this.matHair
+      );
     } else if (isKaze) {
       // Half-face ninja respirator mask + hooded cowl + curved high ponytail
       const mask = this.addAnimeMesh(
@@ -746,7 +1096,6 @@ export class FighterRig3D {
       );
       cowl.position.set(-0.01, 0, 0);
 
-      // Sweeping curved 3-strand shinobi ponytail
       const ponyCurves: Array<{ pts: Array<[number, number, number]>; r: number }> = [
         {
           pts: [
@@ -810,26 +1159,45 @@ export class FighterRig3D {
       }
     }
 
-    // 4-Segment Spring-Physics Flowing Headband / Scarf / Power Hose
-    const tailAnchor = isKaze || isTitan ? this.chest : this.head;
+    // 4-Segment Spring-Physics Flowing Headband / Scarf / Coat Ribbon / Power Hose
+    const tailAnchor = isKaze || isTitan || isVolt || isValkyrie ? this.chest : this.head;
     let prevParent: THREE.Object3D = tailAnchor;
     for (let i = 0; i < 4; i++) {
       const segPivot = new THREE.Group();
       if (i === 0) {
         segPivot.position.set(
-          isTitan ? -0.22 : isKaze ? -0.14 : -0.15,
-          isTitan ? 0.48 : isKaze ? 0.49 : 0.09,
+          isTitan ? -0.22 : isKaze || isVolt || isValkyrie ? -0.14 : -0.15,
+          isTitan || isKaze || isVolt || isValkyrie ? 0.48 : 0.09,
           0
         );
       } else {
         segPivot.position.set(-0.19, 0, 0);
       }
       const w = isTitan ? 0.18 : 0.21;
-      const h = isTitan ? 0.065 - i * 0.008 : isKaze ? 0.082 - i * 0.01 : 0.05 - i * 0.006;
+      const h = isTitan ? 0.062 - i * 0.008 : isKaze ? 0.082 - i * 0.01 : 0.05 - i * 0.006;
       const d = isTitan ? 0.09 - i * 0.01 : isKaze ? 0.18 - i * 0.02 : 0.11 - i * 0.012;
+      let segGeo: THREE.BufferGeometry;
+      if (isTitan) {
+        const conduit = this.createLatheLimb(
+          [
+            [h * 0.55, -w * 0.5],
+            [h * 0.85, -w * 0.22],
+            [h * 0.65, 0],
+            [h * 0.85, w * 0.24],
+            [h * 0.52, w * 0.5],
+          ],
+          10
+        );
+        conduit.rotateZ(Math.PI / 2);
+        segGeo = conduit;
+      } else {
+        const ribbonPlate = this.createBevelPlate(d, h, w, 0.78);
+        ribbonPlate.rotateY(Math.PI / 2);
+        segGeo = ribbonPlate;
+      }
       const segMesh = this.addAnimeMesh(
         segPivot,
-        new THREE.BoxGeometry(w, h, d),
+        segGeo,
         isTitan ? this.matDark : this.matGlow,
         true,
         false
@@ -851,7 +1219,11 @@ export class FighterRig3D {
     this.armFElbow = armFBuilt.elbow;
     this.fingerF = armFBuilt.fingers;
     this.chargeOrbF = armFBuilt.chargeOrb;
-    this.armF.position.set(0.03, isTitan ? 0.46 : 0.42, isTitan ? 0.36 : isKaze ? 0.24 : 0.28);
+    this.armF.position.set(
+      0.03,
+      isTitan ? 0.46 : 0.42,
+      isTitan ? 0.36 : isKaze || isValkyrie ? 0.24 : 0.28
+    );
     this.chest.add(this.armF);
 
     const armBBuilt = this.createArm(
@@ -864,7 +1236,11 @@ export class FighterRig3D {
     this.armBElbow = armBBuilt.elbow;
     this.fingerB = armBBuilt.fingers;
     this.chargeOrbB = armBBuilt.chargeOrb;
-    this.armB.position.set(-0.04, isTitan ? 0.46 : 0.42, isTitan ? -0.36 : isKaze ? -0.24 : -0.28);
+    this.armB.position.set(
+      -0.04,
+      isTitan ? 0.46 : 0.42,
+      isTitan ? -0.36 : isKaze || isValkyrie ? -0.24 : -0.28
+    );
     this.chest.add(this.armB);
 
     // 2-Segment Sculpted Muscular Legs + Articulated Boots/Toes
@@ -882,20 +1258,15 @@ export class FighterRig3D {
     this.legB.position.set(-0.05, -0.02, isTitan ? -0.17 : -0.13);
     this.hips.add(this.legB);
 
-    // Additive Energy Aura Cylinder
+    // Custom GLSL Fresnel + Scrolling Plasma Flame Aura
+    const plasmaAura = createPlasmaAuraMaterial(accentHex);
+    this.auraUniforms = plasmaAura.uniforms;
     this.aura = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.6, 0.88, 2.08, 18, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: spec.accentColor,
-        transparent: true,
-        opacity: 0,
-        side: THREE.DoubleSide,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        toneMapped: false,
-      })
+      new THREE.CylinderGeometry(0.56, 0.92, 2.15, 24, 12, true),
+      plasmaAura.material
     );
-    this.aura.position.y = 1.04;
+    this.aura.position.y = 1.05;
+    this.aura.visible = false;
     this.root.add(this.aura);
   }
 
@@ -912,6 +1283,9 @@ export class FighterRig3D {
   } {
     const isKaze = character === 'KAZE';
     const isTitan = character === 'TITAN';
+    const isVolt = character === 'VOLT';
+    const isValkyrie = character === 'VALKYRIE';
+    const isSlender = isKaze || isValkyrie;
     const shoulder = new THREE.Group();
     const upperProfile: Array<[number, number]> = isTitan
       ? [
@@ -921,7 +1295,7 @@ export class FighterRig3D {
           [0.138, -0.02],
           [0.095, 0.02],
         ]
-      : isKaze
+      : isSlender
         ? [
             [0.052, -0.27],
             [0.068, -0.16],
@@ -939,7 +1313,13 @@ export class FighterRig3D {
     this.addAnimeMesh(
       shoulder,
       this.createLatheLimb(upperProfile, 10, 1.04, 0.96),
-      isTitan ? this.matArmor : isKaze ? (isFront ? this.matBody : this.matDark) : this.matSkin
+      isTitan || isValkyrie
+        ? this.matArmor
+        : isKaze || isVolt
+          ? isFront
+            ? this.matBody
+            : this.matDark
+          : this.matSkin
     );
 
     const elbow = new THREE.Group();
@@ -953,7 +1333,7 @@ export class FighterRig3D {
           [0.125, -0.05],
           [0.096, 0.01],
         ]
-      : isKaze
+      : isSlender
         ? [
             [0.044, -0.26],
             [0.056, -0.15],
@@ -969,62 +1349,99 @@ export class FighterRig3D {
     this.addAnimeMesh(
       elbow,
       this.createLatheLimb(forearmProfile, 10),
-      isTitan ? this.matBody : this.matWrap
+      isTitan || isVolt ? this.matBody : isValkyrie ? this.matArmor : this.matWrap
     );
 
-    // Sculpted Hand + Articulated Finger Cluster (Oversized Piston Gauntlets for TITAN)
+    if (isVolt) {
+      // Conductive copper/plasma rings around forearms
+      for (const ry of [-0.09, -0.19]) {
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(0.068, 0.012, 6, 12),
+          this.matGlow
+        );
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = ry;
+        elbow.add(ring);
+      }
+    }
+
     const palmScale = isTitan ? 1.55 : 1;
+    const palmGeo = this.createBevelPlate(
+      0.066 * palmScale,
+      0.084 * palmScale,
+      0.072 * palmScale,
+      0.86
+    );
+    palmGeo.rotateY(Math.PI / 2);
     const palm = this.addAnimeMesh(
       elbow,
-      new THREE.BoxGeometry(0.082 * palmScale, 0.088 * palmScale, 0.072 * palmScale),
+      palmGeo,
       isKaze ? this.matDark : this.matArmor
     );
     palm.position.y = isTitan ? -0.32 : -0.295;
 
-    // Knuckle glow strip
-    const knuckle = new THREE.Mesh(
-      new THREE.BoxGeometry(0.088 * palmScale, 0.032 * palmScale, 0.076 * palmScale),
-      this.matGlow
+    const knuckleGeo = this.createBevelPlate(
+      0.07 * palmScale,
+      0.028 * palmScale,
+      0.078 * palmScale,
+      0.92
     );
+    knuckleGeo.rotateY(Math.PI / 2);
+    const knuckle = new THREE.Mesh(knuckleGeo, this.matGlow);
     knuckle.position.set(0.01, isTitan ? -0.35 : -0.32, 0);
     elbow.add(knuckle);
 
     const fingers = new THREE.Group();
     fingers.position.set(0.015, isTitan ? -0.37 : -0.335, 0);
+    const fingerGeo = this.createBevelPlate(
+      0.062 * palmScale,
+      0.074 * palmScale,
+      0.042 * palmScale,
+      0.62
+    );
+    fingerGeo.rotateY(Math.PI / 2);
     const fingerBlock = this.addAnimeMesh(
       fingers,
-      new THREE.BoxGeometry(0.046 * palmScale, 0.078 * palmScale, 0.066 * palmScale),
-      isTitan ? this.matArmor : isKaze ? this.matDark : this.matSkin
+      fingerGeo,
+      isTitan || isValkyrie ? this.matArmor : isKaze ? this.matDark : this.matSkin
     );
     fingerBlock.position.y = -0.036 * palmScale;
     elbow.add(fingers);
 
-    // Palm charge orb for Hadouken / Focus / Super startup
+    // 2D Anime Star-Flare Charge Sprite for Hadouken / Focus / Super startup
+    const flareSize = isTitan ? 0.56 : 0.44;
     const chargeOrb = new THREE.Mesh(
-      new THREE.SphereGeometry(isTitan ? 0.12 : 0.085, 10, 10),
+      new THREE.PlaneGeometry(flareSize, flareSize),
       new THREE.MeshBasicMaterial({
+        map: getChargeFlareTexture(),
         color: this.accentHex,
         transparent: true,
-        opacity: 0.9,
+        opacity: 0.85,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
-        toneMapped: false,
+        side: THREE.DoubleSide,
       })
     );
-    chargeOrb.position.set(0.04, isTitan ? -0.35 : -0.32, 0);
+    chargeOrb.position.set(0.06, isTitan ? -0.35 : -0.32, 0.04);
     chargeOrb.visible = false;
     elbow.add(chargeOrb);
 
-    if (isKaze) {
-      // Curved plasma kunai / tonfa blade mounted along forearm
+    if (isKaze || isValkyrie) {
+      // Forearm-mounted plasma kunai (KAZE) or elongated photon lance (VALKYRIE)
       const bladeGeo = this.createCurvedEnergyBlade();
       bladeGeo.rotateY(Math.PI / 2);
       const blade = new THREE.Mesh(bladeGeo, this.matGlow);
-      blade.position.set(0.09, -0.22, 0);
-      blade.rotation.z = -0.22;
+      if (isValkyrie) {
+        blade.scale.set(1.2, 1.38, 1.15);
+        blade.position.set(0.095, -0.26, 0);
+        blade.rotation.z = -0.18;
+      } else {
+        blade.position.set(0.09, -0.22, 0);
+        blade.rotation.z = -0.22;
+      }
       elbow.add(blade);
 
-      tipMarker.position.set(0.14, -0.46, 0);
+      tipMarker.position.set(0.14, isValkyrie ? -0.54 : -0.46, 0);
       baseMarker.position.set(0.05, -0.14, 0);
     } else {
       tipMarker.position.set(0.04, isTitan ? -0.44 : -0.38, 0);
@@ -1124,29 +1541,47 @@ export class FighterRig3D {
       isTitan ? this.matArmor : isKaze ? this.matWrap : this.matArmor
     );
 
-    // Sculpted Boot Heel + Articulated Toe Cap
+    // Sculpted Cyber-Boot Heel + Articulated Aerodynamic Toe Wedge
     const bootW = isTitan ? 1.32 : 1;
+    const heelGeo = this.createBevelPlate(
+      0.125 * bootW,
+      0.095 * bootW,
+      0.15 * bootW,
+      1.12
+    );
+    heelGeo.rotateY(Math.PI / 2);
     const heel = this.addAnimeMesh(
       knee,
-      new THREE.BoxGeometry(0.16 * bootW, 0.1 * bootW, 0.135 * bootW),
+      heelGeo,
       isTitan ? this.matDark : this.matBody
     );
     heel.position.set(0.02, isTitan ? -0.495 : -0.455, 0);
 
     const toe = new THREE.Group();
     toe.position.set(0.095 * bootW, isTitan ? -0.5 : -0.46, 0);
+    const toeGeo = this.createBevelPlate(
+      0.122 * bootW,
+      0.072 * bootW,
+      0.1 * bootW,
+      0.72
+    );
+    toeGeo.rotateY(Math.PI / 2);
     const toeCap = this.addAnimeMesh(
       toe,
-      new THREE.BoxGeometry(0.11 * bootW, 0.078 * bootW, 0.132 * bootW),
+      toeGeo,
       isTitan ? this.matArmor : this.matDark
     );
     toeCap.position.set(0.045, 0.005, 0);
 
-    const toeGlow = new THREE.Mesh(
-      new THREE.BoxGeometry(0.045 * bootW, 0.032, 0.138 * bootW),
-      this.matGlow
+    const toeGlowGeo = this.createBevelPlate(
+      0.128 * bootW,
+      0.026,
+      0.04 * bootW,
+      0.8
     );
-    toeGlow.position.set(0.082 * bootW, 0.005, 0);
+    toeGlowGeo.rotateY(Math.PI / 2);
+    const toeGlow = new THREE.Mesh(toeGlowGeo, this.matGlow);
+    toeGlow.position.set(0.082 * bootW, 0.004, 0);
     toe.add(toeGlow);
     knee.add(toe);
 
@@ -1170,7 +1605,6 @@ export class FighterRig3D {
         opacity: 0,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
-        toneMapped: false,
       });
 
       const root = new THREE.Group();
@@ -1309,13 +1743,13 @@ export class FighterRig3D {
   }
 
   public sync(f: FighterState, globalFrame: number, hitstop = 0): void {
-    this.setCharacter(f.character);
+    this.setCharacter(f.character, f.palette);
 
     this.root.position.set(f.x, f.y, 0);
     this.root.rotation.y = f.facing === 1 ? 0 : Math.PI;
 
     // Reset default articulated combat stance
-    const baseHipY = f.character === 'TITAN' ? 1.02 : 0.94;
+    const baseHipY = f.character === 'TITAN' ? 1.02 : f.character === 'VALKYRIE' ? 0.97 : 0.94;
     this.hips.position.set(0, baseHipY, 0);
     this.hips.rotation.set(0, 0, 0);
     this.chest.rotation.set(0, 0, 0);
@@ -1550,6 +1984,52 @@ export class FighterRig3D {
           introAura = t <= 38;
           ribbonHandF = t >= 14 && t <= 26;
         }
+      } else if (f.character === 'VOLT') {
+        // VOLT: Levitating electric surge -> snaps forward with glowing coils
+        if (t <= 22) {
+          const p = t / 22;
+          this.hips.position.y = baseHipY + 0.14 * Math.sin(p * Math.PI);
+          this.chest.rotation.z = 0.16;
+          this.armF.rotation.z = 2.25;
+          this.armFElbow.rotation.z = 0.4;
+          this.armB.rotation.z = 2.25;
+          this.armBElbow.rotation.z = 0.4;
+          showChargeF = true;
+          showChargeB = true;
+          introAura = true;
+        } else {
+          const snap = Math.min(1, (t - 22) / 10);
+          this.hips.position.y = baseHipY;
+          this.hips.rotation.y = -0.22 * snap;
+          this.chest.rotation.z = -0.24 * snap;
+          this.armF.rotation.z = 1.45 * snap;
+          this.armFElbow.rotation.z = 0.2;
+          this.armB.rotation.z = 0.35;
+          ribbonHandF = t <= 40;
+          ribbonHandB = t <= 40;
+        }
+      } else if (f.character === 'VALKYRIE') {
+        // VALKYRIE: Wing-spread aerial descent -> lands with photon lance extended
+        if (t <= 22) {
+          const hover = 1 - t / 22;
+          this.hips.position.y = baseHipY + 0.24 * hover;
+          this.chest.rotation.z = 0.22 * hover;
+          this.armF.rotation.z = 2.4;
+          this.armFElbow.rotation.z = 0.15;
+          this.armB.rotation.z = -1.6;
+          this.legF.rotation.z = 0.45 * hover;
+          this.legFKnee.rotation.z = -0.65 * hover;
+          introAura = t <= 34;
+          ribbonHandF = t >= 12;
+        } else {
+          const salute = Math.min(1, (t - 22) / 10);
+          this.hips.position.y = baseHipY;
+          this.chest.rotation.y = 0.3 * salute;
+          this.armF.rotation.z = 1.55;
+          this.armFElbow.rotation.z = 0.12;
+          this.armB.rotation.z = -0.45;
+          ribbonHandF = t <= 44;
+        }
       } else {
         // KAZE: deep crouched ninja landing -> rises & whips plasma blades
         if (t <= 22) {
@@ -1643,7 +2123,7 @@ export class FighterRig3D {
         this.armF.rotation.z = -0.35;
         ribbonFootF = inWindow;
       } else if (id === '6K') {
-        if (f.character === 'KAZE') {
+        if (f.character === 'KAZE' || f.character === 'VOLT') {
           this.hips.position.y = 0.34;
           this.hips.rotation.z = 0.68;
           this.legF.rotation.z = 1.58;
@@ -1683,7 +2163,6 @@ export class FighterRig3D {
         ribbonFootF = inWindow;
       } else if (id === '236K' || id === 'EX_236K') {
         if (f.character === 'TITAN') {
-          // Spinning Armored Double Lariat
           this.hips.position.y = baseHipY - 0.08;
           this.hips.rotation.y = t * (id === 'EX_236K' ? 0.85 : 0.68);
           this.armF.rotation.z = 1.56;
@@ -1692,7 +2171,11 @@ export class FighterRig3D {
           this.armBElbow.rotation.z = 0.12;
           ribbonHandF = true;
           ribbonHandB = true;
-        } else if (f.character === 'KAZE') {
+        } else if (
+          f.character === 'KAZE' ||
+          f.character === 'VOLT' ||
+          f.character === 'VALKYRIE'
+        ) {
           this.hips.position.y = 0.78;
           this.chest.rotation.z = -0.52;
           this.armF.rotation.z = 1.65 + Math.sin(t * 0.9) * 0.7;
@@ -1767,7 +2250,7 @@ export class FighterRig3D {
           this.legF.rotation.z = 0.65;
           this.legB.rotation.z = -0.75;
           ribbonHandF = true;
-        } else if (f.character === 'RYUJIN') {
+        } else if (f.character === 'RYUJIN' || f.character === 'VALKYRIE') {
           this.hips.position.y = 1.05;
           this.chest.rotation.z = -0.2;
           this.legF.rotation.z = active ? 1.15 : 2.35;
@@ -1871,6 +2354,8 @@ export class FighterRig3D {
       const pulse = 0.85 + Math.sin(globalFrame * 0.7) * 0.35;
       this.chargeOrbF.scale.setScalar(pulse);
       this.chargeOrbB.scale.setScalar(pulse);
+      this.chargeOrbF.rotation.z = globalFrame * 0.22;
+      this.chargeOrbB.rotation.z = -globalFrame * 0.22;
     }
 
     // Step secondary spring physics only on advancing frames
@@ -1919,8 +2404,7 @@ export class FighterRig3D {
     (this.contactShadow.material as THREE.MeshBasicMaterial).opacity =
       0.82 * heightScale;
 
-    // Aura, Super-ready rim pulse & hit/block flashes
-    const auraMat = this.aura.material as THREE.MeshBasicMaterial;
+    // Custom GLSL Plasma Aura, Super-ready rim pulse & hit/block flashes
     const isBackdashInvuln = f.state === 'DASH_B' && f.invulnFrames > 0;
     const isExMove = Boolean(move && move.isEx);
     const isSuperMove = Boolean(move && move.isSuper);
@@ -1934,20 +2418,27 @@ export class FighterRig3D {
       introAura ||
       f.state === 'DASH_F';
 
+    let auraIntensity = 0;
     if (isBackdashInvuln) {
-      auraMat.color.setHex(0xe0f2fe);
-      auraMat.opacity = 0.56;
+      this.auraUniforms.uColor.value.setHex(0xe0f2fe);
+      auraIntensity = 0.92;
     } else if (isExMove || hasArmor) {
-      auraMat.color.setHex(0xfacc15);
-      auraMat.opacity = hasArmor ? 0.48 : 0.42;
+      this.auraUniforms.uColor.value.setHex(0xfacc15);
+      auraIntensity = hasArmor ? 0.9 : 0.82;
     } else if (f.state === 'DASH_F') {
-      auraMat.color.setHex(this.accentHex);
-      auraMat.opacity = 0.24;
-    } else {
-      auraMat.color.setHex(this.accentHex);
-      auraMat.opacity = showAura ? 0.38 : 0.0;
+      this.auraUniforms.uColor.value.setHex(this.accentHex);
+      auraIntensity = 0.45;
+    } else if (showAura) {
+      this.auraUniforms.uColor.value.setHex(this.accentHex);
+      auraIntensity = 0.78;
+    } else if (superReady) {
+      this.auraUniforms.uColor.value.setHex(this.accentHex);
+      auraIntensity = 0.26 + Math.sin(globalFrame * 0.22) * 0.08;
     }
-    if (showAura) this.aura.rotation.y += 0.18;
+    this.auraUniforms.uIntensity.value = auraIntensity;
+    this.auraUniforms.uTime.value = globalFrame * 0.085;
+    this.aura.visible = auraIntensity > 0.01;
+    if (this.aura.visible) this.aura.rotation.y += 0.06;
 
     const isHitFlash =
       (f.state === 'HITSTUN' ||
@@ -1960,19 +2451,19 @@ export class FighterRig3D {
 
     if (isHitFlash) {
       this.matBody.emissive.setHex(0xffffff);
-      this.matBody.emissiveIntensity = 0.9;
+      this.matBody.emissiveIntensity = 0.42;
       this.matArmor.emissive.setHex(0xffffff);
-      this.matArmor.emissiveIntensity = 0.65;
+      this.matArmor.emissiveIntensity = 0.32;
     } else if (isBlockFlash) {
       this.matBody.emissive.setHex(0x38bdf8);
-      this.matBody.emissiveIntensity = 0.5;
+      this.matBody.emissiveIntensity = 0.32;
       this.matArmor.emissive.setHex(0x38bdf8);
-      this.matArmor.emissiveIntensity = 0.35;
+      this.matArmor.emissiveIntensity = 0.22;
     } else if (hasArmor || isExMove) {
       this.matBody.emissive.setHex(0xfacc15);
-      this.matBody.emissiveIntensity = 0.38;
+      this.matBody.emissiveIntensity = 0.22;
       this.matArmor.emissive.setHex(0xfacc15);
-      this.matArmor.emissiveIntensity = 0.25;
+      this.matArmor.emissiveIntensity = 0.16;
     } else {
       this.matBody.emissive.setHex(0x000000);
       this.matBody.emissiveIntensity = 0;
@@ -1980,15 +2471,15 @@ export class FighterRig3D {
       this.matArmor.emissiveIntensity = 0;
     }
 
-    // Dynamic anime rim intensity boost when EX, Armor, or Super 100% ready
+    // Controlled anime rim intensity so white trims & light armors keep crisp detail
     const rimBoost =
       isExMove || hasArmor
-        ? 1.25
+        ? 0.72
         : superReady
-          ? 0.85 + Math.sin(globalFrame * 0.2) * 0.25
-          : 0.72;
+          ? 0.48 + Math.sin(globalFrame * 0.2) * 0.1
+          : 0.36;
     this.bodyUniforms.uRimStrength.value = rimBoost;
-    this.armorUniforms.uRimStrength.value = rimBoost + 0.15;
+    this.armorUniforms.uRimStrength.value = rimBoost + 0.08;
     if (isExMove || hasArmor) {
       this.bodyUniforms.uRimColor.value.setHex(0xfacc15);
       this.armorUniforms.uRimColor.value.setHex(0xfacc15);

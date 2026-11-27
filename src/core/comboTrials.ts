@@ -112,6 +112,72 @@ export const COMBO_TRIALS: Record<CharacterId, ComboTrialDef[]> = {
       ],
     },
   ],
+  VOLT: [
+    {
+      id: 'volt_1',
+      title: '1. Descarga Eléctrica',
+      difficulty: 'Básico',
+      steps: [
+        { moveId: '5P', label: '5P (J)' },
+        { moveId: '5K', label: '5K (K)' },
+        { moveId: '236P', label: '236+P' },
+      ],
+    },
+    {
+      id: 'volt_2',
+      title: '2. Bobina Tesla',
+      difficulty: 'Intermedio',
+      steps: [
+        { moveId: '2P', label: '2P (S+J)' },
+        { moveId: '5K', label: '5K (K)' },
+        { moveId: '623P', label: '623+P' },
+      ],
+    },
+    {
+      id: 'volt_3',
+      title: '3. Tormenta Megavolt',
+      difficulty: 'Experto',
+      steps: [
+        { moveId: '5P', label: '5P (J)' },
+        { moveId: '5K', label: '5K (K)' },
+        { moveId: 'EX_236K', label: 'EX 236+K+T' },
+        { moveId: 'SUPER', label: 'SUPER (U)' },
+      ],
+    },
+  ],
+  VALKYRIE: [
+    {
+      id: 'valkyrie_1',
+      title: '1. Lanza Fotónica',
+      difficulty: 'Básico',
+      steps: [
+        { moveId: '5P', label: '5P (J)' },
+        { moveId: '5K', label: '5K (K)' },
+        { moveId: '236K', label: '236+K' },
+      ],
+    },
+    {
+      id: 'valkyrie_2',
+      title: '2. Asalto Serafín',
+      difficulty: 'Intermedio',
+      steps: [
+        { moveId: '2P', label: '2P (S+J)' },
+        { moveId: '5K', label: '5K (K)' },
+        { moveId: '41236K', label: '41236+K' },
+      ],
+    },
+    {
+      id: 'valkyrie_3',
+      title: '3. Juicio Solar',
+      difficulty: 'Experto',
+      steps: [
+        { moveId: '5P', label: '5P (J)' },
+        { moveId: '5K', label: '5K (K)' },
+        { moveId: 'EX_214P', label: 'EX 214+P+K' },
+        { moveId: 'SUPER', label: 'SUPER (U)' },
+      ],
+    },
+  ],
 };
 
 export class ComboTrialTracker {
