@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import type { FighterState } from '../core/types';
+import { CHARACTERS, type FighterState } from '../core/types';
 
 /**
  * PRUEBA DE CONCEPTO: luchador como modelo GLB con esqueleto y animaciones.
@@ -10,11 +10,13 @@ import type { FighterState } from '../core/types';
  * encaja con la pausa por impacto, la cámara lenta y el rollback:
  *  · IDLE / WALK_F en bucle según el frame global (WALK_B = WALK_F al revés).
  *  · PUNCH_5P = stateFrame / 60: el impacto cae en el frame activo del 5P.
- * Lo que aún no tiene animación propia usa la pose más cercana (prueba, no producto).
+ *  · Golpes pesados = cruzado retemporizado al startup de cada golpe.
+ *  · Impactos, derribo, agachado y salto vienen del pack CC0 de Quaternius redirigido al esqueleto.
  */
 
 const MODEL_HEIGHT = 2.0; // altura en el juego (la caja de daño de Titán mide 1,9)
-const TURN_TO_CAMERA = 0.38; // gira un poco hacia la cámara para que se lea el volumen
+const TURN_TO_CAMERA = 0.38;
+const CROSS_IMPACT = 19; // frame (a 60 fps) en el que el cruzado llega al máximo // gira un poco hacia la cámara para que se lea el volumen
 
 interface Template {
   scene: THREE.Group;
@@ -119,18 +121,51 @@ export class GlbFighter {
       const d = this.actions.get(name)?.getClip().duration || 1;
       return sec % d;
     };
+    const t = f.stateFrame / 60;
     switch (f.state) {
       case 'WALK_F':
+      case 'DASH_F':
         this.play('WALK_F', loopT('WALK_F'));
         break;
-      case 'WALK_B': {
+      case 'WALK_B':
+      case 'DASH_B': {
         const d = this.actions.get('WALK_F')?.getClip().duration || 1;
         this.play('WALK_F', d - (sec % d));
         break;
       }
+      case 'CROUCH':
+      case 'BLOCK_CROUCH':
+        this.play('CROUCH', loopT('CROUCH'));
+        break;
+      case 'JUMP':
+        this.play('JUMP', t);
+        break;
+      case 'HITSTUN':
+        // Alterna cabeza / pecho según el golpe para que dos impactos seguidos no se vean iguales
+        this.play(f.comboCount % 2 === 0 ? 'HIT_CHEST' : 'HIT_HEAD', t);
+        break;
+      case 'JUGGLE':
+      case 'KNOCKDOWN':
+      case 'THROWN':
+      case 'DEFEAT':
+        this.play('KNOCKDOWN', t);
+        break;
+      case 'WAKEUP': {
+        // Se levanta: el derribo al revés, rápido
+        const d = this.actions.get('KNOCKDOWN')?.getClip().duration || 1;
+        this.play('KNOCKDOWN', d - t * 3);
+        break;
+      }
       case 'ATTACK':
-        // Prueba: solo el 5P tiene animación propia; el resto reutiliza el directo
-        this.play('PUNCH_5P', f.stateFrame / 60);
+        if (f.moveId === '5P' || f.moveId === '2P' || f.moveId === 'jP') {
+          this.play('PUNCH_5P', t);
+        } else {
+          // Golpes pesados: el puño del cruzado llega al máximo en el frame de impacto del golpe
+          const startup = (f.moveId && CHARACTERS[f.character].moves[f.moveId]?.startup) || 10;
+          const hit = CROSS_IMPACT / 60;
+          const ct = f.stateFrame <= startup ? (f.stateFrame / startup) * hit : hit + (f.stateFrame - startup) / 60;
+          this.play('PUNCH_CROSS', ct);
+        }
         break;
       default:
         this.play('IDLE', loopT('IDLE'));
