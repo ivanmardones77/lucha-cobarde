@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "test": "tsx test/determinismo.test.ts && tsx test/rollback.test.ts && tsx test/campaign.test.ts"
+    "test": "tsx test/determinismo.test.ts && tsx test/rollback.test.ts && tsx test/campaign.test.ts && tsx test/online.test.ts"
   },
   "dependencies": {
     "peerjs": "^1.5.5",

@@ -1,5 +1,6 @@
 import type { AiSnapshot, FightingAI } from './ai';
 import type { InputBuffer, InputBufferSnapshot, RawInput } from './inputBuffer';
+import { hashState } from './rng';
 import { stepSimulation } from './simulation';
 import type { MatchState } from './types';
 
@@ -127,6 +128,12 @@ export class RollbackSession {
     });
     stepSimulation(this.state, used, this.buffers);
     this.records.delete(frame - this.maxRollback - 1);
+  }
+
+  /** Hash del estado al terminar `frame` (si sigue en la ventana), para detectar desincronías. */
+  stateHashAfter(frame: number): number | null {
+    const rec = this.records.get(frame + 1);
+    return rec ? hashState(rec.snap.state) : null;
   }
 
   /**

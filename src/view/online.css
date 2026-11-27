@@ -125,3 +125,28 @@
   .ol-join { flex-direction: column; }
   .ol-stats b { font-size: 14px; }
 }
+
+/* Indicador durante el combate online */
+#online-hud {
+  position: fixed;
+  bottom: calc(max(8px, env(safe-area-inset-bottom)) + 34px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  gap: 10px;
+  font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #94a3b8;
+  background: rgba(5, 7, 13, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 999px;
+  padding: 3px 10px;
+  pointer-events: none;
+}
+#online-hud.hidden { display: none; }
+#online-hud .good { color: #34d399; }
+#online-hud .mid { color: #fbbf24; }
+#online-hud .bad { color: #f43f5e; }
