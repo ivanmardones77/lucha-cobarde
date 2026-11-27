@@ -93,6 +93,8 @@ export class HudOverlay {
   private p2Callout = document.getElementById('p2-callout')!;
   private banner = document.getElementById('center-banner')!;
   private matchEndModal = document.getElementById('match-end-modal')!;
+  /** En Arcade/Historia la campaña muestra su propio final de combate */
+  public suppressMatchEndModal = false;
   private matchEndTitle = document.getElementById('match-end-title')!;
   private matchEndSubtitle = document.getElementById('match-end-subtitle')!;
   public framePanel = document.getElementById('frame-debug-panel')!;
@@ -362,7 +364,7 @@ export class HudOverlay {
       this.speedlinesOverlay.classList.toggle('opacity-0', !speedActive);
     }
 
-    if (state.phase === 'MATCH_END' && state.phaseTimer <= 55) {
+    if (state.phase === 'MATCH_END' && state.phaseTimer <= 55 && !this.suppressMatchEndModal) {
       if (this.matchEndModal.classList.contains('hidden')) {
         if (state.winnerId !== -1) {
           const winner = state.fighters[state.winnerId];

@@ -1,0 +1,228 @@
+/* ---------- Capa de campaña (Arcade / Historia) ---------- */
+#campaign-ui {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  color: #f8fafc;
+  touch-action: manipulation;
+}
+#campaign-ui.hidden,
+#campaign-ui .hidden {
+  display: none !important;
+}
+
+/* Diálogo estilo novela visual sobre el escenario */
+.cg-dialogue {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(5, 7, 13, 0.25), rgba(5, 7, 13, 0.55) 55%, rgba(5, 7, 13, 0.92));
+}
+.cg-portrait {
+  position: absolute;
+  bottom: 0;
+  height: min(78vh, 760px);
+  max-width: 48vw;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 18px;
+  mask-image: linear-gradient(to bottom, transparent 0, #000 9%, #000 62%, transparent 96%);
+  opacity: 0;
+  filter: brightness(0.45) saturate(0.6);
+  transition: opacity 0.25s ease, filter 0.2s ease, transform 0.25s ease;
+  pointer-events: none;
+}
+.cg-portrait.left { left: 2vw; transform: translateX(-24px); }
+.cg-portrait.right { right: 2vw; transform: translateX(24px); }
+.cg-portrait.shown { opacity: 1; transform: none; }
+.cg-portrait.active { filter: none; }
+
+.cg-chapter {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+  background: rgba(5, 7, 13, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  padding: 6px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.cg-box {
+  position: absolute;
+  left: 50%;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(920px, calc(100% - 32px));
+  min-height: 150px;
+  background: rgba(8, 11, 20, 0.93);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 16px;
+  padding: 16px 20px 12px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+}
+.cg-name {
+  font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0.12em;
+  min-height: 22px;
+}
+.cg-dialogue.right .cg-name { text-align: right; }
+.cg-text {
+  flex: 1;
+  font-size: clamp(15px, 2vw, 19px);
+  line-height: 1.5;
+  margin-top: 6px;
+  min-height: 3em;
+}
+.cg-text.narrator {
+  font-style: italic;
+  color: #cbd5e1;
+}
+.cg-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+.cg-progress {
+  font-size: 11px;
+  color: #64748b;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+.cg-buttons { display: flex; gap: 8px; }
+.cg-btn {
+  font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.9);
+  color: #e2e8f0;
+  cursor: pointer;
+}
+.cg-btn.primary {
+  background: linear-gradient(180deg, #e11d48, #9f1239);
+  border-color: #fda4af;
+  color: #fff;
+}
+
+/* Menús de lista (capítulos, continuar, resultados) */
+.cg-menu {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(5, 7, 13, 0.72);
+  backdrop-filter: blur(3px);
+}
+.cg-menu-card {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: rgba(8, 11, 20, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  text-align: center;
+}
+.cg-big {
+  font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(64px, 14vw, 120px);
+  line-height: 1;
+  color: #f43f5e;
+  text-shadow: 0 0 30px rgba(244, 63, 94, 0.6);
+}
+.cg-menu-title {
+  font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(20px, 3vw, 28px);
+  letter-spacing: 0.14em;
+  margin: 4px 0 0;
+}
+.cg-menu-sub {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 6px 0 14px;
+  white-space: pre-line;
+}
+.cg-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+.cg-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(15, 23, 42, 0.85);
+  color: #e2e8f0;
+  font-family: 'Chakra Petch', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: border-color 0.12s ease, transform 0.12s ease;
+}
+.cg-item small {
+  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: #94a3b8;
+  letter-spacing: 0;
+  text-align: right;
+}
+.cg-item.primary { border-color: rgba(244, 63, 94, 0.6); }
+.cg-item.focus {
+  border-color: #f8fafc;
+  box-shadow: 0 0 0 2px #f43f5e;
+  transform: translateX(3px);
+}
+.cg-item:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+/* Durante un combate de campaña se ocultan los controles de partida libre */
+body.campaign-match #btn-mode-ai,
+body.campaign-match #btn-mode-2p,
+body.campaign-match #btn-mode-train,
+body.campaign-match #btn-swap-chars,
+body.campaign-match #btn-swap-color,
+body.campaign-match #btn-reset,
+body.campaign-match #training-controls {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  .cg-portrait { height: 52vh; max-width: 62vw; }
+  .cg-box { min-height: 170px; padding: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cg-portrait { transition: none; }
+}

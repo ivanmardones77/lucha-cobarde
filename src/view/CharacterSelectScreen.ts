@@ -107,6 +107,9 @@ export class CharacterSelectScreen {
   ];
 
   public onConfirm?: (cfg: LaunchConfig) => void;
+  /** Modo de un solo luchador (Arcade): se llama al terminar su animación SELECT */
+  private onSingle: ((id: CharacterId, palette: CostumePalette) => void) | null = null;
+  private singleSubtitle = '';
   public onBack?: () => void;
 
   constructor() {
@@ -248,16 +251,41 @@ export class CharacterSelectScreen {
   }
 
   private get versus(): boolean {
-    return this.cfg.mode === '2P';
+    return this.cfg.mode === '2P' && !this.single;
   }
+
+  private get single(): boolean {
+    return this.onSingle !== null;
+  }
+
+  /** Elegir solo el luchador del P1 (Arcade); sin rival ni escenario */
+  public showSingle(
+    cfg: LaunchConfig,
+    subtitle: string,
+    onPick: (id: CharacterId, palette: CostumePalette) => void,
+    describe?: (id: CharacterId) => string
+  ): void {
+    this.onSingle = onPick;
+    this.singleSubtitle = subtitle;
+    this.describe = describe ?? null;
+    this.show(cfg, true);
+  }
+
+  private describe: ((id: CharacterId) => string) | null = null;
 
   /** En VS IA / entrenamiento el P1 elige también al rival tras bloquear el suyo */
   private activeSlotFor(device: Device): 0 | 1 {
+    if (this.single) return 0;
     if (this.versus) return device;
     return this.slots[0].locked ? 1 : 0;
   }
 
-  public show(cfg: LaunchConfig): void {
+  public show(cfg: LaunchConfig, keepSingle = false): void {
+    if (!keepSingle) {
+      this.onSingle = null;
+      this.describe = null;
+    }
+    this.root.classList.toggle('single', this.single);
     this.cfg = { ...cfg };
     this.phase = 'CHAR';
     this.stageCursor = Math.max(0, STAGES.findIndex((s) => s.id === cfg.stageId));
@@ -269,8 +297,9 @@ export class CharacterSelectScreen {
       s.ready = false;
       s.shownChar = null;
     });
-    this.titleSub.textContent =
-      cfg.mode === '2P' ? '2 JUGADORES' : cfg.mode === 'AI' ? 'VS IA' : 'ENTRENAMIENTO';
+    this.titleSub.textContent = this.single
+      ? this.singleSubtitle
+      : cfg.mode === '2P' ? '2 JUGADORES' : cfg.mode === 'AI' ? 'VS IA' : 'ENTRENAMIENTO';
     this.slots[1].el.tag.textContent =
       cfg.mode === '2P' ? 'P2' : cfg.mode === 'AI' ? 'CPU' : 'MUÑECO';
     // Hay que soltar los botones del mando antes de que cuenten (el A que abrió la pantalla)
@@ -377,7 +406,8 @@ export class CharacterSelectScreen {
   private onTileTap(idx: number): void {
     if (this.phase !== 'CHAR') return;
     sfx.unlock();
-    const i: 0 | 1 = !this.slots[0].locked ? 0 : 1;
+    if (this.single && this.slots[0].locked) return;
+    const i: 0 | 1 = this.single || !this.slots[0].locked ? 0 : 1;
     if (this.slots[i].locked) return;
     if (this.slots[i].cursor === idx) {
       this.confirmSlot(i);
@@ -438,6 +468,19 @@ export class CharacterSelectScreen {
   }
 
   private maybeAdvance(): void {
+    if (this.single) {
+      const s = this.slots[0];
+      if (s.locked && s.ready) {
+        clearTimeout(this.stageTimer);
+        this.stageTimer = window.setTimeout(() => {
+          if (!s.locked || !s.ready || !this.onSingle) return;
+          const cb = this.onSingle;
+          this.hide();
+          cb(ROSTER[s.cursor], s.palette);
+        }, 450);
+      }
+      return;
+    }
     if (this.slots.every((s) => s.locked && s.ready)) {
       clearTimeout(this.stageTimer);
       this.stageTimer = window.setTimeout(() => {
@@ -523,7 +566,7 @@ export class CharacterSelectScreen {
       t.classList.toggle('p1', this.slots[0].cursor === idx);
       t.classList.toggle(
         'p2',
-        this.slots[1].cursor === idx && (this.versus || this.slots[0].locked)
+        this.slots[1].cursor === idx && !this.single && (this.versus || this.slots[0].locked)
       );
       t.setAttribute('aria-selected', String(this.slots[0].cursor === idx));
     });
@@ -538,6 +581,7 @@ export class CharacterSelectScreen {
       s.el.side.classList.toggle('locked', s.locked);
       s.el.name.textContent = spec.name;
       s.el.meta.textContent = `${spec.archetype} · ${spec.maxHp} HP · Traje: ${s.palette === 1 ? spec.altPaletteName : 'Original'}`;
+      if (i === 0 && this.describe) s.el.meta.textContent += ` · ${this.describe(id)}`;
 
       const waiting = !this.versus && i === 1 && !this.slots[0].locked;
       s.el.side.style.opacity = waiting ? '0.45' : '1';

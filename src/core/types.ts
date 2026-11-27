@@ -287,6 +287,8 @@ export interface MatchState {
   rngSeed: number;
   /** Estado actual del PRNG (ver core/rng.ts). Nunca usar Math.random() en core */
   rngState: number;
+  /** Multiplicador de vida por luchador (jefes de Arcade/Historia). 1 = normal */
+  hpMult: [number, number];
   fighters: [FighterState, FighterState];
   projectiles: ProjectileState[];
   events: MatchEvent[];
