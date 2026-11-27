@@ -20,6 +20,17 @@ interface QueuedStep {
 
 export type AiDifficulty = 'NORMAL' | 'HARD' | 'MASTER';
 
+/** Memoria interna de la IA, para guardar/restaurar junto al estado (rollback) */
+export interface AiSnapshot {
+  snapshotQueue: DelayedSnapshot[];
+  reactionDelay: number;
+  decisionCooldown: number;
+  currentPlan: string;
+  planTimer: number;
+  motionQueue: QueuedStep[];
+  difficulty: AiDifficulty;
+}
+
 export class FightingAI {
   private snapshotQueue: DelayedSnapshot[] = [];
   private reactionDelay = 14;
@@ -33,6 +44,28 @@ export class FightingAI {
     this.difficulty = diff;
     this.reactionDelay = diff === 'NORMAL' ? 21 : diff === 'HARD' ? 14 : 7;
     this.reset();
+  }
+
+  public snapshot(): AiSnapshot {
+    return {
+      snapshotQueue: this.snapshotQueue.map((x) => ({ ...x })),
+      reactionDelay: this.reactionDelay,
+      decisionCooldown: this.decisionCooldown,
+      currentPlan: this.currentPlan,
+      planTimer: this.planTimer,
+      motionQueue: this.motionQueue.map((x) => ({ ...x })),
+      difficulty: this.difficulty,
+    };
+  }
+
+  public restore(snap: AiSnapshot): void {
+    this.snapshotQueue = snap.snapshotQueue.map((x) => ({ ...x }));
+    this.reactionDelay = snap.reactionDelay;
+    this.decisionCooldown = snap.decisionCooldown;
+    this.currentPlan = snap.currentPlan;
+    this.planTimer = snap.planTimer;
+    this.motionQueue = snap.motionQueue.map((x) => ({ ...x }));
+    this.difficulty = snap.difficulty;
   }
 
   public reset(): void {
