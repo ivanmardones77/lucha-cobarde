@@ -389,6 +389,8 @@ document
 // ===================== Pausa, fin de combate libre y controles =====================
 
 let paused = false;
+/** Solo en desarrollo: congela la simulación sin mostrar el menú de pausa (capturas de QA) */
+let devFreeze = false;
 let freeEndShown = false;
 
 function canPause(): boolean {
@@ -564,7 +566,7 @@ function gameLoop(nowMs: number): void {
   accumulator += Math.min(now - lastTime, 0.1);
   lastTime = now;
 
-  if (inMatch && paused) {
+  if (inMatch && (paused || devFreeze)) {
     // En pausa: la escena se sigue dibujando, la simulación no avanza
     accumulator = 0;
     sceneView.render(matchState);
@@ -639,5 +641,22 @@ requestAnimationFrame(gameLoop);
 
 // Solo en desarrollo: acceso al estado para depurar desde la consola (no va en el build)
 if (import.meta.env.DEV) {
-  (window as unknown as { __cyberdojo: unknown }).__cyberdojo = { matchState, campaign };
+  (window as unknown as { __cyberdojo: unknown }).__cyberdojo = {
+    matchState,
+    campaign,
+    /** Congela simulación y efectos para capturar un instante */
+    freeze(on: boolean) {
+      devFreeze = on;
+      sceneView.setVfxTimeScale(on ? 0 : 1);
+    },
+    /** Avanza la simulación n frames y deja todo congelado */
+    stepFrames(n: number) {
+      for (let i = 0; i < n; i++) {
+        const inputs = inputManager.poll(matchState);
+        stepSimulation(matchState, inputs, buffers);
+        hud.processEvents(matchState, sceneView);
+      }
+    },
+    sceneView,
+  };
 }

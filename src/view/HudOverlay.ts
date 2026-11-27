@@ -146,9 +146,20 @@ export class HudOverlay {
   }
 
   public processEvents(state: MatchState, view: SceneView3D): void {
+    // Si el super conecta en este frame, su estallido sustituye al del golpe fuerte
+    let superHit = false;
+    if (state.superFlashFrames === 0) {
+      for (const ev of state.events) {
+        if (ev.type === 'VFX_BURST' && ev.effect === 'SUPER_BURST') superHit = true;
+      }
+    }
     for (const ev of state.events) {
       if (ev.type === 'SPARK') {
-        view.spawnSparks(ev.x, ev.y, ev.kind);
+        // Dirección del golpe: del atacante (el más lejano a la chispa) a la víctima
+        const [a, b] = state.fighters;
+        const victim = Math.abs(a.x - ev.x) <= Math.abs(b.x - ev.x) ? a : b;
+        const attacker = victim === a ? b : a;
+        view.spawnSparks(ev.x, ev.y, ev.kind, victim.x >= attacker.x ? 1 : -1, !superHit);
       } else if (ev.type === 'VFX_SLASH') {
         view.spawnSlashArc(
           ev.x,
@@ -159,7 +170,12 @@ export class HudOverlay {
           ev.scale ?? 1.15
         );
       } else if (ev.type === 'VFX_BURST') {
-        view.spawnSpecialBurst(ev.x, ev.y, ev.effect, ev.facing, ev.color);
+        // SUPER_BURST sin congelación = el super ha conectado (la activación congela 32 frames)
+        if (ev.effect === 'SUPER_BURST' && state.superFlashFrames === 0) {
+          view.superImpact(ev.x, ev.y, ev.facing, ev.color);
+        } else {
+          view.spawnSpecialBurst(ev.x, ev.y, ev.effect, ev.facing, ev.color);
+        }
       } else if (ev.type === 'STAGE_IMPACT') {
         view.triggerStageImpact(ev.x, ev.intensity, ev.ground);
       } else if (ev.type === 'SFX') {
