@@ -1,4 +1,5 @@
 import { NumpadDir, RawInput } from './inputBuffer';
+import { nextRandom } from './rng';
 import { FighterAction, getFighterMove, MatchState, MoveId } from './types';
 
 interface DelayedSnapshot {
@@ -154,7 +155,7 @@ export class FightingAI {
     if (
       ai.throwTechTimer > 0 &&
       ai.throwTechTimer <= 4 &&
-      Math.random() < techProb
+      nextRandom(state) < techProb
     ) {
       out.t = true;
       return out;
@@ -162,7 +163,7 @@ export class FightingAI {
 
     // Bloqueo reactivo o Backdash defensivo
     if ((delayed.p1State === 'ATTACK' && delayed.dist < 2.7) || delayed.projNear) {
-      const rDef = Math.random();
+      const rDef = nextRandom(state);
       if (rDef < blockProb) {
         const holdLow = delayed.p1Move === '2K';
         return this.dirToRaw(holdLow ? 1 : 4, ai.facing);
@@ -178,13 +179,13 @@ export class FightingAI {
       ai.moveConnected &&
       aiMove &&
       aiMove.cancelToSpecial &&
-      Math.random() < cancelProb
+      nextRandom(state) < cancelProb
     ) {
-      if (ai.superMeter >= 100 && Math.random() < 0.38) {
+      if (ai.superMeter >= 100 && nextRandom(state) < 0.38) {
         out.s = true;
         return out;
       }
-      const rCancel = Math.random();
+      const rCancel = nextRandom(state);
       if (ai.superMeter >= 25 && rCancel < 0.25) {
         this.queueMotion([2, 3, 6], 'pk');
         return this.dirToRaw(2, ai.facing);
@@ -216,7 +217,7 @@ export class FightingAI {
     if (this.planTimer > 0) this.planTimer--;
 
     if (this.planTimer <= 0) {
-      const r = Math.random();
+      const r = nextRandom(state);
       const isKaze = ai.character === 'KAZE' || ai.character === 'VALKYRIE';
       const isTitan = ai.character === 'TITAN';
       const isVolt = ai.character === 'VOLT';

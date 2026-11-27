@@ -283,6 +283,10 @@ export interface MatchState {
   phase: MatchPhase;
   phaseTimer: number;
   winnerId: -1 | 0 | 1;
+  /** Semilla de la partida; un reinicio completo vuelve a ella */
+  rngSeed: number;
+  /** Estado actual del PRNG (ver core/rng.ts). Nunca usar Math.random() en core */
+  rngState: number;
   fighters: [FighterState, FighterState];
   projectiles: ProjectileState[];
   events: MatchEvent[];

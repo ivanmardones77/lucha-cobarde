@@ -123,6 +123,9 @@ function toggleDebugFrames(): void {
 
 function startMatch(cfg: LaunchConfig): void {
   sfx.unlock();
+  // Semilla nueva por combate (fuera del núcleo); setGameMode → resetRoundState la aplica.
+  // Guardarla junto a los inputs basta para reproducir la partida.
+  matchState.rngSeed = crypto.getRandomValues(new Uint32Array(1))[0];
   aiController.setDifficulty(cfg.aiDifficulty);
   matchState.p1Character = cfg.p1Character;
   matchState.p2Character = cfg.p2Character;

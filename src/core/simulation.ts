@@ -1,5 +1,6 @@
 import { aabbIntersects, clamp, resolvePushboxes } from './collision';
 import { BufferedFrame, InputBuffer, RawInput } from './inputBuffer';
+import { DEFAULT_MATCH_SEED } from './rng';
 import {
   CHARACTERS,
   CharacterId,
@@ -73,7 +74,8 @@ export function createMatchState(
   p2Character: CharacterId = 'KAZE',
   stageId: StageId = 'ALLEY',
   p1Palette: CostumePalette = 0,
-  p2Palette: CostumePalette = 0
+  p2Palette: CostumePalette = 0,
+  seed: number = DEFAULT_MATCH_SEED
 ): MatchState {
   const effectiveP2Pal: CostumePalette =
     p1Character === p2Character && p1Palette === p2Palette
@@ -100,6 +102,8 @@ export function createMatchState(
     phase: 'INTRO',
     phaseTimer: INTRO_DURATION_FRAMES,
     winnerId: -1,
+    rngSeed: seed >>> 0,
+    rngState: seed >>> 0,
     fighters: [
       createFighter(0, p1Character, p1Palette, -2.2, 1),
       createFighter(1, p2Character, effectiveP2Pal, 2.2, -1),
@@ -113,6 +117,8 @@ export function resetRoundState(
   state: MatchState,
   fullMatchReset = false
 ): void {
+  // Un reinicio completo repite la misma secuencia de azar desde la semilla
+  if (fullMatchReset) state.rngState = state.rngSeed;
   const r0 = fullMatchReset ? 0 : state.fighters[0].roundsWon;
   const r1 = fullMatchReset ? 0 : state.fighters[1].roundsWon;
   const m0 = fullMatchReset
