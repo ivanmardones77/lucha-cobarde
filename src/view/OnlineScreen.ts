@@ -12,6 +12,9 @@ export class OnlineScreen {
   private session: OnlineSession | null = null;
   private pingTimer = 0;
   onClose: () => void = () => undefined;
+  /** Conectados: la sesión pasa al juego (elección de luchador y combate). */
+  onReady: (session: OnlineSession) => void = () => undefined;
+  private readyTimer = 0;
 
   constructor() {
     this.root = document.createElement('div');
@@ -144,7 +147,11 @@ export class OnlineScreen {
           <div><span>CONEXIÓN</span><b>${st.via === 'direct' ? 'Directa' : 'Por relé'}</b></div>
           <div><span>TÚ ERES</span><b>${this.session?.role === 'host' ? 'Jugador 1' : 'Jugador 2'}</b></div>
         </div>
-        <p class="ol-note">El combate online llega en la siguiente fase. De momento ya podéis comprobar la conexión y el ping.</p>`;
+        <div class="ol-actions"><button class="ol-btn primary" data-a="go" type="button">ELEGIR LUCHADOR</button></div>
+        <p class="ol-note">Pasáis a elegir luchador en unos segundos.</p>`;
+      const go = () => this.handoff();
+      this.body.querySelector('[data-a="go"]')!.addEventListener('click', go);
+      this.readyTimer = window.setTimeout(go, 2500);
       const pingEl = this.body.querySelector('.ol-ping') as HTMLElement;
       this.pingTimer = window.setInterval(() => {
         const rtt = this.session?.link?.rtt ?? 0;
@@ -168,5 +175,16 @@ export class OnlineScreen {
 
   private stopPing(): void {
     window.clearInterval(this.pingTimer);
+    window.clearTimeout(this.readyTimer);
+  }
+
+  /** Entrega la sesión conectada al juego sin cerrarla. */
+  private handoff(): void {
+    const s = this.session;
+    if (!s || s.status.kind !== 'connected') return;
+    this.session = null;
+    sfx.play('uiConfirm');
+    this.hide();
+    this.onReady(s);
   }
 }

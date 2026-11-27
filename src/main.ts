@@ -12,11 +12,15 @@ import {
 import {
   CHARACTERS,
   CharacterId,
+  CostumePalette,
   DummyMode,
   FIXED_DT,
   GameMode,
+  StageId,
   TrainingPosition,
 } from './core/types';
+import { OnlineMatch } from './net/OnlineMatch';
+import type { OnlineSession } from './net/OnlineSession';
 import { CampaignMatch, CampaignRunner } from './campaign/CampaignRunner';
 import { CHAPTERS } from './campaign/data/chapters';
 import { InputManager } from './input/InputManager';
@@ -316,6 +320,213 @@ landing.onOnline = () => {
   onlineScreen.show();
 };
 
+// ===================== Online (fase 2: combate con rollback) =====================
+type OnlinePick = { c: CharacterId; p: CostumePalette };
+type StartMsg = { t: 'start'; p1c: CharacterId; p1p: CostumePalette; p2c: CharacterId; p2p: CostumePalette; stage: StageId; seed: number };
+let onlineSession: OnlineSession | null = null;
+let onlineMatch: OnlineMatch | null = null;
+let onlineEndShown = false;
+let myPick: OnlinePick | null = null;
+let rivalPick: OnlinePick | null = null;
+let myRematch = false;
+let rivalRematch = false;
+const onlineHud = document.createElement('div');
+onlineHud.id = 'online-hud';
+onlineHud.className = 'hidden';
+document.body.appendChild(onlineHud);
+
+function onlineSend(msg: unknown): void {
+  onlineSession?.link?.send('ctrl', msg);
+}
+
+function onlineWait(text: string): void {
+  campaignUI.menu('ONLINE', [{ label: 'Abandonar', onSelect: () => leaveOnline(true) }], {
+    subtitle: text,
+    onBack: () => leaveOnline(true),
+  });
+}
+
+onlineScreen.onReady = (session) => {
+  onlineSession = session;
+  myPick = rivalPick = null;
+  session.link!.onCtrl = (m) => onOnlineCtrl(m as { t: string } & Record<string, unknown>);
+  session.onStatus = (st) => {
+    if (st.kind === 'closed' || st.kind === 'error') onlineLost(st.message);
+  };
+  openOnlinePick();
+};
+
+function openOnlinePick(): void {
+  myPick = null;
+  landing.hide();
+  campaignUI.hide();
+  const prevBack = charSelect.onBack;
+  charSelect.onBack = () => {
+    charSelect.onBack = prevBack;
+    leaveOnline(true);
+  };
+  charSelect.showSingle(
+    { ...landing.config, mode: '2P' },
+    `ONLINE · ${onlineSession?.role === 'host' ? 'JUGADOR 1' : 'JUGADOR 2'} · ELIGE TU LUCHADOR`,
+    (c, p) => {
+      charSelect.onBack = prevBack;
+      myPick = { c, p };
+      onlineSend({ t: 'pick', c, p });
+      if (!rivalPick) onlineWait('Esperando a que el rival elija luchador…');
+      hostTryStart();
+    }
+  );
+}
+
+function onOnlineCtrl(m: { t: string } & Record<string, unknown>): void {
+  if (m.t === 'pick') {
+    rivalPick = { c: m.c as CharacterId, p: m.p as CostumePalette };
+    hostTryStart();
+  } else if (m.t === 'start' && onlineSession?.role === 'guest') {
+    startOnlineMatch(m as unknown as StartMsg);
+  } else if (m.t === 'rematch') {
+    rivalRematch = true;
+    hostTryStart();
+  } else if (m.t === 'repick') {
+    rivalPick = null;
+  } else if (m.t === 'bye') {
+    onlineLost('El rival ha salido de la partida.');
+  }
+}
+
+/** El anfitrión decide escenario y semilla cuando los dos han elegido (o quieren revancha). */
+function hostTryStart(): void {
+  if (onlineSession?.role !== 'host' || !myPick || !rivalPick) return;
+  if (onlineMatch && !(myRematch && rivalRematch)) return;
+  const rnd = crypto.getRandomValues(new Uint32Array(2));
+  const stages: StageId[] = ['ALLEY', 'ROOFTOP'];
+  const msg: StartMsg = {
+    t: 'start',
+    p1c: myPick.c,
+    p1p: myPick.p,
+    p2c: rivalPick.c,
+    p2p: rivalPick.p,
+    stage: stages[rnd[0] % stages.length],
+    seed: rnd[1],
+  };
+  onlineSend(msg);
+  startOnlineMatch(msg);
+}
+
+function startOnlineMatch(m: StartMsg): void {
+  const link = onlineSession?.link;
+  if (!link) return;
+  sfx.unlock();
+  campaignUI.hide();
+  charSelect.hide();
+  landing.hide();
+  paused = false;
+  campaignMatch = false;
+  backdropActive = false;
+  document.body.classList.remove('campaign-match', 'mode-training');
+  // Estado idéntico en los dos lados: misma configuración y misma semilla desde el frame 0
+  Object.assign(matchState, createMatchState('2P', m.p1c, m.p2c, m.stage, m.p1p, m.p2p, m.seed));
+  resetRoundState(matchState, true);
+  buffers[0].reset();
+  buffers[1].reset();
+  sceneView.setStage(m.stage);
+  applyShowBoxes(false);
+  applyShowFrames(false);
+  touchControls.setEnabled(landing.config.touchEnabled);
+  document.getElementById('training-controls')?.classList.add('hidden');
+  hud.updateComboTrials(trialTracker, '2P');
+  uiLayer.classList.remove('hidden');
+  touchControls.setOverlayVisible(true);
+  onlineMatch = new OnlineMatch(matchState, buffers, link, onlineSession!.role === 'host' ? 0 : 1);
+  onlineMatch.onDesync = (f) => {
+    console.warn(`[online] desincronización en el frame ${f}`);
+    hud.showCenterBanner('DESINCRONIZACIÓN', '#f43f5e');
+  };
+  onlineEndShown = false;
+  myRematch = rivalRematch = false;
+  onlineHud.classList.remove('hidden');
+  inMatch = true;
+  slowMoSubTick = 0;
+  sfx.startMusic();
+}
+
+function showOnlineEnd(): void {
+  const w = matchState.winnerId;
+  const [p1, p2] = matchState.fighters;
+  const mySlot = onlineSession?.role === 'host' ? 0 : 1;
+  uiLayer.classList.add('hidden');
+  touchControls.clearAll();
+  touchControls.setOverlayVisible(false);
+  const title = w === -1 ? 'EMPATE' : w === mySlot ? '¡HAS GANADO!' : 'HAS PERDIDO';
+  campaignUI.menu(
+    title,
+    [
+      {
+        label: 'Revancha',
+        primary: true,
+        onSelect: () => {
+          myRematch = true;
+          onlineSend({ t: 'rematch' });
+          if (!rivalRematch) onlineWait('Esperando a que el rival acepte la revancha…');
+          hostTryStart();
+        },
+      },
+      {
+        label: 'Cambiar luchador',
+        onSelect: () => {
+          onlineMatch = null;
+          onlineHud.classList.add('hidden');
+          leaveMatchTo(() => undefined);
+          onlineSend({ t: 'repick' });
+          openOnlinePick();
+        },
+      },
+      { label: 'Salir al menú principal', onSelect: () => leaveOnline(true) },
+    ],
+    { subtitle: `${CHARACTERS[p1.character].name} ${p1.roundsWon} – ${p2.roundsWon} ${CHARACTERS[p2.character].name}`, onBack: () => leaveOnline(true) }
+  );
+}
+
+function endOnline(): void {
+  onlineMatch = null;
+  onlineSession?.leave();
+  onlineSession = null;
+  onlineHud.classList.add('hidden');
+  charSelect.hide();
+}
+
+function leaveOnline(notify: boolean): void {
+  if (notify) onlineSend({ t: 'bye' });
+  const wasInMatch = inMatch;
+  // Dar tiempo a que salga el «bye» antes de cerrar el enlace
+  window.setTimeout(endOnline, notify ? 150 : 0);
+  campaignUI.hide();
+  if (wasInMatch) returnToMenu();
+  else {
+    charSelect.hide();
+    landing.show(landing.config, sfx.muted);
+  }
+}
+
+function onlineLost(message: string): void {
+  if (!onlineSession) return;
+  endOnline();
+  paused = false;
+  touchControls.clearAll();
+  touchControls.setOverlayVisible(false);
+  campaignUI.menu('CONEXIÓN TERMINADA', [{ label: 'Volver al menú', primary: true, onSelect: () => leaveOnline(false) }], {
+    subtitle: message,
+    onBack: () => leaveOnline(false),
+  });
+}
+
+function updateOnlineHud(): void {
+  if (!onlineMatch || !onlineSession?.link) return;
+  const rtt = Math.round(onlineSession.link.rtt);
+  const cls = rtt < 60 ? 'good' : rtt < 120 ? 'mid' : 'bad';
+  onlineHud.innerHTML = `<span class="${cls}">● ${rtt} ms</span><span>ROLLBACK ${onlineMatch.stats.rollbacks}</span>`;
+}
+
 landing.onOpenControls = () => {
   sfx.unlock();
   openControls(null);
@@ -410,6 +621,16 @@ function canPause(): boolean {
 }
 
 function togglePause(): void {
+  if (onlineMatch) {
+    // Online no se puede pausar: el combate sigue mientras está el menú
+    if (campaignUI.isVisible()) campaignUI.hide();
+    else if (canPause())
+      campaignUI.menu('PARTIDA ONLINE', [
+        { label: 'Seguir jugando', primary: true, onSelect: () => campaignUI.hide() },
+        { label: 'Abandonar partida', onSelect: () => leaveOnline(true) },
+      ], { subtitle: 'El combate no se detiene.', onBack: () => campaignUI.hide() });
+    return;
+  }
   if (paused) resumeGame();
   else if (canPause()) showPauseMenu();
 }
@@ -588,7 +809,10 @@ function gameLoop(nowMs: number): void {
         slowMoSubTick = 0;
       }
 
-      if (shouldStep) {
+      if (shouldStep && onlineMatch) {
+        // Online: el jugador local usa siempre los controles del P1
+        if (onlineMatch.step(inputManager.poll(matchState)[0])) hud.processEvents(matchState, sceneView);
+      } else if (shouldStep) {
         const inputs = inputManager.poll(matchState);
         stepSimulation(matchState, inputs, buffers);
         hud.processEvents(matchState, sceneView);
@@ -627,7 +851,13 @@ function gameLoop(nowMs: number): void {
       }
     }
 
-    if (!campaignMatch && matchState.mode !== 'TRAINING') {
+    if (onlineMatch) {
+      updateOnlineHud();
+      if (!onlineEndShown && matchState.phase === 'MATCH_END' && matchState.phaseTimer <= 55) {
+        onlineEndShown = true;
+        showOnlineEnd();
+      }
+    } else if (!campaignMatch && matchState.mode !== 'TRAINING') {
       if (matchState.phase !== 'MATCH_END') freeEndShown = false;
       else if (!freeEndShown && matchState.phaseTimer <= 55) {
         freeEndShown = true;
@@ -665,5 +895,9 @@ if (import.meta.env.DEV) {
       }
     },
     sceneView,
+    /** Combate online en curso (diagnóstico) */
+    get onlineMatch() {
+      return onlineMatch;
+    },
   };
 }
