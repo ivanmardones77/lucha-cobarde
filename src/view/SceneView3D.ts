@@ -18,7 +18,7 @@ import {
 } from '../core/types';
 import { AlleyStage3D } from './AlleyStage3D';
 import { FighterRig3D } from './FighterRig3D';
-import titanGlbUrl from '../assets/models/titan.glb?url';
+import { GLB_SPECS } from './glbSpecs';
 import { CombatVfx } from '../vfx/CombatVfx';
 import { GlbFighter } from './GlbFighter';
 import { ParticleSystem3D } from './ParticleSystem3D';
@@ -112,8 +112,9 @@ export class SceneView3D {
   private projGroup = new THREE.Group();
   private debugGroup = new THREE.Group();
   private particles = new ParticleSystem3D();
-  /** Prueba de concepto: Titán como modelo 3D con esqueleto (activar con ?titan3d) */
-  private glbTitans: [GlbFighter, GlbFighter] | null = null;
+  /** Prueba de concepto: luchadores como modelo 3D con esqueleto (activar con ?modelos3d) */
+  private glbOn = false;
+  private glbFighters = new Map<string, GlbFighter>(); // clave «hueco:personaje», se cargan al usarse
   /** Impactos y super (src/vfx/CombatVfx.ts) */
   private vfx = new CombatVfx();
   private lastRenderMs = performance.now();
@@ -200,9 +201,9 @@ export class SceneView3D {
       this.debugGroup
     );
 
-    if (new URLSearchParams(location.search).has('titan3d')) {
-      this.glbTitans = [new GlbFighter(titanGlbUrl), new GlbFighter(titanGlbUrl)];
-      this.scene.add(this.glbTitans[0].root, this.glbTitans[1].root);
+    {
+      const q = new URLSearchParams(location.search);
+      this.glbOn = q.has('modelos3d') || q.has('titan3d');
     }
 
     if (!this.isSoftwareGl) {
@@ -607,13 +608,23 @@ export class SceneView3D {
 
     this.rigs[0].sync(p1, state.frame, state.hitstop);
     this.rigs[1].sync(p2, state.frame, state.hitstop);
-    if (this.glbTitans) {
+    if (this.glbOn) {
       for (let i = 0; i < 2; i++) {
         const f = state.fighters[i];
-        const glb = this.glbTitans[i];
-        const use = f.character === 'TITAN' && glb.ready;
-        if (use) glb.sync(f, state.frame);
-        else glb.hide();
+        let use = false;
+        for (const [key, g] of this.glbFighters) if (key.startsWith(`${i}:`) && key !== `${i}:${f.character}`) g.hide();
+        const spec = GLB_SPECS[f.character];
+        if (spec) {
+          const key = `${i}:${f.character}`;
+          let glb = this.glbFighters.get(key);
+          if (!glb) {
+            glb = new GlbFighter(spec);
+            this.glbFighters.set(key, glb);
+            this.scene.add(glb.root);
+          }
+          use = glb.ready;
+          if (use) glb.sync(f, state.frame);
+        }
         this.rigs[i].root.visible = !use;
       }
     }
@@ -825,6 +836,7 @@ export class SceneView3D {
     this.rooftopStage?.dispose();
     this.rigs[0].dispose();
     this.rigs[1].dispose();
+    for (const g of this.glbFighters.values()) g.dispose();
     this.particles.dispose();
     this.vfx.dispose();
     this.orbPlaneGeo.dispose();
