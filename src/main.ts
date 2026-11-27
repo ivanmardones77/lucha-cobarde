@@ -24,6 +24,7 @@ import { TouchControls } from './input/TouchControls';
 import { HudOverlay } from './view/HudOverlay';
 import { CampaignUI, MenuItem } from './view/CampaignUI';
 import { CharacterSelectScreen } from './view/CharacterSelectScreen';
+import { OnlineScreen } from './view/OnlineScreen';
 import { LandingScreen, LaunchConfig } from './view/LandingScreen';
 import { SceneView3D } from './view/SceneView3D';
 
@@ -309,6 +310,12 @@ landing.onStory = () => {
 landing.onStart = openCharSelect;
 charSelect.onConfirm = startFreeMatch;
 charSelect.onBack = () => landing.show(landing.config, sfx.muted);
+const onlineScreen = new OnlineScreen();
+landing.onOnline = () => {
+  sfx.unlock();
+  onlineScreen.show();
+};
+
 landing.onOpenControls = () => {
   sfx.unlock();
   openControls(null);

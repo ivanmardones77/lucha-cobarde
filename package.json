@@ -12,6 +12,7 @@
     "test": "tsx test/determinismo.test.ts && tsx test/rollback.test.ts && tsx test/campaign.test.ts"
   },
   "dependencies": {
+    "peerjs": "^1.5.5",
     "three": "^0.187.0"
   },
   "devDependencies": {
