@@ -165,11 +165,13 @@ export class GlbFighter {
         this.play('CROUCH', loopT('CROUCH'));
         break;
       case 'JUMP':
-        this.play('JUMP', t);
+        this.play(this.actions.has('JUMP_TUCK') ? 'JUMP_TUCK' : 'JUMP', t);
         break;
       case 'HITSTUN':
         // Alterna cabeza / pecho según el golpe para que dos impactos seguidos no se vean iguales
-        this.play(f.comboCount % 2 === 0 ? 'HIT_CHEST' : 'HIT_HEAD', t);
+        // Reacciones hechas desde la guardia del personaje (si el GLB las trae)
+        if (this.actions.has('HIT_HIGH')) this.play(f.comboCount % 2 === 0 ? 'HIT_HIGH' : 'HIT_BODY', t);
+        else this.play(f.comboCount % 2 === 0 ? 'HIT_CHEST' : 'HIT_HEAD', t);
         break;
       case 'JUGGLE':
       case 'KNOCKDOWN':

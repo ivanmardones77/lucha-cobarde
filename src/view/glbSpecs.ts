@@ -11,6 +11,10 @@ import voltGlbUrl from '../assets/models/volt.glb?url';
  * `impact` es el frame del clip (a 60 fps) en el que el golpe llega a su máximo alcance;
  * GlbFighter lo hace coincidir con el startup del golpe.
  */
+/** Ataques aéreos hechos desde la guardia de cada personaje (mismos nombres de clip en todos los GLB). */
+const AIR_PUNCH = { clip: 'M_AIRPUNCH', start: 1, impact: 9 };
+const AIR_KICK = { clip: 'M_AIRKICK', start: 1, impact: 10 };
+
 export const GLB_SPECS: Partial<Record<CharacterId, GlbSpec>> = {
   TITAN: {
     url: titanGlbUrl,
@@ -18,7 +22,9 @@ export const GLB_SPECS: Partial<Record<CharacterId, GlbSpec>> = {
     moves: {
       '5P': { clip: 'PUNCH_5P' },
       '2P': { clip: 'PUNCH_5P' },
-      jP: { clip: 'PUNCH_5P' },
+      jP: AIR_PUNCH,
+      jK: AIR_KICK,
+      j214K: AIR_KICK,
     },
     heavy: { clip: 'PUNCH_CROSS', impact: 19 },
   },
@@ -28,10 +34,11 @@ export const GLB_SPECS: Partial<Record<CharacterId, GlbSpec>> = {
     moves: {
       '5P': { clip: 'M_JAB', start: 28, impact: 40 },
       '2P': { clip: 'M_JAB', start: 28, impact: 40 },
-      jP: { clip: 'M_JAB', start: 28, impact: 40 },
+      jP: AIR_PUNCH,
       '5K': { clip: 'M_KICK', start: 30, impact: 47 },
       '6K': { clip: 'M_KICK', start: 24, impact: 47 },
-      jK: { clip: 'M_KICK', start: 30, impact: 47 },
+      jK: AIR_KICK,
+      j214K: AIR_KICK,
       '2K': { clip: 'M_SWEEP', start: 66, impact: 82 },
       '236K': { clip: 'M_SWEEP', start: 60, impact: 82 },
       '623P': { clip: 'M_UPPERCUT', start: 27, impact: 42 },
@@ -50,11 +57,11 @@ export const GLB_SPECS: Partial<Record<CharacterId, GlbSpec>> = {
     moves: {
       '5P': { clip: 'M_JAB', start: 30, impact: 40 },
       '2P': { clip: 'M_JAB', start: 30, impact: 40 },
-      jP: { clip: 'M_JAB', start: 30, impact: 40 },
+      jP: AIR_PUNCH,
       '5K': { clip: 'M_KICK', start: 26, impact: 41 },
       '6K': { clip: 'M_KICK', start: 22, impact: 41 },
-      jK: { clip: 'M_KICK', start: 26, impact: 41 },
-      j214K: { clip: 'M_KICK', start: 26, impact: 41 },
+      jK: AIR_KICK,
+      j214K: AIR_KICK,
       '2K': { clip: 'M_LOWSWEEP', start: 1, impact: 10 },
       '623P': { clip: 'M_RISING', start: 6, impact: 22 },
       '236P': { clip: 'M_THROW', start: 40, impact: 59 },
@@ -72,11 +79,11 @@ export const GLB_SPECS: Partial<Record<CharacterId, GlbSpec>> = {
     moves: {
       '5P': { clip: 'M_JAB', start: 30, impact: 40 },
       '2P': { clip: 'M_JAB', start: 30, impact: 40 },
-      jP: { clip: 'M_JAB', start: 30, impact: 40 },
+      jP: AIR_PUNCH,
       '5K': { clip: 'M_KICK', start: 26, impact: 41 },
       '6K': { clip: 'M_KICK', start: 22, impact: 41 },
-      jK: { clip: 'M_KICK', start: 26, impact: 41 },
-      j214K: { clip: 'M_KICK', start: 26, impact: 41 },
+      jK: AIR_KICK,
+      j214K: AIR_KICK,
       '2K': { clip: 'M_LOWSWEEP', start: 1, impact: 10 },
       '6P': { clip: 'M_SLAM', start: 79, impact: 116 },
       '214P': { clip: 'M_SLAM', start: 79, impact: 116 },
@@ -97,11 +104,11 @@ export const GLB_SPECS: Partial<Record<CharacterId, GlbSpec>> = {
     moves: {
       '5P': { clip: 'M_JAB', start: 30, impact: 40 },
       '2P': { clip: 'M_JAB', start: 30, impact: 40 },
-      jP: { clip: 'M_JAB', start: 30, impact: 40 },
+      jP: AIR_PUNCH,
       '5K': { clip: 'M_KICK', start: 26, impact: 41 },
       '6K': { clip: 'M_KICK', start: 22, impact: 41 },
-      jK: { clip: 'M_KICK', start: 26, impact: 41 },
-      j214K: { clip: 'M_KICK', start: 26, impact: 41 },
+      jK: AIR_KICK,
+      j214K: AIR_KICK,
       '2K': { clip: 'M_LOWSWEEP', start: 1, impact: 10 },
       '6P': { clip: 'M_SLAM', start: 82, impact: 116 },
       '214P': { clip: 'M_SLAM', start: 82, impact: 116 },
