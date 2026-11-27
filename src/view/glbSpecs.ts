@@ -6,7 +6,7 @@ import kazeGlbUrl from '../assets/models/kaze.glb?url';
 import valkyrieGlbUrl from '../assets/models/valkyrie.glb?url';
 
 /**
- * Luchadores con modelo 3D (prueba, se activan con ?modelos3d o ?titan3d).
+ * Luchadores con modelo 3D (activos por defecto; ?sin3d los desactiva). Volt aún usa el muñeco.
  * `impact` es el frame del clip (a 60 fps) en el que el golpe llega a su máximo alcance;
  * GlbFighter lo hace coincidir con el startup del golpe.
  */
