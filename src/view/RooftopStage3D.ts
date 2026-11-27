@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { STAGE_HALF_WIDTH } from '../core/types';
 import { createVolumetricBeamMaterial } from './AlleyStage3D';
-import floorUrl from '../assets/images/rooftop_floor_metal_1795779368418.jpg';
-import holoAdUrl from '../assets/images/rooftop_holo_ad_1795781927260.jpg';
-import skylineUrl from '../assets/images/rooftop_skyline_far_1795779368218.jpg';
+import floorUrl from '../assets/images/rooftop_floor_metal_1795779368418.webp';
+import holoAdUrl from '../assets/images/rooftop_holo_ad_1795781927260.webp';
+import skylineUrl from '../assets/images/rooftop_skyline_far_1795779368218.webp';
 
 interface SkyTraffic {
   group: THREE.Group;
