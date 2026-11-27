@@ -17,6 +17,8 @@ export class InputManager {
   public onToggleDebug?: () => void;
   public onToggleFrameData?: () => void;
   public onResetMatch?: () => void;
+  /** Start del mando: pausa */
+  public onPause?: () => void;
 
   constructor(
     private touch: TouchControls,
@@ -98,7 +100,7 @@ export class InputManager {
     this.prevStart = [gp0.start, gp1.start];
     if (startRising) {
       sfx.unlock();
-      this.onResetMatch?.();
+      this.onPause?.();
     }
 
     const tc = this.touch.enabled ? this.touch.state : null;

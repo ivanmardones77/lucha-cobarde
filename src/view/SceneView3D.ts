@@ -18,6 +18,7 @@ import {
 } from '../core/types';
 import { AlleyStage3D } from './AlleyStage3D';
 import { FighterRig3D } from './FighterRig3D';
+import { CombatVfx } from '../vfx/CombatVfx';
 import { ParticleSystem3D } from './ParticleSystem3D';
 import { RooftopStage3D } from './RooftopStage3D';
 
@@ -109,6 +110,10 @@ export class SceneView3D {
   private projGroup = new THREE.Group();
   private debugGroup = new THREE.Group();
   private particles = new ParticleSystem3D();
+  /** Impactos y super (src/vfx/CombatVfx.ts) */
+  private vfx = new CombatVfx();
+  private lastRenderMs = performance.now();
+  private lastStateFrame = 0;
   private projEnergyTex: THREE.CanvasTexture;
   private projKunaiTex: THREE.CanvasTexture;
   private lastTrailFrame = -1;
@@ -187,6 +192,7 @@ export class SceneView3D {
       this.rigs[1].trailGroup,
       this.projGroup,
       this.particles.group,
+      this.vfx.group,
       this.debugGroup
     );
 
@@ -424,8 +430,10 @@ export class SceneView3D {
     this.scene.add(this.flashLight);
   }
 
-  public spawnSparks(x: number, y: number, kind: SparkKind): void {
+  /** dir: hacia dónde iba el golpe (+1 derecha, -1 izquierda) */
+  public spawnSparks(x: number, y: number, kind: SparkKind, dir: 1 | -1 = 1, withVfx = true): void {
     this.particles.spawnSparks(x, y, kind);
+    if (withVfx && (kind === 'HIT' || kind === 'GOLD')) this.vfx.hit(x, y, dir, kind === 'GOLD');
     this.flashLight.position.set(x, Math.max(0.6, y), 1.05);
     if (kind === 'GOLD') {
       this.flashLight.color.setHex(0xfde047);
@@ -441,6 +449,19 @@ export class SceneView3D {
       this.flashLight.intensity = 2.0;
       this.chromaticAmount = Math.max(this.chromaticAmount, 0.0024);
     }
+  }
+
+  /** Solo para QA: 0 congela los efectos de impacto/super */
+  public setVfxTimeScale(scale: number): void {
+    this.vfx.timeScale = scale;
+  }
+
+  /** El super conecta: estallido grande del nuevo sistema de efectos */
+  public superImpact(x: number, y: number, dir: 1 | -1, colorHex: number): void {
+    this.vfx.superImpact(x, y, dir, colorHex);
+    this.flashLight.position.set(x, Math.max(0.7, y), 1.2);
+    this.flashLight.color.setHex(colorHex);
+    this.flashLight.intensity = Math.max(this.flashLight.intensity, 6);
   }
 
   public triggerStageImpact(x: number, intensity: number, ground = false): void {
@@ -590,6 +611,14 @@ export class SceneView3D {
     }
     this.particles.update();
 
+    // Efectos de impacto y super: tiempo real de la vista (no afecta a la simulación)
+    const nowMs = performance.now();
+    const dt = Math.min(0.05, (nowMs - this.lastRenderMs) / 1000);
+    this.lastRenderMs = nowMs;
+    if (state.frame < this.lastStateFrame) this.vfx.reset(); // revancha o combate nuevo
+    this.lastStateFrame = state.frame;
+    this.vfx.update(state, dt);
+
     if (state.phase === 'INTRO') {
       this.renderer.toneMappingExposure = 0.98;
       if (this.bloomPass) this.bloomPass.strength = 0.14;
@@ -714,10 +743,10 @@ export class SceneView3D {
     this.chromaticAmount += (0.0009 - this.chromaticAmount) * 0.16;
     this.impactFlashAmount *= 0.72;
     if (this.lensPass) {
-      this.lensPass.uniforms.uChromatic.value = this.chromaticAmount;
+      this.lensPass.uniforms.uChromatic.value = Math.max(this.chromaticAmount, this.vfx.lensChromatic);
       this.lensPass.uniforms.uVignette.value =
         state.slowMoFrames > 0 || state.superFlashFrames > 0 ? 0.58 : 0.34;
-      this.lensPass.uniforms.uFlash.value = this.impactFlashAmount;
+      this.lensPass.uniforms.uFlash.value = Math.max(this.impactFlashAmount, this.vfx.lensFlash);
     }
 
     this.activeStage.update(
@@ -778,6 +807,7 @@ export class SceneView3D {
     this.rigs[0].dispose();
     this.rigs[1].dispose();
     this.particles.dispose();
+    this.vfx.dispose();
     this.orbPlaneGeo.dispose();
     this.orbCoreGeo.dispose();
     this.kunaiPlaneGeo.dispose();

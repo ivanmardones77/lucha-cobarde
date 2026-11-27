@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CYBER DOJO 2.5D — Motor de Lucha Determinista 60 FPS</title>
+    <title>CYBER DOJO — Torneo del Dojo Nocturno</title>
     <meta name="description" content="Juego de lucha 2.5D con simulación determinista 2D a 60 FPS fijos, Three.js y soporte para mandos." />
     <meta property="og:title" content="CYBER DOJO 2.5D — Motor de Lucha Determinista 60 FPS" />
     <meta property="og:description" content="Juego de lucha 2.5D con simulación determinista 2D a 60 FPS fijos, Three.js y soporte para mandos." />
@@ -34,351 +34,77 @@
       class="fixed inset-0 pointer-events-none z-[6] opacity-0 transition-opacity duration-150 anime-speedlines"
     ></div>
 
-    <!-- PANTALLA INICIAL (LANDING CON ARTE, OPCIONES Y START) -->
-    <section
-      id="landing-screen"
-      aria-label="Pantalla de inicio"
-      class="fixed inset-0 z-40 overflow-y-auto bg-slate-950 text-slate-100"
-    >
-      <!-- Fondo ilustrado + retícula y líneas SVG -->
-      <div class="fixed inset-0 pointer-events-none overflow-hidden">
-        <img
-          id="landing-bg-img"
-          src=""
-          alt="Interior nocturno del dojo ciberpunk con iluminación neón azul y carmesí"
-          referrerpolicy="no-referrer"
-          class="w-full h-full object-cover object-center opacity-55 scale-[1.02]"
-        />
-        <div
-          class="absolute inset-0 bg-gradient-to-b from-slate-950/88 via-slate-950/68 to-slate-950/96"
-        ></div>
-        <div
-          class="absolute inset-0 bg-gradient-to-r from-slate-950/92 via-slate-950/55 to-slate-950/82"
-        ></div>
-        <div
-          class="landing-perspective-grid absolute inset-x-0 bottom-0 h-56 opacity-60"
-        ></div>
-        <svg
-          class="absolute inset-0 w-full h-full opacity-20"
-          viewBox="0 0 1440 900"
-          fill="none"
-          preserveAspectRatio="xMidYMid slice"
-          aria-hidden="true"
-        >
-          <path
-            d="M-60 760L520 180M1500 140L920 720"
-            stroke="#38bdf8"
-            stroke-width="1"
-          />
-          <path
-            d="M120 820L660 280M1360 260L840 780"
-            stroke="#fb7185"
-            stroke-width="1"
-          />
-          <circle cx="720" cy="450" r="240" stroke="#facc15" stroke-opacity="0.28" stroke-width="1" stroke-dasharray="6 10" />
-        </svg>
+    <!-- PANTALLA DE TÍTULO Y MENÚ PRINCIPAL -->
+    <section id="landing-screen" class="ls" data-state="attract" aria-label="Menú principal">
+      <div class="ls-bg" aria-hidden="true">
+        <img id="landing-bg-img" class="ls-bg-img" src="" alt="" />
+        <canvas id="ls-rain" class="ls-rain"></canvas>
+        <div class="ls-grid"></div>
+        <div class="ls-vignette"></div>
+        <div class="ls-scan"></div>
       </div>
 
-      <div class="relative z-10 min-h-full flex flex-col justify-between max-w-6xl mx-auto px-4 sm:px-8 py-5 sm:py-6">
-        <!-- Barra superior (Contrato de 3 zonas) -->
-        <header class="flex items-center justify-between gap-8 pb-4 border-b border-slate-800/80">
-          <span class="font-fight font-bold text-lg sm:text-xl tracking-wider text-cyan-300 whitespace-nowrap shrink-0">
-            CYBER DOJO 2.5D
-          </span>
+      <header class="ls-top">
+        <span class="ls-edition">EDICIÓN 2.5D</span>
+        <div class="ls-top-actions">
+          <button type="button" id="ls-btn-audio" class="ls-icon-btn" aria-label="Silenciar">🔊</button>
+          <button type="button" id="ls-btn-fullscreen" class="ls-icon-btn" aria-label="Pantalla completa">⛶</button>
+        </div>
+      </header>
 
-          <nav class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-300">
-            <a
-              href="#landing-options-card"
-              class="hover:text-white transition-colors whitespace-nowrap shrink-0"
-              >Opciones</a
-            >
-            <a
-              href="#landing-roster-panel"
-              class="hover:text-white transition-colors whitespace-nowrap shrink-0"
-              >Luchadores</a
-            >
-            <button
-              id="landing-nav-controls"
-              type="button"
-              class="hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
-            >
-              Controles
-            </button>
-            <button
-              id="landing-nav-audio"
-              type="button"
-              class="hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
-            >
-              Audio (On)
-            </button>
-          </nav>
-
-          <button
-            id="landing-header-start"
-            type="button"
-            class="px-5 py-2 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-fight font-bold text-xs sm:text-sm tracking-wider transition-colors cursor-pointer whitespace-nowrap shrink-0"
-          >
-            START
-          </button>
-        </header>
-
-        <!-- Contenido Principal Hero + Opciones + Selección -->
-        <main class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center my-6 sm:my-8">
-          <!-- Columna Izquierda: Propuesta + Opciones de Juego + Start -->
-          <div class="lg:col-span-6 flex flex-col gap-5">
-            <div class="space-y-3">
-              <p class="text-xs sm:text-sm text-cyan-300/90 font-medium tracking-wide">
-                Combate 2.5D · Simulación determinista 60 FPS · WebGL Three.js
-              </p>
-              <h1
-                class="font-fight font-bold text-white leading-[1.06] tracking-tight"
-                style="font-size: clamp(2.25rem, 4.2vw, 3.6rem); text-wrap: balance;"
-              >
-                Duelo Táctico en el Dojo Nocturno
-              </h1>
-              <p class="text-sm sm:text-base text-slate-300 max-w-xl leading-relaxed">
-                Domina comandos de movimiento clásicos, golpes con Super Armor, versiones EX doradas y artes finales con partículas 3D en tiempo real.
-              </p>
-            </div>
-
-            <!-- Panel único de opciones de partida -->
-            <div
-              id="landing-options-card"
-              class="bg-slate-950/82 border border-slate-700/70 rounded-2xl p-5 shadow-2xl space-y-4"
-            >
-              <div>
-                <div class="text-xs font-semibold text-slate-300 mb-2">
-                  Un jugador
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    id="landing-btn-arcade"
-                    class="game-btn py-3 px-3 rounded-xl text-left cursor-pointer"
-                  >
-                    <span class="block font-fight font-bold text-base tracking-wide text-rose-300">ARCADE</span>
-                    <span id="landing-arcade-sub" class="block text-[11px] text-slate-400 truncate">5 combates · jefe final</span>
-                  </button>
-                  <button
-                    type="button"
-                    id="landing-btn-story"
-                    class="game-btn py-3 px-3 rounded-xl text-left cursor-pointer"
-                  >
-                    <span class="block font-fight font-bold text-base tracking-wide text-amber-300">HISTORIA</span>
-                    <span id="landing-story-sub" class="block text-[11px] text-slate-400 truncate">3 capítulos</span>
-                  </button>
-                </div>
-              </div>
-
-              <div class="pt-3 border-t border-slate-800/80">
-                <div class="text-xs font-semibold text-slate-300 mb-2">
-                  Partida libre
-                </div>
-                <div class="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    data-landing-mode="AI"
-                    class="game-btn active py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer whitespace-nowrap truncate"
-                  >
-                    VS IA
-                  </button>
-                  <button
-                    type="button"
-                    data-landing-mode="2P"
-                    class="game-btn py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer whitespace-nowrap truncate"
-                  >
-                    2P Local
-                  </button>
-                  <button
-                    type="button"
-                    data-landing-mode="TRAINING"
-                    class="game-btn py-2 px-3 rounded-lg text-xs sm:text-sm font-semibold cursor-pointer whitespace-nowrap truncate"
-                  >
-                    Entrenamiento
-                  </button>
-                </div>
-              </div>
-
-              <div class="pt-3 border-t border-slate-800/80">
-                <div class="text-xs font-semibold text-slate-300 mb-2">
-                  Escenario de combate
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    data-landing-stage="ALLEY"
-                    class="game-btn active py-2 px-3 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap truncate"
-                  >
-                    Callejón Lluvioso
-                  </button>
-                  <button
-                    type="button"
-                    data-landing-stage="ROOFTOP"
-                    class="game-btn py-2 px-3 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap truncate"
-                  >
-                    Azotea Helipuerto
-                  </button>
-                </div>
-              </div>
-
-              <div id="landing-diff-row" class="pt-3 border-t border-slate-800/80 transition-opacity">
-                <div class="flex items-center justify-between text-xs mb-2">
-                  <span class="font-semibold text-slate-300">Nivel de IA rival</span>
-                  <span class="text-slate-400">Reacción · Guardia · Combos</span>
-                </div>
-                <div class="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    data-landing-diff="NORMAL"
-                    class="game-btn py-2 px-3 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap truncate"
-                  >
-                    Normal
-                  </button>
-                  <button
-                    type="button"
-                    data-landing-diff="HARD"
-                    class="game-btn active py-2 px-3 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap truncate"
-                  >
-                    Competitivo
-                  </button>
-                  <button
-                    type="button"
-                    data-landing-diff="MASTER"
-                    class="game-btn py-2 px-3 rounded-lg text-xs font-semibold cursor-pointer whitespace-nowrap truncate"
-                  >
-                    Maestro
-                  </button>
-                </div>
-              </div>
-
-              <div class="pt-3 border-t border-slate-800/80">
-                <div class="text-xs font-semibold text-slate-300 mb-2">
-                  Preferencias de combate y visor
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                  <button
-                    id="landing-opt-boxes"
-                    type="button"
-                    class="game-btn active py-2 px-3 rounded-lg text-xs font-medium cursor-pointer whitespace-nowrap truncate"
-                  >
-                    Cajas 2D: Activas
-                  </button>
-                  <button
-                    id="landing-opt-frames"
-                    type="button"
-                    class="game-btn active py-2 px-3 rounded-lg text-xs font-medium cursor-pointer whitespace-nowrap truncate"
-                  >
-                    Frame Meter: Activo
-                  </button>
-                  <button
-                    id="landing-opt-touch"
-                    type="button"
-                    class="game-btn py-2 px-3 rounded-lg text-xs font-medium cursor-pointer whitespace-nowrap truncate"
-                  >
-                    Controles Táctiles: Ocultos
-                  </button>
-                  <button
-                    id="landing-opt-mute"
-                    type="button"
-                    class="game-btn active py-2 px-3 rounded-lg text-xs font-medium cursor-pointer whitespace-nowrap truncate"
-                  >
-                    Audio: Activo
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Botón principal START -->
-            <div class="flex flex-wrap items-center gap-3 pt-1">
-              <button
-                id="landing-btn-start"
-                type="button"
-                class="start-cta-btn flex-1 sm:flex-none min-w-[210px] px-8 py-3.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-300 to-orange-400 text-slate-950 font-fight font-bold text-lg tracking-wider shadow-[0_8px_28px_rgba(245,158,11,0.3)] cursor-pointer whitespace-nowrap"
-              >
-                START COMBATE
-              </button>
-              <button
-                id="landing-btn-controls"
-                type="button"
-                class="game-btn px-5 py-3.5 rounded-xl text-sm font-semibold text-slate-200 cursor-pointer whitespace-nowrap"
-              >
-                Lista de Movimientos
-              </button>
-            </div>
-          </div>
-
-          <!-- Columna Derecha: Arte y Selección P1 vs P2 -->
-          <div id="landing-roster-panel" class="lg:col-span-6 relative">
-            <!-- Plantel animado (IDLE); se elige en la pantalla de selección -->
-            <button
-              id="landing-roster-showcase"
-              type="button"
-              aria-label="Ver luchadores y elegir"
-              class="group relative w-full rounded-2xl border border-slate-700/70 bg-gradient-to-b from-slate-900/70 to-slate-950/90 shadow-2xl overflow-hidden cursor-pointer"
-            >
-              <div class="landing-perspective-grid absolute inset-x-0 bottom-0 h-1/2 opacity-60"></div>
-              <div id="landing-roster-lineup" class="relative flex items-end justify-center px-2 pt-6"></div>
-              <div class="relative flex items-center justify-between gap-3 px-4 py-3 border-t border-slate-800/80 bg-slate-950/80">
-                <span class="text-xs text-slate-300 text-left">5 luchadores · elige en la siguiente pantalla</span>
-                <span class="font-fight font-bold text-sm text-amber-300 tracking-wide whitespace-nowrap group-hover:translate-x-0.5 transition-transform">ELEGIR ▶</span>
-              </div>
-            </button>
-          </div>
-        </main>
-
-        <!-- Pie de página limpio -->
-        <footer class="pt-3 border-t border-slate-800/70 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-          <span>Teclado, Dos Jugadores Locales, Táctil Multitouch y Mandos USB/Bluetooth</span>
-          <span>Pulsa Enter o Start para entrar en la arena</span>
-        </footer>
+      <div class="ls-logo-wrap">
+        <h1 class="ls-logo" data-text="CYBER DOJO"><span>CYBER</span> <span>DOJO</span></h1>
+        <div class="ls-tag">TORNEO DEL DOJO NOCTURNO</div>
       </div>
+
+      <div id="landing-roster-lineup" class="ls-lineup" aria-hidden="true"></div>
+
+      <button type="button" id="ls-press" class="ls-press">PULSA <b>START</b></button>
+
+      <nav id="ls-menu" class="ls-menu" aria-label="Menú principal"></nav>
+
+      <aside id="ls-info" class="ls-info" aria-live="polite">
+        <div class="ls-info-kicker" id="ls-info-kicker"></div>
+        <div class="ls-info-title" id="ls-info-title"></div>
+        <p class="ls-info-text" id="ls-info-text"></p>
+        <div class="ls-info-progress" id="ls-info-progress"></div>
+      </aside>
+
+      <footer class="ls-foot">
+        <span class="ls-hint"><kbd>↑</kbd><kbd>↓</kbd> Navegar</span>
+        <span class="ls-hint"><kbd>Enter</kbd> / Ⓐ Elegir</span>
+        <span class="ls-hint"><kbd>Esc</kbd> / Ⓑ Volver</span>
+      </footer>
     </section>
 
     <!-- Capa HUD Principal (oculta hasta pulsar START) -->
     <div id="ui-layer" class="hidden fixed inset-0 pointer-events-none flex flex-col justify-between z-10 p-2 sm:p-3">
-      <!-- BARRA SUPERIOR DE MODOS Y UTILIDADES -->
-      <div class="pointer-events-auto flex flex-wrap items-center justify-between gap-2 bg-slate-950/85 border border-slate-700/60 rounded-xl px-3 py-1.5 shadow-xl">
-        <div class="flex items-center gap-2 flex-wrap">
-          <span class="font-fight font-bold tracking-wider text-cyan-400 text-sm sm:text-base mr-1">CYBER DOJO 2.5D</span>
-          <div class="flex items-center gap-1" role="group" aria-label="Modo de juego">
-            <button id="btn-mode-ai" class="game-btn active text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer">VS IA</button>
-            <button id="btn-mode-2p" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer">2P Local</button>
-            <button id="btn-mode-train" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer">Entrenamiento</button>
-          </div>
-
-          <!-- Selector de Dummy y posición solo visible en Entrenamiento -->
-          <div id="training-controls" class="hidden flex items-center gap-1.5 flex-wrap ml-1 pl-2 border-l border-slate-700">
-            <span class="text-[11px] text-amber-300 font-semibold">Dummy:</span>
-            <select id="select-dummy" class="bg-slate-900 border border-slate-600 text-slate-100 text-xs rounded-lg px-2 py-1 outline-none cursor-pointer">
+      <!-- BARRA SUPERIOR: ENTRENAMIENTO (solo en ese modo) + PAUSA -->
+      <div class="hud-topbar">
+        <div id="training-controls" class="hidden hud-training pointer-events-auto" role="group" aria-label="Entrenamiento">
+          <span class="hud-training-tag">ENTRENAMIENTO</span>
+          <label class="hud-field">
+            <span>Dummy</span>
+            <select id="select-dummy">
               <option value="NEUTRAL">Neutral</option>
-              <option value="BLOCK_ALL">Bloquear Todo</option>
-              <option value="BLOCK_AFTER">Bloquear tras 1er golpe</option>
-              <option value="RANDOM_GUARD">Guardia Aleatoria</option>
-              <option value="WAKEUP_DP">Wake-up Reversal (623P)</option>
-              <option value="JUMP">Saltar (Antiaéreo)</option>
+              <option value="BLOCK_ALL">Bloquear todo</option>
+              <option value="BLOCK_AFTER">Bloquear tras el 1er golpe</option>
+              <option value="RANDOM_GUARD">Guardia aleatoria</option>
+              <option value="WAKEUP_DP">Reversal al levantarse (623P)</option>
+              <option value="JUMP">Saltar (antiaéreo)</option>
             </select>
-            <div class="flex items-center gap-1 ml-1">
-              <button id="btn-pos-left" class="game-btn text-[11px] font-semibold px-2 py-1 rounded-md cursor-pointer" title="Posición Esquina Izquierda">◧ Izq</button>
-              <button id="btn-pos-center" class="game-btn text-[11px] font-semibold px-2 py-1 rounded-md cursor-pointer" title="Posición Centro">◫ Centro</button>
-              <button id="btn-pos-right" class="game-btn text-[11px] font-semibold px-2 py-1 rounded-md cursor-pointer" title="Posición Esquina Derecha">◨ Der</button>
-            </div>
+          </label>
+          <div class="hud-seg" role="group" aria-label="Posición">
+            <button id="btn-pos-left" type="button" title="Esquina izquierda">◧</button>
+            <button id="btn-pos-center" type="button" title="Centro">◫</button>
+            <button id="btn-pos-right" type="button" title="Esquina derecha">◨</button>
           </div>
+          <button id="btn-debug-boxes" type="button" class="hud-chip" title="Cajas de colisión (F1)">Cajas</button>
+          <button id="btn-debug-frames" type="button" class="hud-chip" title="Medidor de frames (F2)">Frames</button>
         </div>
-
-        <div class="flex items-center gap-1.5 flex-wrap">
-          <div id="topbar-actions" class="flex items-center gap-1.5 flex-wrap">
-            <button id="btn-swap-chars" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer text-cyan-300" title="Cambiar personaje de P1 (RYUJIN / KAZE / TITAN / VOLT / VALKYRIE)">⇄ P1: RYUJIN</button>
-            <button id="btn-swap-color" class="game-btn text-xs font-semibold px-2 py-1.5 rounded-lg cursor-pointer text-slate-200" title="Cambiar color de traje de P1">Color</button>
-            <button id="btn-touch-toggle" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Activar/Desactivar Controles Táctiles">📱 TOUCH</button>
-            <button id="btn-debug-boxes" class="game-btn active text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Mostrar/Ocultar Cajas 2D (F1)">Cajas (F1)</button>
-            <button id="btn-debug-frames" class="game-btn active text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Mostrar/Ocultar Frame Meter y Datos (F2)">Frames (F2)</button>
-            <button id="btn-mute" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer" title="Silenciar / Activar Audio">🔊 Audio</button>
-            <button id="btn-controls" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer">Controles</button>
-            <button id="btn-reset" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer text-amber-300" title="Reiniciar Combate (R)">↻ Reiniciar</button>
-            <button id="btn-return-menu" class="game-btn text-xs font-semibold px-2.5 py-1.5 rounded-lg cursor-pointer text-slate-200" title="Volver a la pantalla de inicio">Menú</button>
-          </div>
-          <button id="btn-toggle-topbar" class="game-btn text-xs font-semibold px-2 py-1.5 rounded-lg cursor-pointer text-slate-300" title="Contraer / Expandir utilidades">▴</button>
-        </div>
+        <button id="btn-pause" type="button" class="hud-pause pointer-events-auto" aria-label="Pausa (Esc / Start)">
+          <span></span><span></span>
+        </button>
       </div>
 
       <!-- HUD DE COMBATE (VIDA, RELOJ, RONDAS, CALLOUTS) -->
@@ -620,7 +346,7 @@
               <li class="pt-1 border-t border-slate-800 text-emerald-300 font-semibold">Mando Xbox / PS / Fightstick (1 o 2 mandos):</li>
               <li><span class="font-mono-code text-slate-300">D-Pad / Stick Izq</span> — Direcciones (deadzone 0.35)</li>
               <li><span class="font-mono-code text-slate-300">X/□</span> Puño (P) · <span class="font-mono-code text-slate-300">A/✕</span> Patada (K) · <span class="font-mono-code text-slate-300">B/○</span> Agarre (T)</li>
-              <li><span class="font-mono-code text-slate-300">Y/△</span> Super Art (S) · <span class="font-mono-code text-slate-300">RB/R1</span> Dash · <span class="font-mono-code text-slate-300">Start</span> Reiniciar</li>
+              <li><span class="font-mono-code text-slate-300">Y/△</span> Super Art (S) · <span class="font-mono-code text-slate-300">RB/R1</span> Dash · <span class="font-mono-code text-slate-300">Start</span> Pausa</li>
             </ul>
           </div>
         </div>
@@ -641,21 +367,6 @@
             <div>• <strong class="text-amber-300">Super Art (100% barra):</strong> <code class="text-amber-200">U</code>, <code class="text-amber-200">236 + U</code> o clásico <code class="text-amber-200">236236 + P/K</code>.</div>
             <div>• <strong class="text-slate-300">Cancelaciones:</strong> Cadena <code class="text-cyan-200">5P/2P → 5K</code> y cancela Normales hacia Especiales, EX o Super.</div>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL DE FIN DE COMBATE (REVANCHA / CAMBIO) -->
-    <div id="match-end-modal" class="hidden fixed inset-0 z-30 bg-slate-950/70 flex items-center justify-center p-4 pointer-events-auto">
-      <div class="bg-slate-900/95 border-2 border-cyan-400/50 rounded-2xl max-w-md w-full p-6 shadow-2xl text-center">
-        <div class="text-xs font-mono-code tracking-widest text-slate-400 uppercase mb-1">RESULTADO DEL COMBATE</div>
-        <h2 id="match-end-title" class="font-fight font-bold text-3xl sm:text-4xl text-cyan-300 tracking-wide mb-1">¡VICTORIA RYUJIN!</h2>
-        <p id="match-end-subtitle" class="text-xs sm:text-sm text-slate-300 mb-5 font-mono-code">2 - 0 · Shoto Equilibrado</p>
-        <div class="flex flex-col gap-2.5">
-          <button id="btn-rematch" class="game-btn active w-full py-2.5 rounded-xl font-fight font-bold text-base tracking-wide cursor-pointer">↻ REVANCHA INMEDIATA</button>
-          <button id="btn-end-swap" class="game-btn w-full py-2.5 rounded-xl font-fight font-bold text-sm tracking-wide text-cyan-300 cursor-pointer">⇄ CAMBIAR LUCHADOR Y REVANCHA</button>
-          <button id="btn-end-train" class="game-btn w-full py-2.5 rounded-xl font-fight font-bold text-sm tracking-wide text-amber-300 cursor-pointer">⚙ IR A MODO ENTRENAMIENTO</button>
-          <button id="btn-end-menu" class="game-btn w-full py-2.5 rounded-xl font-fight font-bold text-sm tracking-wide text-slate-200 cursor-pointer">VOLVER AL MENÚ PRINCIPAL</button>
         </div>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import './hud.css';
 import { sfx } from '../audio/SoundEngine';
 import { ComboTrialTracker } from '../core/comboTrials';
 import { InputBuffer } from '../core/inputBuffer';
@@ -92,11 +93,6 @@ export class HudOverlay {
   private p1Callout = document.getElementById('p1-callout')!;
   private p2Callout = document.getElementById('p2-callout')!;
   private banner = document.getElementById('center-banner')!;
-  private matchEndModal = document.getElementById('match-end-modal')!;
-  /** En Arcade/Historia la campaña muestra su propio final de combate */
-  public suppressMatchEndModal = false;
-  private matchEndTitle = document.getElementById('match-end-title')!;
-  private matchEndSubtitle = document.getElementById('match-end-subtitle')!;
   public framePanel = document.getElementById('frame-debug-panel')!;
   private dbgP1State = document.getElementById('dbg-p1-state')!;
   private dbgP1Frame = document.getElementById('dbg-p1-frame')!;
@@ -150,9 +146,20 @@ export class HudOverlay {
   }
 
   public processEvents(state: MatchState, view: SceneView3D): void {
+    // Si el super conecta en este frame, su estallido sustituye al del golpe fuerte
+    let superHit = false;
+    if (state.superFlashFrames === 0) {
+      for (const ev of state.events) {
+        if (ev.type === 'VFX_BURST' && ev.effect === 'SUPER_BURST') superHit = true;
+      }
+    }
     for (const ev of state.events) {
       if (ev.type === 'SPARK') {
-        view.spawnSparks(ev.x, ev.y, ev.kind);
+        // Dirección del golpe: del atacante (el más lejano a la chispa) a la víctima
+        const [a, b] = state.fighters;
+        const victim = Math.abs(a.x - ev.x) <= Math.abs(b.x - ev.x) ? a : b;
+        const attacker = victim === a ? b : a;
+        view.spawnSparks(ev.x, ev.y, ev.kind, victim.x >= attacker.x ? 1 : -1, !superHit);
       } else if (ev.type === 'VFX_SLASH') {
         view.spawnSlashArc(
           ev.x,
@@ -163,7 +170,12 @@ export class HudOverlay {
           ev.scale ?? 1.15
         );
       } else if (ev.type === 'VFX_BURST') {
-        view.spawnSpecialBurst(ev.x, ev.y, ev.effect, ev.facing, ev.color);
+        // SUPER_BURST sin congelación = el super ha conectado (la activación congela 32 frames)
+        if (ev.effect === 'SUPER_BURST' && state.superFlashFrames === 0) {
+          view.superImpact(ev.x, ev.y, ev.facing, ev.color);
+        } else {
+          view.spawnSpecialBurst(ev.x, ev.y, ev.effect, ev.facing, ev.color);
+        }
       } else if (ev.type === 'STAGE_IMPACT') {
         view.triggerStageImpact(ev.x, ev.intensity, ev.ground);
       } else if (ev.type === 'SFX') {
@@ -362,29 +374,6 @@ export class HudOverlay {
     if (this.speedlinesOverlay) {
       this.speedlinesOverlay.classList.toggle('opacity-100', speedActive);
       this.speedlinesOverlay.classList.toggle('opacity-0', !speedActive);
-    }
-
-    if (state.phase === 'MATCH_END' && state.phaseTimer <= 55 && !this.suppressMatchEndModal) {
-      if (this.matchEndModal.classList.contains('hidden')) {
-        if (state.winnerId !== -1) {
-          const winner = state.fighters[state.winnerId];
-          const spec = CHARACTERS[winner.character];
-          const sideLabel = state.winnerId === 0 ? 'P1' : 'P2';
-          this.matchEndTitle.textContent = `¡VICTORIA ${spec.name}!`;
-          this.matchEndTitle.style.color = getFighterHudColor(
-            winner.character,
-            winner.palette
-          );
-          this.matchEndSubtitle.textContent = `${sideLabel} GANA (${p1.roundsWon} - ${p2.roundsWon}) · ${spec.archetype}`;
-        } else {
-          this.matchEndTitle.textContent = 'EMPATE TÉCNICO';
-          this.matchEndTitle.style.color = '#facc15';
-          this.matchEndSubtitle.textContent = `${p1.roundsWon} - ${p2.roundsWon}`;
-        }
-        this.matchEndModal.classList.remove('hidden');
-      }
-    } else if (!this.matchEndModal.classList.contains('hidden')) {
-      this.matchEndModal.classList.add('hidden');
     }
 
     if (!this.framePanel.classList.contains('hidden')) {

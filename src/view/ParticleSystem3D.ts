@@ -292,20 +292,6 @@ export class ParticleSystem3D {
         opacity: 0.78,
         additive: false,
       });
-      this.spawnAnimatedSprite({
-        sheet: 'hitSpark',
-        x,
-        y,
-        z: 0.36,
-        life: 14,
-        startScale: 1.45,
-        endScale: 2.35,
-        rotZ: (Math.random() - 0.5) * 0.9,
-        spin: (Math.random() - 0.5) * 0.03,
-        colorStart: 0xffffff,
-        colorEnd: 0xffedd5,
-        opacity: 1,
-      });
     } else if (kind === 'GOLD') {
       this.spawnAnimatedSprite({
         sheet: 'impactSmoke',
@@ -320,33 +306,6 @@ export class ParticleSystem3D {
         colorEnd: 0x64748b,
         opacity: 0.85,
         additive: false,
-      });
-      this.spawnAnimatedSprite({
-        sheet: 'superBurst',
-        x,
-        y,
-        z: 0.35,
-        life: 18,
-        startScale: 1.75,
-        endScale: 3.15,
-        rotZ: Math.random() * Math.PI * 2,
-        spin: 0.04,
-        colorStart: 0xffffff,
-        colorEnd: 0xfacc15,
-        opacity: 1,
-      });
-      this.spawnAnimatedSprite({
-        sheet: 'hitSpark',
-        x,
-        y,
-        z: 0.4,
-        life: 15,
-        startScale: 1.65,
-        endScale: 2.65,
-        rotZ: (Math.random() - 0.5) * 1.2,
-        colorStart: 0xffffff,
-        colorEnd: 0xfde047,
-        opacity: 1,
       });
     } else if (kind === 'BLOCK') {
       this.spawnAnimatedSprite({
@@ -395,8 +354,9 @@ export class ParticleSystem3D {
       });
     }
 
-    const count =
-      kind === 'GOLD' ? 22 : kind === 'DASH' || kind === 'BACKDASH' ? 8 : 12;
+    // HIT y GOLD: las esquirlas, la estrella y el corte los pinta CombatVfx
+    if (kind === 'HIT' || kind === 'GOLD') return;
+    const count = kind === 'DASH' || kind === 'BACKDASH' ? 8 : 12;
     const palette: Record<SparkKind, [number, number]> = {
       HIT: [0xfffbeb, 0xf97316],
       BLOCK: [0xe0f2fe, 0x0284c7],
@@ -420,9 +380,9 @@ export class ParticleSystem3D {
         vy: Math.sin(ang) * spd,
         vz: (Math.random() - 0.5) * 0.08,
         life: 12 + Math.floor(Math.random() * 9),
-        size: kind === 'GOLD' ? 1.45 : 1.1,
-        stretch: kind === 'GOLD' ? 3.2 : 2.3,
-        gravity: kind === 'HIT' || kind === 'GOLD' ? -0.004 : 0,
+        size: 1.1,
+        stretch: 2.3,
+        gravity: 0,
         colorStart: cStart,
         colorEnd: cEnd,
       });
