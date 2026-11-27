@@ -42,6 +42,11 @@ interface Template {
 const loader = new GLTFLoader();
 const templates = new Map<string, Promise<Template>>();
 
+/** Empieza a descargar un modelo para que esté listo antes del combate. */
+export function preloadGlb(url: string): void {
+  void loadTemplate(url).catch(() => undefined);
+}
+
 function loadTemplate(url: string): Promise<Template> {
   let p = templates.get(url);
   if (!p) {
@@ -63,10 +68,12 @@ export class GlbFighter {
   private current: THREE.AnimationAction | null = null;
   private yawTarget = 0;
   ready = false;
+  failed = false; // si el modelo no carga, la escena vuelve a enseñar el muñeco
 
   constructor(private spec: GlbSpec) {
     this.root.visible = false;
     loadTemplate(spec.url).then((t) => this.build(t)).catch((e) => {
+      this.failed = true;
       console.warn('[GlbFighter] no se pudo cargar el modelo', e);
     });
   }

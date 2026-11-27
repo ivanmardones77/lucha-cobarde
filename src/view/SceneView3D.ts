@@ -20,7 +20,7 @@ import { AlleyStage3D } from './AlleyStage3D';
 import { FighterRig3D } from './FighterRig3D';
 import { GLB_SPECS } from './glbSpecs';
 import { CombatVfx } from '../vfx/CombatVfx';
-import { GlbFighter } from './GlbFighter';
+import { GlbFighter, preloadGlb } from './GlbFighter';
 import { ParticleSystem3D } from './ParticleSystem3D';
 import { RooftopStage3D } from './RooftopStage3D';
 
@@ -205,6 +205,8 @@ export class SceneView3D {
       const q = new URLSearchParams(location.search);
       // Modelos 3D activos por defecto; ?sin3d vuelve a los muñecos de primitivas
       this.glbOn = !q.has('sin3d');
+      // Precarga: al llegar al combate los modelos ya están descargados
+      if (this.glbOn) for (const spec of Object.values(GLB_SPECS)) if (spec) preloadGlb(spec.url);
     }
 
     if (!this.isSoftwareGl) {
@@ -623,8 +625,9 @@ export class SceneView3D {
             this.glbFighters.set(key, glb);
             this.scene.add(glb.root);
           }
-          use = glb.ready;
-          if (use) glb.sync(f, state.frame);
+          if (glb.ready) glb.sync(f, state.frame);
+          // Mientras carga no se enseña el muñeco de primitivas (evita el «parpadeo» del modelo base)
+          use = !glb.failed;
         }
         this.rigs[i].root.visible = !use;
       }
