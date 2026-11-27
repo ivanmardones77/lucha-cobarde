@@ -182,13 +182,35 @@ export class HudOverlay {
         sfx.play(ev.name);
       } else if (ev.type === 'BANNER') {
         this.showCenterBanner(ev.text, ev.color);
+        this.announceBanner(ev.text, state);
       } else if (ev.type === 'CALLOUT') {
         this.showCallout(ev.side, ev.text, ev.color);
       } else if (ev.type === 'SUPER_FLASH') {
-        sfx.superFlash();
+        sfx.play('superFlash');
         this.showCenterBanner('¡SUPER ART!', '#facc15');
         this.showCallout(ev.owner, ev.superName, '#facc15');
       }
+    }
+  }
+
+  /** Locutor sincronizado con los rótulos de la simulación. */
+  private announceBanner(text: string, state: MatchState): void {
+    const round = /^ROUND (\d+)/.exec(text);
+    if (round) {
+      const n = Number(round[1]);
+      const deciding = state.fighters[0].roundsWon === 1 && state.fighters[1].roundsWon === 1;
+      sfx.announce(n >= 3 || deciding ? 'final' : n === 2 ? 'round2' : 'round1');
+    } else if (text.includes('FIGHT')) {
+      sfx.announce('fight');
+    } else if (text.startsWith('K.O')) {
+      const winner = state.fighters.find((f) => f.state === 'VICTORY');
+      const perfect = !!winner && winner.hp >= winner.maxHp;
+      sfx.announce('ko');
+      if (perfect) window.setTimeout(() => sfx.announce('perfect'), 1300);
+    } else if (text.startsWith('TIME')) {
+      sfx.announce('timeover');
+    } else if (text.startsWith('¡VICTORIA')) {
+      sfx.announce('youwin');
     }
   }
 
