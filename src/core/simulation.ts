@@ -13,6 +13,8 @@ import {
   getFighterHudColor,
   getFighterMove,
   GRAVITY,
+  AIR_TIME_SCALE,
+  JUMP_TIME_SCALE,
   HitLevel,
   INTRO_DURATION_FRAMES,
   MatchState,
@@ -1481,10 +1483,13 @@ function tryGroundOffensiveInput(
 }
 
 function applyPhysics(f: FighterState): void {
-  f.x = clamp(f.x + f.vx, -STAGE_HALF_WIDTH, STAGE_HALF_WIDTH);
-  if (f.y > 0 || f.vy !== 0) {
-    f.y += f.vy;
-    f.vy += GRAVITY;
+  const airborne = f.y > 0 || f.vy !== 0;
+  const jumpArc = f.state === 'JUMP' || (f.state === 'ATTACK' && !!f.moveId && f.moveId.startsWith('j'));
+  const dt = airborne ? (jumpArc ? JUMP_TIME_SCALE : AIR_TIME_SCALE) : 1;
+  f.x = clamp(f.x + f.vx * dt, -STAGE_HALF_WIDTH, STAGE_HALF_WIDTH);
+  if (airborne) {
+    f.y += f.vy * dt;
+    f.vy += GRAVITY * dt;
     if (f.y <= 0) {
       f.y = 0;
       f.vy = 0;
