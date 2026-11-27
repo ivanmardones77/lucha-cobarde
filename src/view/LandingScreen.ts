@@ -95,6 +95,7 @@ export class LandingScreen {
   public onArcade?: () => void;
   public onStory?: () => void;
   public onOpenControls?: () => void;
+  public onOnline?: () => void;
   public onToggleMute?: () => boolean;
 
   constructor(initialTouchEnabled: boolean) {
@@ -145,7 +146,8 @@ export class LandingScreen {
 
   /** Ventana de controles abierta encima: el menú no debe reaccionar */
   private overlayOpen(): boolean {
-    return !document.getElementById('controls-modal')?.classList.contains('hidden');
+    const online = document.getElementById('online-screen');
+    return !document.getElementById('controls-modal')?.classList.contains('hidden') || (!!online && !online.classList.contains('hidden'));
   }
 
   private enterMenu(): void {
@@ -208,6 +210,15 @@ export class LandingScreen {
           text: 'Dos jugadores en el mismo equipo: teclado compartido o dos mandos.',
           accent: '#a78bfa',
           action: start('2P'),
+        },
+        {
+          id: 'online',
+          label: 'ONLINE',
+          kicker: 'MULTIJUGADOR',
+          title: 'Juego online',
+          text: 'Crea una sala y pásale el código a un amigo, o únete a la suya.',
+          accent: '#38bdf8',
+          action: () => this.onOnline?.(),
         },
         {
           id: 'training',
