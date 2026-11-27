@@ -8,15 +8,31 @@ import { CHARACTERS, type FighterState } from '../core/types';
  *
  * El tiempo de cada clip sale del estado de la simulación (nunca del reloj), así que
  * encaja con la pausa por impacto, la cámara lenta y el rollback:
- *  · IDLE / WALK_F en bucle según el frame global (WALK_B = WALK_F al revés).
- *  · PUNCH_5P = stateFrame / 60: el impacto cae en el frame activo del 5P.
- *  · Golpes pesados = cruzado retemporizado al startup de cada golpe.
+ *  · IDLE / WALK_F / CROUCH en bucle según el frame global (WALK_B = WALK_F al revés).
+ *  · Cada golpe usa el clip de su tabla, retemporizado para que el frame de máximo
+ *    alcance del clip caiga justo en el frame de impacto (startup) del golpe.
  *  · Impactos, derribo, agachado y salto vienen del pack CC0 de Quaternius redirigido al esqueleto.
  */
 
-const MODEL_HEIGHT = 2.0; // altura en el juego (la caja de daño de Titán mide 1,9)
-const TURN_TO_CAMERA = 0.38;
-const CROSS_IMPACT = 19; // frame (a 60 fps) en el que el cruzado llega al máximo // gira un poco hacia la cámara para que se lea el volumen
+const TURN_TO_CAMERA = 0.38; // gira un poco hacia la cámara para que se lea el volumen
+
+/**
+ * Clip de un golpe. `impact` = frame del clip (a 60 fps) con el golpe a máximo alcance;
+ * `start` = frame donde arranca (se salta la pose relajada inicial). Sin `impact`, tiempo directo.
+ */
+export interface GlbMove {
+  clip: string;
+  impact?: number;
+  start?: number;
+}
+
+export interface GlbSpec {
+  url: string;
+  height: number; // altura en el juego, en metros
+  moves: Partial<Record<string, GlbMove>>;
+  heavy: GlbMove; // golpes sin entrada propia
+  block?: { clip: string; hold: number }; // pose de bloqueo de pie (frame del clip)
+}
 
 interface Template {
   scene: THREE.Group;
@@ -48,9 +64,9 @@ export class GlbFighter {
   private yawTarget = 0;
   ready = false;
 
-  constructor(url: string) {
+  constructor(private spec: GlbSpec) {
     this.root.visible = false;
-    loadTemplate(url).then((t) => this.build(t)).catch((e) => {
+    loadTemplate(spec.url).then((t) => this.build(t)).catch((e) => {
       console.warn('[GlbFighter] no se pudo cargar el modelo', e);
     });
   }
@@ -69,7 +85,7 @@ export class GlbFighter {
       }
     });
     const h = box.max.y - box.min.y || 1;
-    const s = MODEL_HEIGHT / h;
+    const s = this.spec.height / h;
     model.scale.setScalar(s);
     // Pies en el origen y centrado sobre el punto de apoyo de la simulación
     const c = box.getCenter(new THREE.Vector3());
@@ -133,6 +149,10 @@ export class GlbFighter {
         this.play('WALK_F', d - (sec % d));
         break;
       }
+      case 'BLOCK_STAND':
+        if (this.spec.block) this.play(this.spec.block.clip, this.spec.block.hold / 60);
+        else this.play('IDLE', loopT('IDLE'));
+        break;
       case 'CROUCH':
       case 'BLOCK_CROUCH':
         this.play('CROUCH', loopT('CROUCH'));
@@ -156,17 +176,21 @@ export class GlbFighter {
         this.play('KNOCKDOWN', d - t * 3);
         break;
       }
-      case 'ATTACK':
-        if (f.moveId === '5P' || f.moveId === '2P' || f.moveId === 'jP') {
-          this.play('PUNCH_5P', t);
+      case 'ATTACK': {
+        const mv = (f.moveId && this.spec.moves[f.moveId]) || this.spec.heavy;
+        if (mv.impact === undefined) {
+          this.play(mv.clip, t);
         } else {
-          // Golpes pesados: el puño del cruzado llega al máximo en el frame de impacto del golpe
           const startup = (f.moveId && CHARACTERS[f.character].moves[f.moveId]?.startup) || 10;
-          const hit = CROSS_IMPACT / 60;
-          const ct = f.stateFrame <= startup ? (f.stateFrame / startup) * hit : hit + (f.stateFrame - startup) / 60;
-          this.play('PUNCH_CROSS', ct);
+          const hit = mv.impact / 60;
+          const from = (mv.start ?? 0) / 60;
+          this.play(
+            mv.clip,
+            f.stateFrame <= startup ? from + (f.stateFrame / startup) * (hit - from) : hit + (f.stateFrame - startup) / 60
+          );
         }
         break;
+      }
       default:
         this.play('IDLE', loopT('IDLE'));
     }
