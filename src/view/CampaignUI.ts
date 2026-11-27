@@ -243,7 +243,7 @@ export class CampaignUI {
       this.textEl.textContent = full;
       return;
     }
-    sfx.play('block');
+    sfx.play('uiMove');
     this.lineIdx++;
     if (this.lineIdx >= this.lines.length) this.finishDialogue();
     else this.renderLine();
@@ -320,14 +320,14 @@ export class CampaignUI {
         break;
       }
     }
-    sfx.play('dash');
+    sfx.play('uiMove');
     this.syncFocus();
   }
 
   private select(): void {
     const it = this.items[this.focus];
     if (!it || it.disabled) return;
-    sfx.play('superFlash');
+    sfx.play('uiConfirm');
     it.onSelect();
   }
 

@@ -187,7 +187,7 @@ export class CharacterSelectScreen {
         if (this.stageCursor === idx) this.confirmStage();
         else {
           this.stageCursor = idx;
-          sfx.play('dash');
+          sfx.play('uiMove');
           this.render();
         }
       });
@@ -413,7 +413,7 @@ export class CharacterSelectScreen {
       this.confirmSlot(i);
     } else {
       this.slots[i].cursor = idx;
-      sfx.play('dash');
+      sfx.play('uiMove');
       this.render();
     }
   }
@@ -424,7 +424,7 @@ export class CharacterSelectScreen {
     const s = this.slots[i];
     if (s.locked) return;
     s.cursor = (s.cursor + dir + ROSTER.length) % ROSTER.length;
-    sfx.play('dash');
+    sfx.play('uiMove');
     this.render();
   }
 
@@ -447,7 +447,7 @@ export class CharacterSelectScreen {
     }
     s.locked = true;
     s.ready = false;
-    sfx.play('superFlash');
+    sfx.play('uiConfirm');
     const id = ROSTER[s.cursor];
     const set = CHARACTER_SPRITES[id];
     if (set) {
@@ -486,7 +486,7 @@ export class CharacterSelectScreen {
       this.stageTimer = window.setTimeout(() => {
         if (this.slots.every((s) => s.locked && s.ready) && this.phase === 'CHAR') {
           this.phase = 'STAGE';
-          sfx.play('roundStart');
+          sfx.play('uiConfirm');
           this.render();
         }
       }, 450);
@@ -498,7 +498,7 @@ export class CharacterSelectScreen {
     if (this.phase === 'STAGE') {
       this.phase = 'CHAR';
       this.unlock(1);
-      sfx.play('backdash');
+      sfx.play('uiBack');
       this.render();
       return;
     }
@@ -508,14 +508,14 @@ export class CharacterSelectScreen {
     } else if (!this.versus && i === 1) {
       this.unlock(0);
     } else if (!this.slots[0].locked && !this.slots[1].locked) {
-      sfx.play('backdash');
+      sfx.play('uiBack');
       this.hide();
       this.onBack?.();
       return;
     } else {
       return;
     }
-    sfx.play('backdash');
+    sfx.play('uiBack');
     this.render();
   }
 
@@ -528,7 +528,7 @@ export class CharacterSelectScreen {
 
   private moveStage(dir: number): void {
     this.stageCursor = (this.stageCursor + dir + STAGES.length) % STAGES.length;
-    sfx.play('dash');
+    sfx.play('uiMove');
     this.render();
   }
 
@@ -544,7 +544,7 @@ export class CharacterSelectScreen {
       stageId: STAGES[this.stageCursor].id,
     };
     this.phase = 'CHAR';
-    sfx.play('superFlash');
+    sfx.play('uiStart');
     this.root.classList.add('fade-out');
     window.setTimeout(() => {
       this.hide();

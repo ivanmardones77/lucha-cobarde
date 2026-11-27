@@ -20,7 +20,11 @@ export type SfxName =
   | 'ko'
   | 'roundStart'
   | 'trialClear'
-  | 'swing';
+  | 'swing'
+  | 'uiMove'
+  | 'uiConfirm'
+  | 'uiBack'
+  | 'uiStart';
 
 /** Líneas del locutor (archivos vo_*.mp3). */
 export type AnnouncerLine = 'round1' | 'round2' | 'final' | 'fight' | 'ko' | 'perfect' | 'timeover' | 'youwin';
@@ -378,11 +382,23 @@ export class SoundEngine {
 
   public play(name: SfxName): void {
     // Muestra grabada si ya está cargada (sin variación de tono en el locutor ni en los jingles)
-    const jitter = name === 'trialClear' || name === 'roundStart' || name === 'ko' ? 0 : 0.04;
+    const jitter = name === 'trialClear' || name === 'roundStart' || name === 'ko' || name.startsWith('ui') ? 0 : 0.04;
     if (this.playSample(name, jitter)) return;
     switch (name) {
       case 'swing':
         this.playNoise(0.12, 2400, 0.08, 'highpass');
+        break;
+      case 'uiMove':
+        this.playTone(1400, 1600, 0.04, 'sine', 0.06);
+        break;
+      case 'uiConfirm':
+        this.playTone(880, 1760, 0.12, 'triangle', 0.12);
+        break;
+      case 'uiBack':
+        this.playTone(900, 500, 0.1, 'triangle', 0.1);
+        break;
+      case 'uiStart':
+        this.playTone(440, 1320, 0.25, 'triangle', 0.14);
         break;
       case 'hitLight':
         this.hitLight();
