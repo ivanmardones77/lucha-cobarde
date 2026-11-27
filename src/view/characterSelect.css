@@ -385,3 +385,18 @@
 @media (prefers-reduced-motion: reduce) {
   .cs-fallback, .cs-side.locked .cs-fallback { animation: none; }
 }
+
+/* ---------- Plantel animado en la portada ---------- */
+.landing-lineup-fighter {
+  position: relative;
+  /* 5 luchadores solapados: 5 x 30% - 10 x 5% = 100% del ancho */
+  width: 30%;
+  height: auto;
+  aspect-ratio: 340 / 330;
+  margin: 0 -5%;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.7));
+  pointer-events: none;
+}
+#landing-roster-showcase:hover .landing-lineup-fighter {
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.7)) brightness(1.08);
+}
