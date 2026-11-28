@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import { CHARACTERS, type FighterState } from '../core/types';
+import { CHARACTERS, type CharacterId, type CostumePalette, type FighterState } from '../core/types';
 
 /**
  * PRUEBA DE CONCEPTO: luchador como modelo GLB con esqueleto y animaciones.
@@ -24,6 +25,77 @@ export interface GlbMove {
   clip: string;
   impact?: number;
   start?: number;
+  crouch?: boolean; // golpe agachado: piernas del clip CROUCH, torso y brazos del clip del golpe
+}
+
+/** Huesos que se quedan con la pose agachada en los clips combinados (esqueleto de Meshy). */
+const LOWER_BODY = ['Hips', 'LeftUpLeg', 'LeftLeg', 'LeftFoot', 'LeftToeBase', 'RightUpLeg', 'RightLeg', 'RightFoot', 'RightToeBase'];
+const CROUCH_HOLD = 1; // segundo del clip CROUCH usado como pose fija de piernas
+
+/**
+ * Clip combinado: piernas y cadera de `lower` congeladas en `lowerT` (segundos) y el resto
+ * de pistas de `upper`. Sirve para golpes y bloqueo agachados sin animarlos aparte.
+ */
+function compositeClip(name: string, lower: THREE.AnimationClip, upper: THREE.AnimationClip, lowerT: number) {
+  const isLower = (t: THREE.KeyframeTrack) => LOWER_BODY.includes(t.name.slice(0, t.name.lastIndexOf('.')));
+  const tracks: THREE.KeyframeTrack[] = upper.tracks.filter((t) => !isLower(t)).map((t) => t.clone());
+  for (const t of lower.tracks.filter(isLower)) {
+    // Clips muestreados a 60 fps: basta con el fotograma más cercano a lowerT
+    const size = t.getValueSize();
+    let k = 0;
+    while (k < t.times.length - 1 && t.times[k + 1] <= lowerT) k++;
+    const v = Array.from(t.values.slice(k * size, (k + 1) * size)) as number[];
+    const Track = t.constructor as new (n: string, times: number[], values: number[]) => THREE.KeyframeTrack;
+    tracks.push(new Track(t.name, [0, upper.duration], [...v, ...v]));
+  }
+  return new THREE.AnimationClip(name, upper.duration, tracks);
+}
+
+/**
+ * Traje alternativo: gira el tono de los píxeles del color principal del traje (por textura,
+ * sin repintar). Solo toca colores saturados cercanos al tono original: piel, negros y metal quedan.
+ */
+function hueOf(hex: number): number {
+  const hsl = { h: 0, s: 0, l: 0 };
+  new THREE.Color(hex).getHSL(hsl);
+  return hsl.h;
+}
+
+function paletteMaterial(src: THREE.Material, character: CharacterId): THREE.Material {
+  const c = CHARACTERS[character];
+  const m = src.clone();
+  const fromHue = hueOf(c.primaryColor);
+  let delta = hueOf(c.altPrimaryColor) - fromHue;
+  if (delta > 0.5) delta -= 1;
+  if (delta < -0.5) delta += 1;
+  m.onBeforeCompile = (shader) => {
+    shader.uniforms.uFromHue = { value: fromHue };
+    shader.uniforms.uHueDelta = { value: delta };
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+uniform float uFromHue;
+uniform float uHueDelta;
+vec3 pal_rgb2hsv(vec3 c){vec4 K=vec4(0.,-1./3.,2./3.,-1.);vec4 p=mix(vec4(c.bg,K.wz),vec4(c.gb,K.xy),step(c.b,c.g));
+vec4 q=mix(vec4(p.xyw,c.r),vec4(c.r,p.yzx),step(p.x,c.r));float d=q.x-min(q.w,q.y);float e=1.0e-10;
+return vec3(abs(q.z+(q.w-q.y)/(6.*d+e)),d/(q.x+e),q.x);}
+vec3 pal_hsv2rgb(vec3 c){vec4 K=vec4(1.,2./3.,1./3.,3.);vec3 p=abs(fract(c.xxx+K.xyz)*6.-K.www);
+return c.z*mix(K.xxx,clamp(p-K.xxx,0.,1.),c.y);}`
+      )
+      .replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+{
+  vec3 hsv = pal_rgb2hsv(diffuseColor.rgb);
+  float dh = abs(hsv.x - uFromHue); dh = min(dh, 1.0 - dh);
+  float w = (1.0 - smoothstep(0.06, 0.12, dh)) * smoothstep(0.22, 0.38, hsv.y);
+  diffuseColor.rgb = mix(diffuseColor.rgb, pal_hsv2rgb(vec3(fract(hsv.x + uHueDelta), hsv.y, hsv.z)), w);
+}`
+      );
+  };
+  m.customProgramCacheKey = () => `pal-${character}`;
+  return m;
 }
 
 export interface GlbSpec {
@@ -75,7 +147,8 @@ interface Template {
   clips: Map<string, THREE.AnimationClip>;
 }
 
-const loader = new GLTFLoader();
+// Los GLB van comprimidos con gltfpack (meshopt + cuantización): ~4 veces más ligeros
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const templates = new Map<string, Promise<Template>>();
 
 /** Empieza a descargar un modelo para que esté listo antes del combate. */
@@ -108,7 +181,11 @@ export class GlbFighter {
   ready = false;
   failed = false; // si el modelo no carga, la escena vuelve a enseñar el muñeco
 
-  constructor(private spec: GlbSpec) {
+  constructor(
+    private spec: GlbSpec,
+    private character: CharacterId,
+    private palette: CostumePalette = 0
+  ) {
     this.root.visible = false;
     loadTemplate(spec.url).then((t) => this.build(t)).catch((e) => {
       this.failed = true;
@@ -140,10 +217,13 @@ export class GlbFighter {
       if (m.isMesh) {
         m.frustumCulled = false; // la caja de la malla en reposo no sigue a la animación
         m.castShadow = true;
+        // El clon comparte materiales con la plantilla: el traje alternativo usa una copia
+        if (this.palette === 1) m.material = paletteMaterial(m.material as THREE.Material, this.character);
       }
     });
     this.root.add(model);
     this.model = model;
+    this.addCompositeClips(t.clips);
     this.mixer = new THREE.AnimationMixer(model);
     for (const [name, clip] of t.clips) {
       const a = this.mixer.clipAction(clip);
@@ -153,6 +233,21 @@ export class GlbFighter {
     }
     this.buildSprings(model);
     this.ready = true;
+  }
+
+  /** Golpes y bloqueo agachados: piernas de CROUCH + torso del clip (se crean una vez por plantilla). */
+  private addCompositeClips(clips: Map<string, THREE.AnimationClip>): void {
+    const crouch = clips.get('CROUCH');
+    if (!crouch) return;
+    const wanted = new Set<string>();
+    for (const mv of Object.values(this.spec.moves)) if (mv?.crouch) wanted.add(mv.clip);
+    for (const name of wanted) {
+      const key = `CROUCH+${name}`;
+      const up = clips.get(name);
+      if (up && !clips.has(key)) clips.set(key, compositeClip(key, crouch, up, CROUCH_HOLD));
+    }
+    const block = this.spec.block && clips.get(this.spec.block.clip);
+    if (block && !clips.has('CROUCH+BLOCK')) clips.set('CROUCH+BLOCK', compositeClip('CROUCH+BLOCK', crouch, block, CROUCH_HOLD));
   }
 
   private buildSprings(model: THREE.Object3D): void {
@@ -279,8 +374,11 @@ export class GlbFighter {
         else this.play('IDLE', loopT('IDLE'));
         break;
       case 'CROUCH':
-      case 'BLOCK_CROUCH':
         this.play('CROUCH', loopT('CROUCH'));
+        break;
+      case 'BLOCK_CROUCH':
+        if (this.spec.block && this.actions.has('CROUCH+BLOCK')) this.play('CROUCH+BLOCK', this.spec.block.hold / 60);
+        else this.play('CROUCH', loopT('CROUCH'));
         break;
       case 'JUMP':
         this.play(this.actions.has('JUMP_TUCK') ? 'JUMP_TUCK' : 'JUMP', t);
@@ -305,14 +403,15 @@ export class GlbFighter {
       }
       case 'ATTACK': {
         const mv = (f.moveId && this.spec.moves[f.moveId]) || this.spec.heavy;
+        const clip = mv.crouch && this.actions.has(`CROUCH+${mv.clip}`) ? `CROUCH+${mv.clip}` : mv.clip;
         if (mv.impact === undefined) {
-          this.play(mv.clip, t);
+          this.play(clip, t);
         } else {
           const startup = (f.moveId && CHARACTERS[f.character].moves[f.moveId]?.startup) || 10;
           const hit = mv.impact / 60;
           const from = (mv.start ?? 0) / 60;
           this.play(
-            mv.clip,
+            clip,
             f.stateFrame <= startup ? from + (f.stateFrame / startup) * (hit - from) : hit + (f.stateFrame - startup) / 60
           );
         }

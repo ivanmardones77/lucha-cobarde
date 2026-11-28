@@ -615,13 +615,13 @@ export class SceneView3D {
       for (let i = 0; i < 2; i++) {
         const f = state.fighters[i];
         let use = false;
-        for (const [key, g] of this.glbFighters) if (key.startsWith(`${i}:`) && key !== `${i}:${f.character}`) g.hide();
+        for (const [key, g] of this.glbFighters) if (key.startsWith(`${i}:`) && key !== `${i}:${f.character}:${f.palette}`) g.hide();
         const spec = GLB_SPECS[f.character];
         if (spec) {
-          const key = `${i}:${f.character}`;
+          const key = `${i}:${f.character}:${f.palette}`;
           let glb = this.glbFighters.get(key);
           if (!glb) {
-            glb = new GlbFighter(spec);
+            glb = new GlbFighter(spec, f.character, f.palette);
             this.glbFighters.set(key, glb);
             this.scene.add(glb.root);
           }

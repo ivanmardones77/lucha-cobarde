@@ -21,7 +21,7 @@ export const GLB_SPECS: Partial<Record<CharacterId, GlbSpec>> = {
     height: 2.0, // la caja de daño de Titán mide 1,9
     moves: {
       '5P': { clip: 'PUNCH_5P' },
-      '2P': { clip: 'PUNCH_5P' },
+      '2P': { clip: 'PUNCH_5P', crouch: true },
       jP: AIR_PUNCH,
       jK: AIR_KICK,
       j214K: AIR_KICK,
@@ -33,7 +33,7 @@ export const GLB_SPECS: Partial<Record<CharacterId, GlbSpec>> = {
     height: 1.85,
     moves: {
       '5P': { clip: 'M_JAB', start: 28, impact: 40 },
-      '2P': { clip: 'M_JAB', start: 28, impact: 40 },
+      '2P': { clip: 'M_JAB', start: 28, impact: 40, crouch: true },
       jP: AIR_PUNCH,
       '5K': { clip: 'M_KICK', start: 30, impact: 47 },
       '6K': { clip: 'M_KICK', start: 24, impact: 47 },
@@ -56,7 +56,7 @@ export const GLB_SPECS: Partial<Record<CharacterId, GlbSpec>> = {
     height: 1.75,
     moves: {
       '5P': { clip: 'M_JAB', start: 30, impact: 40 },
-      '2P': { clip: 'M_JAB', start: 30, impact: 40 },
+      '2P': { clip: 'M_JAB', start: 30, impact: 40, crouch: true },
       jP: AIR_PUNCH,
       '5K': { clip: 'M_KICK', start: 26, impact: 41 },
       '6K': { clip: 'M_KICK', start: 22, impact: 41 },
@@ -80,7 +80,7 @@ export const GLB_SPECS: Partial<Record<CharacterId, GlbSpec>> = {
     height: 1.8,
     moves: {
       '5P': { clip: 'M_JAB', start: 30, impact: 40 },
-      '2P': { clip: 'M_JAB', start: 30, impact: 40 },
+      '2P': { clip: 'M_JAB', start: 30, impact: 40, crouch: true },
       jP: AIR_PUNCH,
       '5K': { clip: 'M_KICK', start: 26, impact: 41 },
       '6K': { clip: 'M_KICK', start: 22, impact: 41 },
@@ -105,7 +105,7 @@ export const GLB_SPECS: Partial<Record<CharacterId, GlbSpec>> = {
     height: 1.85,
     moves: {
       '5P': { clip: 'M_JAB', start: 30, impact: 40 },
-      '2P': { clip: 'M_JAB', start: 30, impact: 40 },
+      '2P': { clip: 'M_JAB', start: 30, impact: 40, crouch: true },
       jP: AIR_PUNCH,
       '5K': { clip: 'M_KICK', start: 26, impact: 41 },
       '6K': { clip: 'M_KICK', start: 22, impact: 41 },
