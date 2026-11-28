@@ -32,7 +32,43 @@ export interface GlbSpec {
   moves: Partial<Record<string, GlbMove>>;
   heavy: GlbMove; // golpes sin entrada propia
   block?: { clip: string; hold: number }; // pose de bloqueo de pie (frame del clip)
+  springs?: GlbSpring[]; // pelo, coletas, bufandas: movimiento secundario solo visual
 }
+
+/**
+ * Cadena de huesos con muelle (pelo, coleta...). Huesos ordenados de la raíz a la punta,
+ * sin pistas en los clips. Solo afecta a la vista: no toca la simulación ni el rollback.
+ */
+export interface GlbSpring {
+  bones: string[];
+  stiffness?: number; // 0..1 por frame: cuánto vuelve a la pose animada (más = más rígido)
+  damping?: number; // 0..1 por frame: cuánto frena (más = menos rebote)
+  gravity?: number; // m/s², hacia abajo
+  maxAngle?: number; // radianes que puede separarse cada hueso de su pose animada
+}
+
+interface SpringLink {
+  bone: THREE.Bone;
+  rest: THREE.Quaternion; // rotación local de reposo (los clips no la animan)
+  tailLocal: THREE.Vector3; // punta del hueso en su espacio local
+  p: THREE.Vector3; // punta simulada (mundo)
+  prev: THREE.Vector3;
+}
+
+interface SpringChain {
+  cfg: Required<Omit<GlbSpring, 'bones'>>;
+  links: SpringLink[];
+}
+
+const _head = new THREE.Vector3();
+const _target = new THREE.Vector3();
+const _v = new THREE.Vector3();
+const _a = new THREE.Vector3();
+const _b = new THREE.Vector3();
+const _q = new THREE.Quaternion();
+const _qIdentity = new THREE.Quaternion();
+const _inv = new THREE.Matrix4();
+const SPRING_DT = 1 / 60;
 
 interface Template {
   scene: THREE.Group;
@@ -67,6 +103,8 @@ export class GlbFighter {
   private actions = new Map<string, THREE.AnimationAction>();
   private current: THREE.AnimationAction | null = null;
   private yawTarget = 0;
+  private springs: SpringChain[] = [];
+  private springFrame = -1; // último frame de la simulación aplicado a los muelles
   ready = false;
   failed = false; // si el modelo no carga, la escena vuelve a enseñar el muñeco
 
@@ -113,7 +151,82 @@ export class GlbFighter {
       a.clampWhenFinished = true;
       this.actions.set(name, a);
     }
+    this.buildSprings(model);
     this.ready = true;
+  }
+
+  private buildSprings(model: THREE.Object3D): void {
+    for (const s of this.spec.springs ?? []) {
+      const bones = s.bones.map((n) => model.getObjectByName(n) as THREE.Bone | undefined);
+      if (bones.some((b) => !b)) {
+        console.warn('[GlbFighter] faltan huesos del muelle', s.bones);
+        continue;
+      }
+      const links = (bones as THREE.Bone[]).map((bone, i, all) => {
+        // La punta es el siguiente hueso; el último repite el largo del anterior
+        const next = all[i + 1];
+        const tailLocal = next ? next.position.clone() : bone.position.clone();
+        return { bone, rest: bone.quaternion.clone(), tailLocal, p: new THREE.Vector3(), prev: new THREE.Vector3() };
+      });
+      this.springs.push({
+        cfg: {
+          stiffness: s.stiffness ?? 0.15,
+          damping: s.damping ?? 0.2,
+          gravity: s.gravity ?? 2,
+          maxAngle: s.maxAngle ?? 0.6,
+        },
+        links,
+      });
+    }
+  }
+
+  /**
+   * Avanza los muelles un paso por frame de la simulación. Quietos durante la pausa por impacto;
+   * si el frame retrocede o salta (rollback, revancha) vuelven a la pose animada.
+   */
+  private updateSprings(globalFrame: number, hitstop: number): void {
+    if (!this.springs.length || !this.model) return;
+    let steps = globalFrame - this.springFrame;
+    const reset = this.springFrame < 0 || steps < 0 || steps > 30;
+    this.springFrame = globalFrame;
+    if (hitstop > 0 && !reset) steps = 0;
+    steps = reset ? 1 : Math.min(steps, 4);
+    this.model.updateMatrixWorld(true);
+    for (const ch of this.springs) {
+      const { stiffness, damping, gravity, maxAngle } = ch.cfg;
+      for (const L of ch.links) {
+        const b = L.bone;
+        b.quaternion.copy(L.rest);
+        b.updateMatrixWorld(true);
+        b.getWorldPosition(_head);
+        _target.copy(L.tailLocal).applyMatrix4(b.matrixWorld);
+        const len = _target.distanceTo(_head);
+        if (reset) {
+          L.p.copy(_target);
+          L.prev.copy(_target);
+        }
+        for (let k = 0; k < steps; k++) {
+          _v.subVectors(L.p, L.prev).multiplyScalar(1 - damping);
+          L.prev.copy(L.p);
+          L.p.add(_v).addScaledVector(_a.subVectors(_target, L.p), stiffness);
+          L.p.y -= gravity * SPRING_DT * SPRING_DT;
+          L.p.sub(_head).setLength(len).add(_head); // largo fijo
+        }
+        // Gira el hueso hacia la punta simulada (en su espacio local), con un tope de ángulo
+        _inv.copy(b.matrixWorld).invert();
+        _a.copy(L.tailLocal).normalize();
+        _b.copy(L.p).applyMatrix4(_inv).normalize();
+        _q.setFromUnitVectors(_a, _b);
+        const ang = 2 * Math.acos(Math.min(1, Math.abs(_q.w)));
+        if (ang > maxAngle) {
+          _q.slerpQuaternions(_qIdentity, _q, maxAngle / ang);
+          // la punta simulada se queda en el tope para no acumular energía
+          L.p.copy(L.tailLocal).applyQuaternion(_q).applyMatrix4(b.matrixWorld);
+        }
+        b.quaternion.multiply(_q);
+        b.updateMatrixWorld(true);
+      }
+    }
   }
 
   private play(name: string, time: number): void {
@@ -131,7 +244,12 @@ export class GlbFighter {
     this.mixer.update(0);
   }
 
-  sync(f: FighterState, globalFrame: number): void {
+  sync(f: FighterState, globalFrame: number, hitstop = 0): void {
+    this.syncPose(f, globalFrame);
+    if (this.ready) this.updateSprings(globalFrame, hitstop);
+  }
+
+  private syncPose(f: FighterState, globalFrame: number): void {
     if (!this.ready) return;
     this.root.visible = true;
     this.root.position.set(f.x, f.y, 0);

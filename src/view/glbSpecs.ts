@@ -72,6 +72,8 @@ export const GLB_SPECS: Partial<Record<CharacterId, GlbSpec>> = {
     },
     heavy: { clip: 'PUNCH_CROSS', impact: 19 },
     block: { clip: 'M_BLOCK', hold: 73 },
+    // Coleta de pinchos: cadena de 3 huesos añadida en Blender (kaze_poc.blend)
+    springs: [{ bones: ['Hair_01', 'Hair_02', 'Hair_03'], stiffness: 0.28, damping: 0.24, gravity: 1.5, maxAngle: 0.4 }],
   },
   VALKYRIE: {
     url: valkyrieGlbUrl,
