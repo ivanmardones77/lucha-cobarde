@@ -27,6 +27,32 @@
 }
 .cg-scene.shown { opacity: 1; }
 
+/* Lienzo panorámico con los controles de diálogo del juego encima. */
+.cg-cinematic {
+  display: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #05070d;
+  pointer-events: none;
+}
+#campaign-ui.cinematic .cg-cinematic { display: block; }
+#campaign-ui.cinematic .cg-dialogue { background: none; }
+#campaign-ui.cinematic .cg-box {
+  background: rgba(8, 11, 20, 0.82);
+  min-height: 100px;
+}
+#campaign-ui.cinematic .cg-text { min-height: 1.5em; }
+
+@media (max-aspect-ratio: 4/5) {
+  #campaign-ui.cinematic .cg-cinematic {
+    height: calc(100% - 180px - env(safe-area-inset-bottom));
+    object-position: center 70%;
+  }
+}
+
 /* Luchador del modo historia: hoja de sprites 4×4 (viñetas 384×512) */
 .cg-portrait {
   position: absolute;
