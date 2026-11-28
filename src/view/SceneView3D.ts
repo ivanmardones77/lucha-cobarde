@@ -21,6 +21,7 @@ import { FighterRig3D } from './FighterRig3D';
 import { GLB_SPECS } from './glbSpecs';
 import { CombatVfx } from '../vfx/CombatVfx';
 import { GlbFighter, preloadGlb } from './GlbFighter';
+import { SpriteFighter, hasSprites } from './SpriteFighter';
 import { ParticleSystem3D } from './ParticleSystem3D';
 import { RooftopStage3D } from './RooftopStage3D';
 
@@ -115,6 +116,9 @@ export class SceneView3D {
   /** Luchadores como modelo 3D con esqueleto (desactivar con ?sin3d) */
   private glbOn = false;
   private glbFighters = new Map<string, GlbFighter>(); // clave «hueco:personaje», se cargan al usarse
+  /** Luchadores como sprites animados (?sprites): sustituyen al modelo 3D de los personajes con hojas horneadas */
+  private spritesOn = false;
+  private spriteFighters = new Map<string, SpriteFighter>();
   /** Impactos y super (src/vfx/CombatVfx.ts) */
   private vfx = new CombatVfx();
   private lastRenderMs = performance.now();
@@ -205,6 +209,7 @@ export class SceneView3D {
       const q = new URLSearchParams(location.search);
       // Modelos 3D activos por defecto; ?sin3d vuelve a los muñecos de primitivas
       this.glbOn = !q.has('sin3d');
+      this.spritesOn = q.has('sprites');
       // Precarga: al llegar al combate los modelos ya están descargados
       if (this.glbOn) for (const spec of Object.values(GLB_SPECS)) if (spec) preloadGlb(spec.url);
     }
@@ -615,9 +620,21 @@ export class SceneView3D {
       for (let i = 0; i < 2; i++) {
         const f = state.fighters[i];
         let use = false;
-        for (const [key, g] of this.glbFighters) if (key.startsWith(`${i}:`) && key !== `${i}:${f.character}:${f.palette}`) g.hide();
+        const curKey = `${i}:${f.character}:${f.palette}`;
         const spec = GLB_SPECS[f.character];
-        if (spec) {
+        const asSprite = this.spritesOn && !!spec && hasSprites(f.character);
+        for (const [key, g] of this.glbFighters) if (key.startsWith(`${i}:`) && (asSprite || key !== curKey)) g.hide();
+        for (const [key, g] of this.spriteFighters) if (key.startsWith(`${i}:`) && (!asSprite || key !== curKey)) g.hide();
+        if (asSprite && spec) {
+          let sp = this.spriteFighters.get(curKey);
+          if (!sp) {
+            sp = new SpriteFighter(spec, f.character);
+            this.spriteFighters.set(curKey, sp);
+            this.scene.add(sp.root);
+          }
+          sp.sync(f, state.frame, state.hitstop);
+          use = true;
+        } else if (spec) {
           const key = `${i}:${f.character}:${f.palette}`;
           let glb = this.glbFighters.get(key);
           if (!glb) {
