@@ -625,7 +625,7 @@ export class SceneView3D {
             this.glbFighters.set(key, glb);
             this.scene.add(glb.root);
           }
-          if (glb.ready) glb.sync(f, state.frame);
+          if (glb.ready) glb.sync(f, state.frame, state.hitstop);
           // Mientras carga no se enseña el muñeco de primitivas (evita el «parpadeo» del modelo base)
           use = !glb.failed;
         }
