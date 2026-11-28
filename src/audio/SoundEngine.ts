@@ -157,6 +157,32 @@ export class SoundEngine {
     this.voice = src;
   }
 
+  public async loadCinematicAudio(url: string): Promise<AudioBuffer | null> {
+    this.unlock();
+    const ctx = this.ctx;
+    if (!ctx) return null;
+    try {
+      const response = await fetch(url);
+      if (!response.ok) return null;
+      return await ctx.decodeAudioData(await response.arrayBuffer());
+    } catch {
+      return null;
+    }
+  }
+
+  public playCinematicAudio(buffer: AudioBuffer, offset: number, duration: number): (() => void) | null {
+    if (!this.ctx || !this.sfxBus || offset >= buffer.duration) return null;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(this.sfxBus);
+    src.start(0, offset, duration);
+    src.onended = () => src.disconnect();
+    return () => {
+      src.stop();
+      src.disconnect();
+    };
+  }
+
   public toggleMute(): boolean {
     this.muted = !this.muted;
     if (this.sfxBus && this.ctx) {

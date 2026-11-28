@@ -1,0 +1,274 @@
+{
+  "version": 1,
+  "capitulo": "cap1-lluvia",
+  "nodo": 3,
+  "escena": "Camino a Corriente cruzada",
+  "lienzo": [
+    1280,
+    720
+  ],
+  "fps": 24,
+  "reloj": "segundos",
+  "total": 5.25,
+  "activos": {
+    "azotea-cierre": {
+      "png": "arte/cierre/azotea-cierre.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "lluvia-cerca": {
+      "png": "arte/primer-plano/lluvia-cerca.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "categoria": "primer-plano",
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "lluvia-fondo": {
+      "png": "arte/primer-plano/lluvia-fondo.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "categoria": "fondo-medio",
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "neon-cian": {
+      "png": "arte/primer-plano/neon-cian.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "categoria": "primer-plano",
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "torre-kurogane": {
+      "png": "arte/cierre/torre-kurogane.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "volt-antena": {
+      "png": "arte/cierre/volt-antena.png",
+      "pivote": [
+        512,
+        790
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    }
+  },
+  "dialogo": [
+    {
+      "linea": 0,
+      "hablante": "reward",
+      "lado": "left",
+      "texto": "Capítulo 2 desbloqueado: «Corriente cruzada».",
+      "inicio": 0,
+      "duracionTexto": 5.25,
+      "planos": [
+        {
+          "id": "c01-kurogane",
+          "tipo": "contrapicado",
+          "duracion": 0.76,
+          "camara": {
+            "desde": {
+              "x": 670,
+              "y": 390,
+              "zoom": 1.15
+            },
+            "hasta": {
+              "x": 641,
+              "y": 318,
+              "zoom": 1.27
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "torre-kurogane",
+              "x": 640,
+              "y": 355,
+              "escala": 1.23,
+              "profundidad": 0.73
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.77,
+              "velocidad": [
+                -130,
+                830
+              ]
+            }
+          ],
+          "expresiones": {}
+        },
+        {
+          "id": "c02-helipuerto",
+          "tipo": "plano general",
+          "duracion": 1.09,
+          "camara": {
+            "desde": {
+              "x": 670,
+              "y": 353,
+              "zoom": 1.13
+            },
+            "hasta": {
+              "x": 601,
+              "y": 352,
+              "zoom": 1.06
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "azotea-cierre",
+              "x": 640,
+              "y": 362,
+              "escala": 1.16,
+              "profundidad": 0.4
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.55,
+              "velocidad": [
+                -40,
+                290
+              ]
+            },
+            {
+              "activo": "neon-cian",
+              "x": 1000,
+              "y": 240,
+              "escala": 1,
+              "profundidad": 0.78,
+              "opacidad": 0.52
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.66,
+              "velocidad": [
+                -130,
+                830
+              ]
+            }
+          ],
+          "expresiones": {}
+        },
+        {
+          "id": "c03-volt",
+          "tipo": "primer plano",
+          "duracion": 3.4,
+          "camara": {
+            "desde": {
+              "x": 626,
+              "y": 363,
+              "zoom": 1.02
+            },
+            "hasta": {
+              "x": 657,
+              "y": 352,
+              "zoom": 1.15
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "azotea-cierre",
+              "x": 640,
+              "y": 362,
+              "escala": 1.16,
+              "profundidad": 0.4
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.55,
+              "velocidad": [
+                -40,
+                290
+              ]
+            },
+            {
+              "activo": "neon-cian",
+              "x": 239,
+              "y": 338,
+              "escala": 0.81,
+              "profundidad": 0.74,
+              "opacidad": 0.44
+            },
+            {
+              "activo": "volt-antena",
+              "x": 458,
+              "y": 690,
+              "escala": 0.93,
+              "profundidad": 1
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.56,
+              "velocidad": [
+                -130,
+                830
+              ]
+            }
+          ],
+          "expresiones": {
+            "volt": "concentrado"
+          },
+          "rotulo": "SIGUIENTE · CORRIENTE CRUZADA"
+        }
+      ]
+    }
+  ],
+  "audio": {
+    "archivo": "continuara.m4a"
+  }
+}

@@ -1,0 +1,1384 @@
+{
+  "version": 1,
+  "capitulo": "cap1-lluvia",
+  "nodo": 2,
+  "escena": "Victoria en la Ciudad Baja",
+  "lienzo": [
+    1280,
+    720
+  ],
+  "fps": 24,
+  "reloj": "segundos",
+  "total": 16.44,
+  "activos": {
+    "asfalto": {
+      "png": "arte/escenario/asfalto.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "categoria": "fondo-medio",
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "cables": {
+      "png": "arte/primer-plano/cables.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "categoria": "primer-plano",
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "calle": {
+      "png": "arte/escenario/calle-media.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "categoria": "fondo-medio",
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "calle-desenfocada": {
+      "png": "arte/escenario/calle-contraplanos.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "categoria": "fondo-medio",
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "ciudad": {
+      "png": "arte/escenario/ciudad-lejana.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "categoria": "fondo-lejano",
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "kaze-huida": {
+      "png": "arte/cierre/kaze-huida.png",
+      "pivote": [
+        512,
+        930
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "kaze-rodilla": {
+      "png": "arte/cierre/kaze-rodilla.png",
+      "pivote": [
+        512,
+        930
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "kaze-visor-herido": {
+      "png": "arte/cierre/kaze-visor-herido.png",
+      "pivote": [
+        512,
+        685
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "lluvia-cerca": {
+      "png": "arte/primer-plano/lluvia-cerca.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "categoria": "primer-plano",
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "lluvia-fondo": {
+      "png": "arte/primer-plano/lluvia-fondo.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "categoria": "fondo-medio",
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "mano-derrota": {
+      "png": "arte/cierre/mano-derrota.png",
+      "pivote": [
+        512,
+        720
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "neon-cian": {
+      "png": "arte/primer-plano/neon-cian.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "categoria": "primer-plano",
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "neon-rosa": {
+      "png": "arte/primer-plano/neon-rosa.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "categoria": "primer-plano",
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "nucleo": {
+      "png": "arte/personajes/nucleo.png",
+      "pivote": [
+        256,
+        450
+      ],
+      "categoria": "objeto",
+      "lienzo": [
+        512,
+        512
+      ]
+    },
+    "ondulacion": {
+      "png": "arte/cierre/ondulacion.png",
+      "pivote": [
+        320,
+        180
+      ],
+      "lienzo": [
+        640,
+        360
+      ]
+    },
+    "poste": {
+      "png": "arte/primer-plano/poste.png",
+      "pivote": [
+        256,
+        430
+      ],
+      "categoria": "primer-plano",
+      "lienzo": [
+        512,
+        850
+      ]
+    },
+    "ryujin-general": {
+      "png": "arte/personajes/ryujin-general.png",
+      "pivote": [
+        512,
+        920
+      ],
+      "categoria": "personaje",
+      "personaje": "ryujin",
+      "expresion": "neutral",
+      "lienzo": [
+        1024,
+        1024
+      ],
+      "tipo": "cuerpo-entero"
+    },
+    "ryujin-victoria": {
+      "png": "arte/cierre/ryujin-victoria.png",
+      "pivote": [
+        512,
+        790
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ],
+      "bocas": {
+        "cerrada": "ryujin-victoria-cerrada",
+        "entreabierta": "ryujin-victoria-entreabierta",
+        "abierta": "ryujin-victoria-abierta"
+      }
+    },
+    "ryujin-victoria-abierta": {
+      "png": "arte/cierre/ryujin-victoria-abierta.png",
+      "pivote": [
+        512,
+        790
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "ryujin-victoria-cerrada": {
+      "png": "arte/cierre/ryujin-victoria-cerrada.png",
+      "pivote": [
+        512,
+        790
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "ryujin-victoria-entreabierta": {
+      "png": "arte/cierre/ryujin-victoria-entreabierta.png",
+      "pivote": [
+        512,
+        790
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "sombra": {
+      "png": "arte/primer-plano/sombra.png",
+      "pivote": [
+        128,
+        32
+      ],
+      "categoria": "objeto",
+      "lienzo": [
+        256,
+        64
+      ]
+    },
+    "titan-amenaza": {
+      "png": "arte/cierre/titan-amenaza.png",
+      "pivote": [
+        512,
+        720
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "torre-kurogane": {
+      "png": "arte/cierre/torre-kurogane.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "lienzo": [
+        1280,
+        720
+      ]
+    }
+  },
+  "dialogo": [
+    {
+      "linea": 0,
+      "hablante": "kaze",
+      "lado": "right",
+      "texto": "Tch… Pegas como tu maestro. Me habían dicho que estaba muerto.",
+      "inicio": 0,
+      "duracionTexto": 4.15,
+      "planos": [
+        {
+          "id": "v01-mano",
+          "tipo": "detalle rasante",
+          "duracion": 0.64,
+          "camara": {
+            "desde": {
+              "x": 664,
+              "y": 349,
+              "zoom": 1.2
+            },
+            "hasta": {
+              "x": 606,
+              "y": 373,
+              "zoom": 1.04
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "ciudad",
+              "x": 640,
+              "y": 345,
+              "escala": 1.24,
+              "profundidad": 0.29,
+              "bajoLuz": 0.63
+            },
+            {
+              "activo": "calle-desenfocada",
+              "x": 617,
+              "y": 350,
+              "escala": 1.43,
+              "profundidad": 0.65,
+              "bajoLuz": 0.77
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.7,
+              "velocidad": [
+                -55,
+                390
+              ]
+            },
+            {
+              "activo": "asfalto",
+              "x": 640,
+              "y": 529,
+              "escala": 1.18,
+              "profundidad": 0.72,
+              "bajoLuz": 0.72
+            },
+            {
+              "activo": "neon-rosa",
+              "x": 900,
+              "y": 510,
+              "escala": 0.72,
+              "profundidad": 1,
+              "opacidad": 0.7
+            },
+            {
+              "activo": "ondulacion",
+              "x": 608,
+              "y": 550,
+              "escala": 0.56,
+              "profundidad": 1.36,
+              "opacidad": 0.87,
+              "hasta": {
+                "x": 608,
+                "y": 550,
+                "escala": 1.57,
+                "opacidad": 0
+              }
+            },
+            {
+              "activo": "mano-derrota",
+              "x": 647,
+              "y": 531,
+              "escala": 1.03,
+              "profundidad": 1.32
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.82,
+              "velocidad": [
+                -130,
+                830
+              ]
+            }
+          ],
+          "expresiones": {
+            "kaze": "agotada y desafiante"
+          },
+          "rotulo": "VICTORIA"
+        },
+        {
+          "id": "v02-rodilla",
+          "tipo": "plano bajo",
+          "duracion": 1.16,
+          "camara": {
+            "desde": {
+              "x": 650,
+              "y": 370,
+              "zoom": 1.09
+            },
+            "hasta": {
+              "x": 609,
+              "y": 353,
+              "zoom": 1.2
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "ciudad",
+              "x": 640,
+              "y": 342,
+              "escala": 1.18,
+              "profundidad": 0.29,
+              "bajoLuz": 0.71
+            },
+            {
+              "activo": "calle",
+              "x": 640,
+              "y": 359,
+              "escala": 1.17,
+              "profundidad": 0.75,
+              "bajoLuz": 0.83
+            },
+            {
+              "activo": "sombra",
+              "x": 862,
+              "y": 644,
+              "escala": 0.82,
+              "profundidad": 0.99
+            },
+            {
+              "activo": "kaze-rodilla",
+              "x": 867,
+              "y": 647,
+              "escala": 0.8,
+              "profundidad": 0.98
+            },
+            {
+              "activo": "ryujin-victoria",
+              "x": -100,
+              "y": 790,
+              "escala": 1.7,
+              "profundidad": 1.52,
+              "bajoLuz": 0.33,
+              "desenfoque": 7
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.82,
+              "velocidad": [
+                -130,
+                830
+              ]
+            }
+          ],
+          "expresiones": {
+            "kaze": "agotada y desafiante"
+          },
+          "rotulo": "VICTORIA"
+        },
+        {
+          "id": "v03-visor",
+          "tipo": "primerísimo primer plano",
+          "duracion": 2.35,
+          "camara": {
+            "desde": {
+              "x": 629,
+              "y": 357,
+              "zoom": 1.04
+            },
+            "hasta": {
+              "x": 659,
+              "y": 371,
+              "zoom": 1.16
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "ciudad",
+              "x": 640,
+              "y": 345,
+              "escala": 1.24,
+              "profundidad": 0.29,
+              "bajoLuz": 0.63
+            },
+            {
+              "activo": "calle-desenfocada",
+              "x": 617,
+              "y": 350,
+              "escala": 1.43,
+              "profundidad": 0.65,
+              "bajoLuz": 0.77
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.7,
+              "velocidad": [
+                -55,
+                390
+              ]
+            },
+            {
+              "activo": "neon-rosa",
+              "x": 998,
+              "y": 342,
+              "escala": 1.13,
+              "profundidad": 0.78,
+              "opacidad": 0.48
+            },
+            {
+              "activo": "kaze-visor-herido",
+              "x": 821,
+              "y": 420,
+              "escala": 1.26,
+              "profundidad": 1.0
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.72,
+              "velocidad": [
+                -130,
+                830
+              ]
+            }
+          ],
+          "expresiones": {
+            "kaze": "agotada y desafiante"
+          }
+        }
+      ]
+    },
+    {
+      "linea": 1,
+      "hablante": "ryujin",
+      "lado": "left",
+      "texto": "¿Quién te ha enviado?",
+      "inicio": 4.15,
+      "duracionTexto": 2.9,
+      "planos": [
+        {
+          "id": "v04-ojos",
+          "tipo": "detalle de ojos",
+          "duracion": 0.68,
+          "camara": {
+            "desde": {
+              "x": 621,
+              "y": 360,
+              "zoom": 1.14
+            },
+            "hasta": {
+              "x": 660,
+              "y": 353,
+              "zoom": 1.28
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "ciudad",
+              "x": 640,
+              "y": 345,
+              "escala": 1.24,
+              "profundidad": 0.29,
+              "bajoLuz": 0.63
+            },
+            {
+              "activo": "calle-desenfocada",
+              "x": 617,
+              "y": 350,
+              "escala": 1.43,
+              "profundidad": 0.65,
+              "bajoLuz": 0.77
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.7,
+              "velocidad": [
+                -55,
+                390
+              ]
+            },
+            {
+              "activo": "ryujin-victoria",
+              "x": 365,
+              "y": 1660,
+              "escala": 2.18,
+              "profundidad": 1.1
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.61,
+              "velocidad": [
+                -130,
+                830
+              ]
+            }
+          ],
+          "expresiones": {
+            "ryujin": "firme, alerta"
+          }
+        },
+        {
+          "id": "v05-guantelete",
+          "tipo": "detalle de puño",
+          "duracion": 0.62,
+          "camara": {
+            "desde": {
+              "x": 627,
+              "y": 363,
+              "zoom": 1.09
+            },
+            "hasta": {
+              "x": 676,
+              "y": 353,
+              "zoom": 1.25
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "ciudad",
+              "x": 640,
+              "y": 345,
+              "escala": 1.24,
+              "profundidad": 0.29,
+              "bajoLuz": 0.63
+            },
+            {
+              "activo": "calle-desenfocada",
+              "x": 617,
+              "y": 350,
+              "escala": 1.43,
+              "profundidad": 0.65,
+              "bajoLuz": 0.77
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.7,
+              "velocidad": [
+                -55,
+                390
+              ]
+            },
+            {
+              "activo": "neon-cian",
+              "x": 455,
+              "y": 414,
+              "escala": 0.74,
+              "profundidad": 0.81,
+              "opacidad": 0.35
+            },
+            {
+              "activo": "ryujin-victoria",
+              "x": 900,
+              "y": 182,
+              "escala": 1.85,
+              "profundidad": 1.05
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.82,
+              "velocidad": [
+                -130,
+                830
+              ]
+            }
+          ],
+          "expresiones": {
+            "ryujin": "firme, alerta"
+          }
+        },
+        {
+          "id": "v06-interrogatorio",
+          "tipo": "plano medio",
+          "duracion": 1.6,
+          "camara": {
+            "desde": {
+              "x": 650,
+              "y": 361,
+              "zoom": 1.02
+            },
+            "hasta": {
+              "x": 616,
+              "y": 354,
+              "zoom": 1.11
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "ciudad",
+              "x": 640,
+              "y": 345,
+              "escala": 1.24,
+              "profundidad": 0.29,
+              "bajoLuz": 0.63
+            },
+            {
+              "activo": "calle-desenfocada",
+              "x": 617,
+              "y": 350,
+              "escala": 1.43,
+              "profundidad": 0.65,
+              "bajoLuz": 0.77
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.7,
+              "velocidad": [
+                -55,
+                390
+              ]
+            },
+            {
+              "activo": "ryujin-victoria",
+              "x": 471,
+              "y": 848,
+              "escala": 0.94,
+              "profundidad": 0.99
+            },
+            {
+              "activo": "kaze-visor-herido",
+              "x": 1432,
+              "y": 938,
+              "escala": 1.53,
+              "profundidad": 1.64,
+              "bajoLuz": 0.27,
+              "desenfoque": 12
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.82,
+              "velocidad": [
+                -130,
+                830
+              ]
+            }
+          ],
+          "expresiones": {
+            "ryujin": "firme, alerta"
+          },
+          "boca": [
+            {
+              "t": 0,
+              "estado": "cerrada"
+            },
+            {
+              "t": 0.15,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 0.28,
+              "estado": "abierta"
+            },
+            {
+              "t": 0.49,
+              "estado": "cerrada"
+            },
+            {
+              "t": 0.66,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 0.78,
+              "estado": "abierta"
+            },
+            {
+              "t": 0.97,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 1.1,
+              "estado": "abierta"
+            },
+            {
+              "t": 1.31,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 1.47,
+              "estado": "cerrada"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linea": 2,
+      "hablante": "kaze",
+      "lado": "right",
+      "texto": "La Torre Kurogane. Y no soy la única: su campeón ya está en camino.",
+      "inicio": 7.05,
+      "duracionTexto": 4.91,
+      "planos": [
+        {
+          "id": "v07-torre",
+          "tipo": "contrapicado de la torre",
+          "duracion": 1.06,
+          "camara": {
+            "desde": {
+              "x": 672,
+              "y": 398,
+              "zoom": 1.1
+            },
+            "hasta": {
+              "x": 636,
+              "y": 299,
+              "zoom": 1.24
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "torre-kurogane",
+              "x": 640,
+              "y": 356,
+              "escala": 1.27,
+              "profundidad": 0.72
+            },
+            {
+              "activo": "cables",
+              "x": 635,
+              "y": 402,
+              "escala": 1.3,
+              "profundidad": 1.52,
+              "opacidad": 0.63
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.95,
+              "velocidad": [
+                -130,
+                830
+              ]
+            }
+          ],
+          "expresiones": {}
+        },
+        {
+          "id": "v08-campeon",
+          "tipo": "detalle del visor ámbar",
+          "duracion": 1.13,
+          "camara": {
+            "desde": {
+              "x": 641,
+              "y": 361,
+              "zoom": 1.05
+            },
+            "hasta": {
+              "x": 648,
+              "y": 351,
+              "zoom": 1.24
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "torre-kurogane",
+              "x": 640,
+              "y": 355,
+              "escala": 1.27,
+              "profundidad": 0.39,
+              "bajoLuz": 0.42,
+              "desenfoque": 16
+            },
+            {
+              "activo": "titan-amenaza",
+              "x": 673,
+              "y": 470,
+              "escala": 1.45,
+              "profundidad": 0.99
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.47,
+              "velocidad": [
+                -130,
+                830
+              ]
+            }
+          ],
+          "expresiones": {
+            "titan": "amenazante"
+          }
+        },
+        {
+          "id": "v09-kaze",
+          "tipo": "contraplano",
+          "duracion": 1.48,
+          "camara": {
+            "desde": {
+              "x": 615,
+              "y": 354,
+              "zoom": 1.17
+            },
+            "hasta": {
+              "x": 659,
+              "y": 366,
+              "zoom": 1.1
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "ciudad",
+              "x": 640,
+              "y": 345,
+              "escala": 1.24,
+              "profundidad": 0.29,
+              "bajoLuz": 0.63
+            },
+            {
+              "activo": "calle-desenfocada",
+              "x": 617,
+              "y": 350,
+              "escala": 1.43,
+              "profundidad": 0.65,
+              "bajoLuz": 0.77
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.7,
+              "velocidad": [
+                -55,
+                390
+              ]
+            },
+            {
+              "activo": "kaze-visor-herido",
+              "x": 870,
+              "y": 449,
+              "escala": 1.08,
+              "profundidad": 1
+            },
+            {
+              "activo": "ryujin-victoria",
+              "x": -48,
+              "y": 754,
+              "escala": 1.6,
+              "profundidad": 1.55,
+              "bajoLuz": 0.35,
+              "desenfoque": 11
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.82,
+              "velocidad": [
+                -130,
+                830
+              ]
+            }
+          ],
+          "expresiones": {
+            "kaze": "agotada y desafiante"
+          }
+        },
+        {
+          "id": "v10-nucleo",
+          "tipo": "inserto del Núcleo",
+          "duracion": 1.24,
+          "camara": {
+            "desde": {
+              "x": 636,
+              "y": 390,
+              "zoom": 1.11
+            },
+            "hasta": {
+              "x": 659,
+              "y": 341,
+              "zoom": 1.21
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "ciudad",
+              "x": 640,
+              "y": 345,
+              "escala": 1.24,
+              "profundidad": 0.29,
+              "bajoLuz": 0.63
+            },
+            {
+              "activo": "calle-desenfocada",
+              "x": 617,
+              "y": 350,
+              "escala": 1.43,
+              "profundidad": 0.65,
+              "bajoLuz": 0.77
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.7,
+              "velocidad": [
+                -55,
+                390
+              ]
+            },
+            {
+              "activo": "asfalto",
+              "x": 640,
+              "y": 529,
+              "escala": 1.18,
+              "profundidad": 0.72,
+              "bajoLuz": 0.72
+            },
+            {
+              "activo": "neon-cian",
+              "x": 642,
+              "y": 382,
+              "escala": 1.05,
+              "profundidad": 1.16,
+              "opacidad": 0.86,
+              "pulso": 1.26
+            },
+            {
+              "activo": "nucleo",
+              "x": 643,
+              "y": 537,
+              "escala": 0.98,
+              "profundidad": 1.09
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.73,
+              "velocidad": [
+                -130,
+                830
+              ]
+            }
+          ],
+          "expresiones": {}
+        }
+      ]
+    },
+    {
+      "linea": 3,
+      "hablante": "kaze",
+      "lado": "right",
+      "texto": "Un consejo gratis, heredero: no esperes a que llamen a tu puerta.",
+      "inicio": 11.96,
+      "duracionTexto": 4.48,
+      "planos": [
+        {
+          "id": "v11-advertencia",
+          "tipo": "detalle del visor",
+          "duracion": 1.62,
+          "camara": {
+            "desde": {
+              "x": 625,
+              "y": 348,
+              "zoom": 1.2
+            },
+            "hasta": {
+              "x": 674,
+              "y": 367,
+              "zoom": 1.32
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "ciudad",
+              "x": 640,
+              "y": 345,
+              "escala": 1.24,
+              "profundidad": 0.29,
+              "bajoLuz": 0.63
+            },
+            {
+              "activo": "calle-desenfocada",
+              "x": 617,
+              "y": 350,
+              "escala": 1.43,
+              "profundidad": 0.65,
+              "bajoLuz": 0.77
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.7,
+              "velocidad": [
+                -55,
+                390
+              ]
+            },
+            {
+              "activo": "kaze-visor-herido",
+              "x": 874,
+              "y": 337,
+              "escala": 1.58,
+              "profundidad": 0.98
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.69,
+              "velocidad": [
+                -130,
+                830
+              ]
+            }
+          ],
+          "expresiones": {
+            "kaze": "agotada y desafiante"
+          }
+        },
+        {
+          "id": "v12-huida",
+          "tipo": "salida lateral",
+          "duracion": 1.31,
+          "camara": {
+            "desde": {
+              "x": 608,
+              "y": 360,
+              "zoom": 1.13
+            },
+            "hasta": {
+              "x": 745,
+              "y": 363,
+              "zoom": 1.21
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "ciudad",
+              "x": 640,
+              "y": 342,
+              "escala": 1.18,
+              "profundidad": 0.29,
+              "bajoLuz": 0.71
+            },
+            {
+              "activo": "calle",
+              "x": 640,
+              "y": 359,
+              "escala": 1.17,
+              "profundidad": 0.75,
+              "bajoLuz": 0.83
+            },
+            {
+              "activo": "sombra",
+              "x": 842,
+              "y": 643,
+              "escala": 0.61,
+              "profundidad": 1.03,
+              "hasta": {
+                "x": 1540,
+                "y": 540,
+                "escala": 0.22
+              }
+            },
+            {
+              "activo": "kaze-huida",
+              "x": 828,
+              "y": 640,
+              "escala": 0.6,
+              "profundidad": 1.03,
+              "hasta": {
+                "x": 1540,
+                "y": 540,
+                "escala": 0.36
+              }
+            },
+            {
+              "activo": "ryujin-general",
+              "x": 342,
+              "y": 663,
+              "escala": 0.5,
+              "profundidad": 1.13
+            },
+            {
+              "activo": "poste",
+              "x": 1302,
+              "y": 576,
+              "escala": 1.4,
+              "profundidad": 1.61,
+              "bajoLuz": 0.25,
+              "desenfoque": 4
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.82,
+              "velocidad": [
+                -130,
+                830
+              ]
+            }
+          ],
+          "expresiones": {
+            "kaze": "en retirada"
+          }
+        },
+        {
+          "id": "v13-ciudad",
+          "tipo": "general de salida",
+          "duracion": 1.55,
+          "camara": {
+            "desde": {
+              "x": 670,
+              "y": 354,
+              "zoom": 1.18
+            },
+            "hasta": {
+              "x": 634,
+              "y": 370,
+              "zoom": 1.04
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "ciudad",
+              "x": 640,
+              "y": 342,
+              "escala": 1.18,
+              "profundidad": 0.29,
+              "bajoLuz": 0.71
+            },
+            {
+              "activo": "calle",
+              "x": 640,
+              "y": 359,
+              "escala": 1.17,
+              "profundidad": 0.75,
+              "bajoLuz": 0.83
+            },
+            {
+              "activo": "sombra",
+              "x": 490,
+              "y": 664,
+              "escala": 0.7,
+              "profundidad": 1.04
+            },
+            {
+              "activo": "ryujin-general",
+              "x": 490,
+              "y": 665,
+              "escala": 0.44,
+              "profundidad": 1.04
+            },
+            {
+              "activo": "cables",
+              "x": 640,
+              "y": 370,
+              "escala": 1.15,
+              "profundidad": 1.43
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.82,
+              "velocidad": [
+                -130,
+                830
+              ]
+            }
+          ],
+          "expresiones": {}
+        }
+      ]
+    }
+  ],
+  "audio": {
+    "archivo": "victoria.m4a"
+  },
+  "avanceAutomatico": true
+}

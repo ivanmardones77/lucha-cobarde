@@ -1,6 +1,7 @@
 import './campaign.css';
 import { sfx } from '../audio/SoundEngine';
 import type { DialogueLine } from '../campaign/story';
+import { StoryCinematic } from './StoryCinematic';
 import { CHARACTERS, CharacterId, StageId, getFighterHudColor } from '../core/types';
 import { STORY_BACKGROUNDS, STORY_CLIPS, STORY_SPRITES, StoryClip, framePosition, preloadStorySprites } from './storySprites';
 
@@ -68,6 +69,8 @@ export class CampaignUI {
   private dlg: HTMLElement;
   private menuEl: HTMLElement;
   private sceneEl: HTMLElement;
+  private cinematic: StoryCinematic;
+  private cinematicActive = false;
   private actors: Record<'LEFT' | 'RIGHT', Actor>;
   private reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   private nameEl: HTMLElement;
@@ -80,6 +83,9 @@ export class CampaignUI {
   private lineIdx = 0;
   private typed = 0;
   private onDialogueDone: (() => void) | null = null;
+  private onDialogueSkip: (() => void) | null = null;
+  private nextBtn: HTMLButtonElement;
+  private skipBtn: HTMLButtonElement;
   private items: MenuItem[] = [];
   private focus = 0;
   private menuOpts: MenuOptions = {};
@@ -93,6 +99,7 @@ export class CampaignUI {
     this.root.className = 'hidden';
     this.root.innerHTML = `
       <div class="cg-scene"></div>
+      <canvas class="cg-cinematic" aria-hidden="true"></canvas>
       <div class="cg-dialogue">
         <div class="cg-portrait left" role="img"><div class="cg-sprite"></div></div>
         <div class="cg-portrait right" role="img"><div class="cg-sprite"></div></div>
@@ -122,6 +129,7 @@ export class CampaignUI {
     this.dlg = this.root.querySelector('.cg-dialogue')!;
     this.menuEl = this.root.querySelector('.cg-menu')!;
     this.sceneEl = this.root.querySelector('.cg-scene')!;
+    this.cinematic = new StoryCinematic(this.root.querySelector('.cg-cinematic')!);
     const actor = (sel: string): Actor => {
       const el = this.root.querySelector<HTMLElement>(sel)!;
       return { el, sprite: el.querySelector<HTMLElement>('.cg-sprite')!, id: null, clip: 'idle', clipStart: 0, frame: -1 };
@@ -132,11 +140,13 @@ export class CampaignUI {
     this.chapterEl = this.root.querySelector('.cg-chapter')!;
     this.progressEl = this.root.querySelector('.cg-progress')!;
 
-    this.root.querySelector('[data-cg="skip"]')!.addEventListener('click', (e) => {
+    this.skipBtn = this.root.querySelector('[data-cg="skip"]')!;
+    this.nextBtn = this.root.querySelector('[data-cg="next"]')!;
+    this.skipBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.finishDialogue();
+      this.finishDialogue(true);
     });
-    this.root.querySelector('[data-cg="next"]')!.addEventListener('click', (e) => {
+    this.nextBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this.advance();
     });
@@ -148,6 +158,8 @@ export class CampaignUI {
         if (!this.isVisible()) return;
         const a = KEYS[e.code];
         if (!a) return;
+        if (a === 'confirm' && ['Enter', 'NumpadEnter', 'Space'].includes(e.code)
+          && e.target instanceof HTMLButtonElement && e.target.classList.contains('cg-btn')) return;
         e.preventDefault();
         e.stopImmediatePropagation();
         if (e.repeat && a !== 'up' && a !== 'down') return;
@@ -175,6 +187,7 @@ export class CampaignUI {
 
   hide(): void {
     this.mode = 'none';
+    this.closeCinematic();
     this.setScene(null);
     this.root.classList.add('hidden');
     cancelAnimationFrame(this.raf);
@@ -194,16 +207,38 @@ export class CampaignUI {
 
   // ---------- Diálogo ----------
 
-  dialogue(lines: (DialogueLine | CardLine)[], chapter: string, onDone: () => void): void {
+  preloadCinematic(chapterId: string, node: number): void {
+    this.cinematic.preload(chapterId, node);
+  }
+
+  private closeCinematic(): void {
+    if (!this.cinematicActive) return;
+    this.cinematic.stop();
+    this.cinematicActive = false;
+    this.root.classList.remove('cinematic');
+  }
+
+  dialogue(
+    lines: (DialogueLine | CardLine)[],
+    chapter: string,
+    onDone: () => void,
+    story?: { chapterId: string; node: number; nextLabel?: string; skipLabel?: string; onSkip?: () => void }
+  ): void {
+    this.closeCinematic();
+    this.cinematicActive = !!story && this.cinematic.select(story.chapterId, story.node, lines);
+    this.root.classList.toggle('cinematic', this.cinematicActive);
     this.lines = lines;
     this.lineIdx = 0;
     this.onDialogueDone = onDone;
+    this.onDialogueSkip = story?.onSkip ?? onDone;
+    this.nextBtn.textContent = story?.nextLabel ?? 'Siguiente ▶';
+    this.skipBtn.textContent = story?.skipLabel ?? 'Saltar ⏭';
     this.chapterEl.textContent = chapter;
     this.mode = 'dialogue';
     this.dlg.classList.remove('hidden');
     this.menuEl.classList.add('hidden');
     this.showRoot();
-    preloadStorySprites();
+    if (!this.cinematicActive) preloadStorySprites();
     for (const a of Object.values(this.actors)) {
       a.el.classList.remove('shown', 'active');
       a.id = null;
@@ -217,8 +252,14 @@ export class CampaignUI {
 
   private renderLine(): void {
     const l = this.lines[this.lineIdx];
-    this.typed = 0;
-    this.textEl.textContent = '';
+    if (this.cinematicActive) {
+      this.typed = l.text.length;
+      this.textEl.textContent = l.text;
+      this.cinematic.startLine(this.lineIdx, this.reducedMotion);
+    } else {
+      this.typed = 0;
+      this.textEl.textContent = '';
+    }
     this.progressEl.textContent = `${this.lineIdx + 1} / ${this.lines.length}`;
     if ('speakerId' in l) {
       const isNarr = l.speakerId === 'narrator';
@@ -226,10 +267,12 @@ export class CampaignUI {
       const other = this.actors[l.side === 'LEFT' ? 'RIGHT' : 'LEFT'];
       if (!isNarr) {
         const id = l.speakerId as CharacterId;
-        this.placeActor(me, id, l.side);
-        me.el.classList.add('shown', 'active');
-        other.el.classList.remove('active');
-        this.setClip(other, 'idle');
+        if (!this.cinematicActive) {
+          this.placeActor(me, id, l.side);
+          me.el.classList.add('shown', 'active');
+          other.el.classList.remove('active');
+          this.setClip(other, 'idle');
+        }
         this.nameEl.textContent = CHARACTERS[id].name;
         this.nameEl.style.color = getFighterHudColor(id, 0);
       } else {
@@ -308,17 +351,20 @@ export class CampaignUI {
     else this.renderLine();
   }
 
-  private finishDialogue(): void {
+  private finishDialogue(skip = false): void {
     if (this.mode !== 'dialogue') return;
-    const cb = this.onDialogueDone;
+    const cb = skip ? this.onDialogueSkip : this.onDialogueDone;
     this.onDialogueDone = null;
+    this.onDialogueSkip = null;
     this.mode = 'none';
+    this.closeCinematic();
     cb?.();
   }
 
   // ---------- Menú ----------
 
   menu(title: string, items: MenuItem[], opts: MenuOptions = {}): void {
+    this.closeCinematic();
     this.items = items;
     this.menuOpts = opts;
     const wanted = opts.focusLabel ? items.findIndex((i) => i.label === opts.focusLabel && !i.disabled) : -1;
@@ -396,7 +442,7 @@ export class CampaignUI {
     sfx.unlock();
     if (this.mode === 'dialogue') {
       if (a === 'confirm') this.advance();
-      else if (a === 'skip' || a === 'back') this.finishDialogue();
+      else if (a === 'skip' || a === 'back') this.finishDialogue(true);
     } else if (this.mode === 'menu') {
       if (a === 'up') this.moveFocus(-1);
       else if (a === 'down') this.moveFocus(1);
@@ -417,9 +463,14 @@ export class CampaignUI {
         this.textEl.textContent = full.slice(0, Math.floor(this.typed));
       }
     }
-    this.animateActors(t);
-    this.pollPads();
-    this.raf = requestAnimationFrame(this.loop);
+    if (this.cinematicActive) {
+      if (this.cinematic.animate(t, this.reducedMotion)) this.advance();
+      else this.pollPads();
+    } else {
+      this.animateActors(t);
+      this.pollPads();
+    }
+    if (this.isVisible()) this.raf = requestAnimationFrame(this.loop);
   };
 
   private pollPads(): void {

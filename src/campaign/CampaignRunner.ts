@@ -113,6 +113,7 @@ export class CampaignRunner {
   openStory(): void {
     // Fondo del primer capítulo detrás de la lista
     const first = CHAPTERS[0];
+    this.ui.preloadCinematic(first.id, 0);
     const [p1, p2] = this.storyPair(first, 0);
     this.host.showBackdrop(backdropFor(first, 0), p1, p2);
     const items: MenuItem[] = CHAPTERS.map((c, i) => {
@@ -164,15 +165,33 @@ export class CampaignRunner {
     if (n.type === 'DIALOGUE') {
       const [p1, p2] = this.storyPair(c, i);
       this.host.showBackdrop(backdropFor(c, i), p1, p2);
-      this.ui.dialogue(n.lines, c.title, next);
+      this.ui.preloadCinematic(c.id, i + 1);
+      this.ui.dialogue(n.lines, c.title, next, { chapterId: c.id, node: i });
       return;
     }
     if (n.type === 'UNLOCK') {
       this.save.unlock(n.reward.key);
       const card: CardLine = { title: 'RECOMPENSA', color: '#fbbf24', text: n.reward.text };
-      this.ui.dialogue([card], c.title, next);
+      const nextChapterIndex = CHAPTERS.indexOf(c) + 1;
+      const nextChapter = CHAPTERS[nextChapterIndex];
+      if (nextChapter) {
+        this.ui.preloadCinematic(nextChapter.id, 0);
+        this.ui.dialogue([card], c.title, () => {
+          this.save.finishChapter(c.id);
+          this.openChapter(nextChapter);
+        }, {
+          chapterId: c.id,
+          node: i,
+          nextLabel: `Ir al capítulo ${nextChapterIndex + 1} ▶`,
+          skipLabel: 'Volver a capítulos',
+          onSkip: next,
+        });
+      } else {
+        this.ui.dialogue([card], c.title, next);
+      }
       return;
     }
+    this.ui.preloadCinematic(c.id, i + 1);
     const match: CampaignMatch = {
       p1: n.playerCharacter,
       p2: n.opponentCharacter,

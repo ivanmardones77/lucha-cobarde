@@ -1,0 +1,1855 @@
+{
+  "version": 1,
+  "capitulo": "cap2-corriente",
+  "nodo": 0,
+  "escena": "Corriente cruzada",
+  "lienzo": [
+    1280,
+    720
+  ],
+  "fps": 24,
+  "reloj": "segundos",
+  "total": 22.39,
+  "avanceAutomatico": true,
+  "activos": {
+    "lluvia-fondo": {
+      "png": "../ciudad-baja/arte/primer-plano/lluvia-fondo.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "categoria": "fondo-medio",
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "lluvia-cerca": {
+      "png": "../ciudad-baja/arte/primer-plano/lluvia-cerca.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "categoria": "primer-plano",
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "neon-cian": {
+      "png": "../ciudad-baja/arte/primer-plano/neon-cian.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "categoria": "primer-plano",
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "sombra": {
+      "png": "../ciudad-baja/arte/primer-plano/sombra.png",
+      "pivote": [
+        128,
+        32
+      ],
+      "categoria": "objeto",
+      "lienzo": [
+        256,
+        64
+      ]
+    },
+    "panorama": {
+      "png": "arte/panorama.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "helipuerto": {
+      "png": "arte/helipuerto.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "baranda": {
+      "png": "arte/baranda.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "ondas": {
+      "png": "arte/ondas.png",
+      "pivote": [
+        640,
+        360
+      ],
+      "lienzo": [
+        1280,
+        720
+      ]
+    },
+    "antena": {
+      "png": "arte/antena.png",
+      "pivote": [
+        512,
+        890
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "guante": {
+      "png": "arte/guante.png",
+      "pivote": [
+        512,
+        625
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "panel": {
+      "png": "arte/panel.png",
+      "pivote": [
+        512,
+        765
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "volt": {
+      "png": "arte/volt.png",
+      "pivote": [
+        512,
+        770
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ],
+      "bocas": {
+        "cerrada": "volt-cerrada",
+        "entreabierta": "volt-entreabierta",
+        "abierta": "volt-abierta"
+      }
+    },
+    "valkyrie": {
+      "png": "arte/valkyrie.png",
+      "pivote": [
+        512,
+        790
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ],
+      "bocas": {
+        "cerrada": "valkyrie-cerrada",
+        "entreabierta": "valkyrie-entreabierta",
+        "abierta": "valkyrie-abierta"
+      }
+    },
+    "valkyrie-aterriza": {
+      "png": "arte/valkyrie-aterriza.png",
+      "pivote": [
+        512,
+        920
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "valkyrie-ojo": {
+      "png": "arte/valkyrie-ojo.png",
+      "pivote": [
+        512,
+        690
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "volt-general": {
+      "png": "arte/volt-general.png",
+      "pivote": [
+        512,
+        920
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "valkyrie-general": {
+      "png": "arte/valkyrie-general.png",
+      "pivote": [
+        512,
+        920
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "volt-cerrada": {
+      "png": "arte/volt-cerrada.png",
+      "pivote": [
+        512,
+        770
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "volt-entreabierta": {
+      "png": "arte/volt-entreabierta.png",
+      "pivote": [
+        512,
+        770
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "volt-abierta": {
+      "png": "arte/volt-abierta.png",
+      "pivote": [
+        512,
+        770
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "valkyrie-cerrada": {
+      "png": "arte/valkyrie-cerrada.png",
+      "pivote": [
+        512,
+        790
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "valkyrie-entreabierta": {
+      "png": "arte/valkyrie-entreabierta.png",
+      "pivote": [
+        512,
+        790
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    },
+    "valkyrie-abierta": {
+      "png": "arte/valkyrie-abierta.png",
+      "pivote": [
+        512,
+        790
+      ],
+      "lienzo": [
+        1024,
+        1024
+      ]
+    }
+  },
+  "dialogo": [
+    {
+      "linea": 0,
+      "hablante": "narrator",
+      "lado": "left",
+      "texto": "Torre Kurogane, helipuerto del piso 200. La antena de emergencia apunta a toda la ciudad.",
+      "inicio": 0,
+      "duracionTexto": 4.4,
+      "planos": [
+        {
+          "id": "cc01-azotea",
+          "tipo": "general de llegada",
+          "duracion": 1.14,
+          "camara": {
+            "desde": {
+              "x": 687,
+              "y": 367,
+              "zoom": 1.08
+            },
+            "hasta": {
+              "x": 625,
+              "y": 348,
+              "zoom": 1.2
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "panorama",
+              "x": 640,
+              "y": 351,
+              "escala": 1.19,
+              "profundidad": 0.31
+            },
+            {
+              "activo": "helipuerto",
+              "x": 640,
+              "y": 358,
+              "escala": 1.19,
+              "profundidad": 0.73
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.7,
+              "velocidad": [
+                -55,
+                290
+              ]
+            },
+            {
+              "activo": "antena",
+              "x": 342,
+              "y": 559,
+              "escala": 0.48,
+              "profundidad": 0.78
+            },
+            {
+              "activo": "baranda",
+              "x": 640,
+              "y": 375,
+              "escala": 1.08,
+              "profundidad": 1.38,
+              "bajoLuz": 0.6,
+              "opacidad": 0.64
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.74,
+              "velocidad": [
+                -130,
+                580
+              ]
+            }
+          ],
+          "expresiones": {},
+          "rotulo": "CORRIENTE CRUZADA"
+        },
+        {
+          "id": "cc02-antena",
+          "tipo": "contrapicado de antena",
+          "duracion": 0.94,
+          "camara": {
+            "desde": {
+              "x": 675,
+              "y": 352,
+              "zoom": 1.12
+            },
+            "hasta": {
+              "x": 615,
+              "y": 321,
+              "zoom": 1.25
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "panorama",
+              "x": 640,
+              "y": 356,
+              "escala": 1.31,
+              "profundidad": 0.32,
+              "desenfoque": 14,
+              "bajoLuz": 0.65
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.5,
+              "velocidad": [
+                -55,
+                290
+              ]
+            },
+            {
+              "activo": "antena",
+              "x": 570,
+              "y": 918,
+              "escala": 1,
+              "profundidad": 1.13
+            },
+            {
+              "activo": "neon-cian",
+              "x": 465,
+              "y": 327,
+              "escala": 0.62,
+              "profundidad": 0.98,
+              "opacidad": 0.41,
+              "pulso": 1.25
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.74,
+              "velocidad": [
+                -130,
+                580
+              ]
+            }
+          ],
+          "expresiones": {}
+        },
+        {
+          "id": "cc03-baliza",
+          "tipo": "detalle de baliza",
+          "duracion": 0.86,
+          "camara": {
+            "desde": {
+              "x": 618,
+              "y": 360,
+              "zoom": 1.05
+            },
+            "hasta": {
+              "x": 663,
+              "y": 361,
+              "zoom": 1.18
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "panorama",
+              "x": 575,
+              "y": 356,
+              "escala": 1.31,
+              "profundidad": 0.32,
+              "desenfoque": 14,
+              "bajoLuz": 0.65
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.5,
+              "velocidad": [
+                -55,
+                290
+              ]
+            },
+            {
+              "activo": "antena",
+              "x": 654,
+              "y": 1718,
+              "escala": 1.73,
+              "profundidad": 0.91
+            },
+            {
+              "activo": "ondas",
+              "x": 790,
+              "y": 310,
+              "escala": 0.83,
+              "profundidad": 1.3,
+              "opacidad": 0.44,
+              "hasta": {
+                "x": 790,
+                "y": 310,
+                "escala": 1.23,
+                "opacidad": 0
+              }
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.74,
+              "velocidad": [
+                -130,
+                580
+              ]
+            }
+          ],
+          "expresiones": {}
+        },
+        {
+          "id": "cc04-panel",
+          "tipo": "detalle de transmisión",
+          "duracion": 1.46,
+          "camara": {
+            "desde": {
+              "x": 659,
+              "y": 386,
+              "zoom": 1.12
+            },
+            "hasta": {
+              "x": 641,
+              "y": 347,
+              "zoom": 1.19
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "panorama",
+              "x": 686,
+              "y": 356,
+              "escala": 1.31,
+              "profundidad": 0.32,
+              "desenfoque": 14,
+              "bajoLuz": 0.65
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.5,
+              "velocidad": [
+                -55,
+                290
+              ]
+            },
+            {
+              "activo": "neon-cian",
+              "x": 648,
+              "y": 469,
+              "escala": 0.88,
+              "profundidad": 0.72,
+              "opacidad": 0.6,
+              "pulso": 1.17
+            },
+            {
+              "activo": "panel",
+              "x": 650,
+              "y": 624,
+              "escala": 0.91,
+              "profundidad": 1.01
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.74,
+              "velocidad": [
+                -130,
+                580
+              ]
+            }
+          ],
+          "expresiones": {}
+        }
+      ]
+    },
+    {
+      "linea": 1,
+      "hablante": "volt",
+      "lado": "left",
+      "texto": "Tres minutos de señal y todo el mundo sabrá lo que planeáis hacer con el dojo.",
+      "inicio": 4.4,
+      "duracionTexto": 4.74,
+      "planos": [
+        {
+          "id": "cc05-dedo",
+          "tipo": "macro de guante",
+          "duracion": 0.68,
+          "camara": {
+            "desde": {
+              "x": 601,
+              "y": 377,
+              "zoom": 1.13
+            },
+            "hasta": {
+              "x": 660,
+              "y": 355,
+              "zoom": 1.22
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "panorama",
+              "x": 640,
+              "y": 356,
+              "escala": 1.31,
+              "profundidad": 0.32,
+              "desenfoque": 14,
+              "bajoLuz": 0.65
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.5,
+              "velocidad": [
+                -55,
+                290
+              ]
+            },
+            {
+              "activo": "panel",
+              "x": 680,
+              "y": 688,
+              "escala": 1.0,
+              "profundidad": 0.8
+            },
+            {
+              "activo": "guante",
+              "x": 468,
+              "y": 447,
+              "escala": 0.92,
+              "profundidad": 1.16,
+              "hasta": {
+                "x": 607,
+                "y": 470,
+                "escala": 0.92
+              }
+            },
+            {
+              "activo": "neon-cian",
+              "x": 736,
+              "y": 447,
+              "escala": 0.48,
+              "profundidad": 1.13,
+              "opacidad": 0.46,
+              "pulso": 2.7
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.74,
+              "velocidad": [
+                -130,
+                580
+              ]
+            }
+          ],
+          "expresiones": {
+            "volt": "resuelto"
+          }
+        },
+        {
+          "id": "cc06-gafas",
+          "tipo": "detalle de gafas",
+          "duracion": 1.0,
+          "camara": {
+            "desde": {
+              "x": 654,
+              "y": 351,
+              "zoom": 1.15
+            },
+            "hasta": {
+              "x": 710,
+              "y": 359,
+              "zoom": 1.24
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "panorama",
+              "x": 696,
+              "y": 356,
+              "escala": 1.31,
+              "profundidad": 0.32,
+              "desenfoque": 14,
+              "bajoLuz": 0.65
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.5,
+              "velocidad": [
+                -55,
+                290
+              ]
+            },
+            {
+              "activo": "volt",
+              "x": 449,
+              "y": 856,
+              "escala": 2.12,
+              "profundidad": 1.09
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.74,
+              "velocidad": [
+                -130,
+                580
+              ]
+            }
+          ],
+          "expresiones": {
+            "volt": "resuelto"
+          }
+        },
+        {
+          "id": "cc07-volt",
+          "tipo": "primer plano",
+          "duracion": 3.06,
+          "camara": {
+            "desde": {
+              "x": 657,
+              "y": 355,
+              "zoom": 1.01
+            },
+            "hasta": {
+              "x": 612,
+              "y": 358,
+              "zoom": 1.13
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "panorama",
+              "x": 694,
+              "y": 356,
+              "escala": 1.31,
+              "profundidad": 0.32,
+              "desenfoque": 14,
+              "bajoLuz": 0.65
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.5,
+              "velocidad": [
+                -55,
+                290
+              ]
+            },
+            {
+              "activo": "volt",
+              "x": 430,
+              "y": 601,
+              "escala": 1.12,
+              "profundidad": 1.0
+            },
+            {
+              "activo": "neon-cian",
+              "x": 239,
+              "y": 391,
+              "escala": 0.97,
+              "profundidad": 1.13,
+              "opacidad": 0.28
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.74,
+              "velocidad": [
+                -130,
+                580
+              ]
+            }
+          ],
+          "expresiones": {
+            "volt": "resuelto"
+          },
+          "boca": [
+            {
+              "t": 0.03,
+              "estado": "cerrada"
+            },
+            {
+              "t": 0.18,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 0.33,
+              "estado": "abierta"
+            },
+            {
+              "t": 0.48,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 0.72,
+              "estado": "cerrada"
+            },
+            {
+              "t": 0.87,
+              "estado": "abierta"
+            },
+            {
+              "t": 1.02,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 1.17,
+              "estado": "cerrada"
+            },
+            {
+              "t": 1.41,
+              "estado": "cerrada"
+            },
+            {
+              "t": 1.56,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 1.71,
+              "estado": "abierta"
+            },
+            {
+              "t": 1.86,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 2.1,
+              "estado": "cerrada"
+            },
+            {
+              "t": 2.25,
+              "estado": "abierta"
+            },
+            {
+              "t": 2.4,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 2.55,
+              "estado": "cerrada"
+            },
+            {
+              "t": 2.79,
+              "estado": "cerrada"
+            },
+            {
+              "t": 2.93,
+              "estado": "cerrada"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linea": 2,
+      "hablante": "valkyrie",
+      "lado": "right",
+      "texto": "No tendrás ni treinta segundos. Aléjate de la antena.",
+      "inicio": 9.14,
+      "duracionTexto": 4.34,
+      "planos": [
+        {
+          "id": "cc08-bota",
+          "tipo": "detalle del aterrizaje",
+          "duracion": 0.65,
+          "camara": {
+            "desde": {
+              "x": 632,
+              "y": 352,
+              "zoom": 1.21
+            },
+            "hasta": {
+              "x": 607,
+              "y": 374,
+              "zoom": 1.07
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "panorama",
+              "x": 640,
+              "y": 351,
+              "escala": 1.19,
+              "profundidad": 0.31
+            },
+            {
+              "activo": "helipuerto",
+              "x": 640,
+              "y": 358,
+              "escala": 1.19,
+              "profundidad": 0.73
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.7,
+              "velocidad": [
+                -55,
+                290
+              ]
+            },
+            {
+              "activo": "sombra",
+              "x": 832,
+              "y": 507,
+              "escala": 1.34,
+              "profundidad": 0.81
+            },
+            {
+              "activo": "valkyrie-aterriza",
+              "x": 837,
+              "y": 543,
+              "escala": 1.38,
+              "profundidad": 1.13,
+              "hasta": {
+                "x": 837,
+                "y": 586,
+                "escala": 1.38
+              }
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.74,
+              "velocidad": [
+                -130,
+                580
+              ]
+            }
+          ],
+          "expresiones": {
+            "valkyrie": "severa"
+          }
+        },
+        {
+          "id": "cc09-descenso",
+          "tipo": "revelación en plano bajo",
+          "duracion": 1.03,
+          "camara": {
+            "desde": {
+              "x": 642,
+              "y": 385,
+              "zoom": 1.16
+            },
+            "hasta": {
+              "x": 620,
+              "y": 333,
+              "zoom": 1.1
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "panorama",
+              "x": 640,
+              "y": 351,
+              "escala": 1.19,
+              "profundidad": 0.31
+            },
+            {
+              "activo": "helipuerto",
+              "x": 640,
+              "y": 358,
+              "escala": 1.19,
+              "profundidad": 0.73
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.7,
+              "velocidad": [
+                -55,
+                290
+              ]
+            },
+            {
+              "activo": "sombra",
+              "x": 915,
+              "y": 647,
+              "escala": 0.77,
+              "profundidad": 1
+            },
+            {
+              "activo": "valkyrie-aterriza",
+              "x": 906,
+              "y": 646,
+              "escala": 0.62,
+              "profundidad": 0.98
+            },
+            {
+              "activo": "panel",
+              "x": -15,
+              "y": 601,
+              "escala": 1.07,
+              "profundidad": 1.55,
+              "bajoLuz": 0.4,
+              "desenfoque": 9
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.74,
+              "velocidad": [
+                -130,
+                580
+              ]
+            }
+          ],
+          "expresiones": {
+            "valkyrie": "severa"
+          }
+        },
+        {
+          "id": "cc10-visor-verde",
+          "tipo": "detalle del ojo",
+          "duracion": 0.9,
+          "camara": {
+            "desde": {
+              "x": 612,
+              "y": 358,
+              "zoom": 1.17
+            },
+            "hasta": {
+              "x": 658,
+              "y": 359,
+              "zoom": 1.28
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "panorama",
+              "x": 580,
+              "y": 356,
+              "escala": 1.31,
+              "profundidad": 0.32,
+              "desenfoque": 14,
+              "bajoLuz": 0.65
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.5,
+              "velocidad": [
+                -55,
+                290
+              ]
+            },
+            {
+              "activo": "valkyrie-ojo",
+              "x": 875,
+              "y": 542,
+              "escala": 1.46,
+              "profundidad": 1.03
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.74,
+              "velocidad": [
+                -130,
+                580
+              ]
+            }
+          ],
+          "expresiones": {
+            "valkyrie": "severa"
+          }
+        },
+        {
+          "id": "cc11-orden",
+          "tipo": "contraplano de Valkyrie",
+          "duracion": 1.76,
+          "camara": {
+            "desde": {
+              "x": 609,
+              "y": 357,
+              "zoom": 1.02
+            },
+            "hasta": {
+              "x": 651,
+              "y": 346,
+              "zoom": 1.12
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "panorama",
+              "x": 575,
+              "y": 356,
+              "escala": 1.31,
+              "profundidad": 0.32,
+              "desenfoque": 14,
+              "bajoLuz": 0.65
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.5,
+              "velocidad": [
+                -55,
+                290
+              ]
+            },
+            {
+              "activo": "valkyrie",
+              "x": 817,
+              "y": 728,
+              "escala": 1.04,
+              "profundidad": 1.0
+            },
+            {
+              "activo": "volt",
+              "x": -159,
+              "y": 786,
+              "escala": 1.34,
+              "profundidad": 1.57,
+              "desenfoque": 12,
+              "bajoLuz": 0.38
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.74,
+              "velocidad": [
+                -130,
+                580
+              ]
+            }
+          ],
+          "expresiones": {
+            "valkyrie": "severa"
+          },
+          "boca": [
+            {
+              "t": 0.03,
+              "estado": "cerrada"
+            },
+            {
+              "t": 0.18,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 0.33,
+              "estado": "abierta"
+            },
+            {
+              "t": 0.48,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 0.72,
+              "estado": "cerrada"
+            },
+            {
+              "t": 0.87,
+              "estado": "abierta"
+            },
+            {
+              "t": 1.02,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 1.17,
+              "estado": "cerrada"
+            },
+            {
+              "t": 1.41,
+              "estado": "cerrada"
+            },
+            {
+              "t": 1.63,
+              "estado": "cerrada"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linea": 3,
+      "hablante": "volt",
+      "lado": "left",
+      "texto": "La jefa de seguridad en persona. ¿Sabes siquiera a quién proteges?",
+      "inicio": 13.48,
+      "duracionTexto": 4.34,
+      "planos": [
+        {
+          "id": "cc12-reaccion",
+          "tipo": "mirada de Volt",
+          "duracion": 0.78,
+          "camara": {
+            "desde": {
+              "x": 624,
+              "y": 360,
+              "zoom": 1.14
+            },
+            "hasta": {
+              "x": 672,
+              "y": 350,
+              "zoom": 1.29
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "panorama",
+              "x": 704,
+              "y": 356,
+              "escala": 1.31,
+              "profundidad": 0.32,
+              "desenfoque": 14,
+              "bajoLuz": 0.65
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.5,
+              "velocidad": [
+                -55,
+                290
+              ]
+            },
+            {
+              "activo": "volt",
+              "x": 431,
+              "y": 892,
+              "escala": 2.24,
+              "profundidad": 1.01
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.74,
+              "velocidad": [
+                -130,
+                580
+              ]
+            }
+          ],
+          "expresiones": {
+            "volt": "resuelto"
+          }
+        },
+        {
+          "id": "cc13-consola",
+          "tipo": "detalle del panel",
+          "duracion": 0.73,
+          "camara": {
+            "desde": {
+              "x": 666,
+              "y": 350,
+              "zoom": 1.14
+            },
+            "hasta": {
+              "x": 634,
+              "y": 379,
+              "zoom": 1.22
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "panorama",
+              "x": 640,
+              "y": 356,
+              "escala": 1.31,
+              "profundidad": 0.32,
+              "desenfoque": 14,
+              "bajoLuz": 0.65
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.5,
+              "velocidad": [
+                -55,
+                290
+              ]
+            },
+            {
+              "activo": "panel",
+              "x": 692,
+              "y": 674,
+              "escala": 1.25,
+              "profundidad": 1.05
+            },
+            {
+              "activo": "neon-cian",
+              "x": 618,
+              "y": 472,
+              "escala": 0.62,
+              "profundidad": 1.25,
+              "opacidad": 0.77,
+              "pulso": 2.4
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.74,
+              "velocidad": [
+                -130,
+                580
+              ]
+            }
+          ],
+          "expresiones": {
+            "volt": "resuelto"
+          }
+        },
+        {
+          "id": "cc14-contraplano",
+          "tipo": "contraplano de Volt",
+          "duracion": 2.83,
+          "camara": {
+            "desde": {
+              "x": 625,
+              "y": 369,
+              "zoom": 1.02
+            },
+            "hasta": {
+              "x": 661,
+              "y": 346,
+              "zoom": 1.13
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "panorama",
+              "x": 695,
+              "y": 356,
+              "escala": 1.31,
+              "profundidad": 0.32,
+              "desenfoque": 14,
+              "bajoLuz": 0.65
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.5,
+              "velocidad": [
+                -55,
+                290
+              ]
+            },
+            {
+              "activo": "volt",
+              "x": 414,
+              "y": 613,
+              "escala": 1.13,
+              "profundidad": 0.99
+            },
+            {
+              "activo": "valkyrie",
+              "x": 1410,
+              "y": 823,
+              "escala": 1.5,
+              "profundidad": 1.62,
+              "desenfoque": 10,
+              "bajoLuz": 0.26
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.74,
+              "velocidad": [
+                -130,
+                580
+              ]
+            }
+          ],
+          "expresiones": {
+            "volt": "resuelto"
+          },
+          "boca": [
+            {
+              "t": 0.04,
+              "estado": "cerrada"
+            },
+            {
+              "t": 0.19,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 0.34,
+              "estado": "abierta"
+            },
+            {
+              "t": 0.49,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 0.73,
+              "estado": "cerrada"
+            },
+            {
+              "t": 0.88,
+              "estado": "abierta"
+            },
+            {
+              "t": 1.03,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 1.18,
+              "estado": "cerrada"
+            },
+            {
+              "t": 1.42,
+              "estado": "cerrada"
+            },
+            {
+              "t": 1.57,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 1.72,
+              "estado": "abierta"
+            },
+            {
+              "t": 1.87,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 2.11,
+              "estado": "cerrada"
+            },
+            {
+              "t": 2.26,
+              "estado": "abierta"
+            },
+            {
+              "t": 2.41,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 2.56,
+              "estado": "cerrada"
+            },
+            {
+              "t": 2.7,
+              "estado": "cerrada"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "linea": 4,
+      "hablante": "valkyrie",
+      "lado": "right",
+      "texto": "Protejo el orden. Y ahora mismo, el desorden eres tú.",
+      "inicio": 17.82,
+      "duracionTexto": 4.57,
+      "planos": [
+        {
+          "id": "cc15-vigilancia",
+          "tipo": "primerísimo primer plano",
+          "duracion": 0.91,
+          "camara": {
+            "desde": {
+              "x": 606,
+              "y": 353,
+              "zoom": 1.16
+            },
+            "hasta": {
+              "x": 638,
+              "y": 361,
+              "zoom": 1.28
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "panorama",
+              "x": 596,
+              "y": 356,
+              "escala": 1.31,
+              "profundidad": 0.32,
+              "desenfoque": 14,
+              "bajoLuz": 0.65
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.5,
+              "velocidad": [
+                -55,
+                290
+              ]
+            },
+            {
+              "activo": "valkyrie-ojo",
+              "x": 843,
+              "y": 508,
+              "escala": 1.6,
+              "profundidad": 1.02
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.74,
+              "velocidad": [
+                -130,
+                580
+              ]
+            }
+          ],
+          "expresiones": {
+            "valkyrie": "severa"
+          }
+        },
+        {
+          "id": "cc16-veredicto",
+          "tipo": "busto de Valkyrie",
+          "duracion": 1.99,
+          "camara": {
+            "desde": {
+              "x": 647,
+              "y": 354,
+              "zoom": 1.03
+            },
+            "hasta": {
+              "x": 621,
+              "y": 350,
+              "zoom": 1.14
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "panorama",
+              "x": 578,
+              "y": 356,
+              "escala": 1.31,
+              "profundidad": 0.32,
+              "desenfoque": 14,
+              "bajoLuz": 0.65
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.5,
+              "velocidad": [
+                -55,
+                290
+              ]
+            },
+            {
+              "activo": "valkyrie",
+              "x": 829,
+              "y": 714,
+              "escala": 1.05,
+              "profundidad": 1.02
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.74,
+              "velocidad": [
+                -130,
+                580
+              ]
+            }
+          ],
+          "expresiones": {
+            "valkyrie": "severa"
+          },
+          "boca": [
+            {
+              "t": 0.05,
+              "estado": "cerrada"
+            },
+            {
+              "t": 0.2,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 0.35,
+              "estado": "abierta"
+            },
+            {
+              "t": 0.5,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 0.74,
+              "estado": "cerrada"
+            },
+            {
+              "t": 0.89,
+              "estado": "abierta"
+            },
+            {
+              "t": 1.04,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 1.19,
+              "estado": "cerrada"
+            },
+            {
+              "t": 1.43,
+              "estado": "cerrada"
+            },
+            {
+              "t": 1.58,
+              "estado": "entreabierta"
+            },
+            {
+              "t": 1.73,
+              "estado": "abierta"
+            },
+            {
+              "t": 1.86,
+              "estado": "cerrada"
+            }
+          ]
+        },
+        {
+          "id": "cc17-duelo",
+          "tipo": "general a dos",
+          "duracion": 1.67,
+          "camara": {
+            "desde": {
+              "x": 664,
+              "y": 366,
+              "zoom": 1.11
+            },
+            "hasta": {
+              "x": 642,
+              "y": 356,
+              "zoom": 1.17
+            },
+            "suavizado": "easeOutSine"
+          },
+          "capas": [
+            {
+              "activo": "panorama",
+              "x": 640,
+              "y": 351,
+              "escala": 1.19,
+              "profundidad": 0.31
+            },
+            {
+              "activo": "helipuerto",
+              "x": 640,
+              "y": 358,
+              "escala": 1.19,
+              "profundidad": 0.73
+            },
+            {
+              "activo": "lluvia-fondo",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.7,
+              "velocidad": [
+                -55,
+                290
+              ]
+            },
+            {
+              "activo": "antena",
+              "x": 75,
+              "y": 568,
+              "escala": 0.54,
+              "profundidad": 0.82
+            },
+            {
+              "activo": "sombra",
+              "x": 358,
+              "y": 648,
+              "escala": 0.68,
+              "profundidad": 1.02
+            },
+            {
+              "activo": "sombra",
+              "x": 920,
+              "y": 647,
+              "escala": 0.7,
+              "profundidad": 1.02
+            },
+            {
+              "activo": "volt-general",
+              "x": 354,
+              "y": 647,
+              "escala": 0.55,
+              "profundidad": 1.02
+            },
+            {
+              "activo": "valkyrie-general",
+              "x": 921,
+              "y": 647,
+              "escala": 0.56,
+              "profundidad": 1.02
+            },
+            {
+              "activo": "panel",
+              "x": -33,
+              "y": 697,
+              "escala": 0.65,
+              "profundidad": 1.35,
+              "desenfoque": 3,
+              "bajoLuz": 0.61
+            },
+            {
+              "activo": "lluvia-cerca",
+              "x": 640,
+              "y": 360,
+              "escala": 1,
+              "profundidad": 1,
+              "mosaico": true,
+              "opacidad": 0.74,
+              "velocidad": [
+                -130,
+                580
+              ]
+            }
+          ],
+          "expresiones": {
+            "volt": "en guardia",
+            "valkyrie": "en guardia"
+          }
+        }
+      ]
+    }
+  ],
+  "audio": {
+    "archivo": "corriente.m4a"
+  }
+}
